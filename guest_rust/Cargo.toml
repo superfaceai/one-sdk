@@ -1,0 +1,10 @@
+[package]
+name = "guest_rust"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+anyhow = "1"
+
+tokio = { git = "https://github.com/tokio-rs/tokio", branch = "master", features = ["rt", "macros", "net", "io-util"] }
