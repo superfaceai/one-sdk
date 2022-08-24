@@ -1,57 +1,61 @@
-use std::os::wasi::prelude::{FromRawFd, AsRawFd};
-
 use anyhow::Context;
-use tokio::{
-	net::{TcpListener, TcpStream}, io::AsyncReadExt
-};
 
 #[link(wasm_import_module = "superface_unstable")]
 extern "C" {
-	pub fn sock_open(arg0: i32, arg1: i32) -> i32;
+	// pub fn http_send();
+	// pub fn http_recv();
+
+	/// Read input in JSON format.
+	///
+	/// Args: &mut str (json)
+	pub fn input_read(str_offset: i32, str_size: i32, read_offset: i32) -> i32;
+	/// Write result in JSON format.
+	/// 
+	/// Args: &str
+	pub fn result_write(str_offset: i32, str_size: i32);
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
 	eprintln!("[GUEST] Hello world");
 
-	let listener = {
-		let raw_fd = unsafe { sock_open(1, -5432) };
-		let listener = unsafe { std::net::TcpListener::from_raw_fd(raw_fd) };
-		listener.set_nonblocking(true).context("Failed to set non-blocking")?;
+	let input = read_input();
+	eprintln!("[GUEST] Input: {:?}", input);
 
-		TcpListener::from_std(listener).context("Failed to create tokio tcp listener")?
-	};
-
-	loop {
-		eprintln!("[GUEST] Waiting for connection");
-		let (stream, _) = listener.accept().await?;
-		eprintln!("[GUEST] Accepted connection {}", stream.as_raw_fd());
-
-		tokio::spawn(
-			async move {
-				process_stream(stream).await.unwrap()
-			}
-		);
-	}
+	Ok(())
 }
 
-async fn process_stream(mut stream: TcpStream) -> anyhow::Result<()> {
-	let mut buffer = [0u8; 256];
-	loop {
-		eprintln!("[GUEST] Reading from {}", stream.as_raw_fd());
-		match stream.read(&mut buffer[..]).await.context("Failed to read stream")? {
-			0 => break,
-			n => {
-				let slice = &buffer[..n];
+fn read_input() -> anyhow::Result<serde_json::Value> {
+	// 16 to test the process
+	const BUFFER_SIZE_STEP: usize = 16;
 
-				match std::str::from_utf8(slice) {
-					Ok(string) => eprintln!("[GUEST] Read {} utf-8 bytes: {}", n, string),
-					Err(_) => eprintln!("[GUEST] Read {} bytes: {:?}", n, slice)
+	let mut buffer: Vec<u8> = Vec::with_capacity(BUFFER_SIZE_STEP);
+	let mut read_count: wasi::Size = 0;
+
+	loop {
+		if buffer.len() == buffer.capacity() {
+			buffer.reserve(BUFFER_SIZE_STEP);
+		}
+		let buffer_offset = unsafe { buffer.as_mut_ptr().add(buffer.len()) } as i32;
+		let buffer_size = (buffer.capacity() - buffer.len()) as i32;
+
+		match unsafe {
+			input_read(
+				buffer_offset,
+				buffer_size,
+				&mut read_count as *mut _ as i32
+			)
+		} {
+			0 => match read_count {
+				0 => break,
+				n => {
+					unsafe { buffer.set_len(buffer.len() + n) }
 				}
-			}
+			},
+			code => anyhow::bail!("Failed to read input: {}", code)
 		}
 	}
-	
-	eprintln!("[GUEST] Finished with {}", stream.as_raw_fd());
-	Ok(())
+
+	Ok(
+		serde_json::from_slice(&buffer).context("Failed to parse JSON string")?
+	)
 }
