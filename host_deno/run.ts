@@ -21,9 +21,15 @@ function strace(module: Record<string, Function>): Record<string, Function> {
 	)
 }
 
-const ERRNO_SUCCESS = 0
-const ERRNO_AGAIN = 6
-const ERRNO_INVAL = 28
+enum Errno {
+	SUCCESS = 0,
+	AGAIN = 6,
+	INVAL = 28
+}
+enum Stream {
+	Perform = 100,
+	Http = 101
+}
 
 // Haha exfiltrating memory object goes brrr
 let MEMORY: any = undefined
@@ -34,46 +40,192 @@ function get_memory_bytes(): Uint8Array {
 	return new Uint8Array(MEMORY.buffer)
 }
 
-const STATE = {
-	input_read_state: 0
+const TEXT = {
+	encoder: new TextEncoder(),
+	decoder: new TextDecoder()
 }
+const STATE = {
+	perform: {
+		input: {
+			data: TEXT.encoder.encode(JSON.stringify(
+				{ characterName: "Luke Skywalker" }
+			)),
+			pos: 0
+		},
+		result: {
+			data: new Uint8Array()
+		}
+	},
+	http: {
+		request: {
+			data: new Uint8Array()
+		},
+		response: {
+			data: new Uint8Array(),
+			pos: 0,
+			pending: false
+		}
+	}
+}
+function do_http_request(data: any) {
+	STATE.http.response.pending = true
+	fetch("https://example.com").then(
+		r => {
+			STATE.http.response.data = TEXT.encoder.encode(JSON.stringify(
+				{
+					body: {
+						results: [
+							{ name: "Anakin Skywalker", height: 1, mass: 2, birth_year: "3" },
+							{ name: "Luke Skywalker", height: 4, mass: 5, birth_year: "6" }
+						]
+					}
+				}
+			))
+			STATE.http.response.pending = false
+
+			console.log("Mock request finished")
+		}
+	)
+}
+
 const wasi_exports: Record<string, Function> = {
 	...context.exports
 } as any
+
+// host writes to guest
+function syscall_read_write(
+	source: Uint8Array,
+	destination: Uint8Array,
+	destination_offset: number,
+	destination_len: number
+): number {
+	const read_count = Math.min(source.length, destination_len)
+
+	destination.set(
+		source.slice(0, read_count),
+		destination_offset
+	)
+
+	return read_count
+}
+
+
 const superface_exports: Record<string, Function> = {
-	"input_read": (
-		str_offset: number,
-		str_size: number,
+	"sf_read": (
+		stream: number,
+		buf_offset: number,
+		buf_len: number,
 		read_offset: number
 	): number => {
-		const string = '{ "hello": "world", "foo": 1 }'
-		const encoder = new TextEncoder()
-		
-		let data = encoder.encode(string)
-		data = data.slice(STATE.input_read_state)
-		const read_count = Math.min(str_size, data.length)
-		data = data.slice(0, read_count)
-
-		{
-			const memory = get_memory_bytes()
-			memory.set(data, str_offset)
+		let stream_name: string
+		let state: {
+			data: Uint8Array,
+			pos: number
 		}
+
+		if (stream == Stream.Perform) {
+			stream_name = "perform"
+			state = STATE.perform.input
+		} else if (Stream.Http) {
+			stream_name = "http"
+			state = STATE.http.response
+
+			if (STATE.http.response.pending) {
+				let i = 1_000_000_000
+				while (i > 0) {
+					i -= 1
+				}
+				return Errno.AGAIN
+			}
+		} else {
+			return Errno.INVAL
+		}
+
+		const count = syscall_read_write(
+			state.data.slice(state.pos),
+			get_memory_bytes(),
+			buf_offset,
+			buf_len
+		)
+		{
+			const memory = get_memory_view()
+			memory.setUint32(read_offset, count, true)
+
+			state.pos += count
+		}
+
+		console.log(`sf_read(${stream_name}) = ${count}`)
+		return Errno.SUCCESS
+	},
+
+	"sf_write": (
+		stream: number,
+		buf_offset: number,
+		buf_len: number,
+		wrote_offset: number
+	): number => {
+		let stream_name: string
+		let state: Record<"data", Uint8Array>
+
+		if (stream == Stream.Perform) {
+			stream_name = "perform"
+			state = STATE.perform.result
+		} else if (stream == Stream.Http) {
+			stream_name = "http"
+			state = STATE.http.request
+		} else {
+			return Errno.INVAL
+		}
+
+		const merged = new Uint8Array(state.data.length + buf_len)
+		merged.set(state.data, 0)
+		
+		const count = syscall_read_write(
+			get_memory_bytes().slice(buf_offset, buf_offset + buf_len),
+			merged,
+			state.data.length,
+			buf_len
+		)
+		state.data = merged
 
 		{
 			const memory = get_memory_view()
-			memory.setUint32(read_offset, data.length, true)
-
-			STATE.input_read_state += data.length
+			memory.setUint32(wrote_offset, count, true)
 		}
 
-		return ERRNO_SUCCESS
+		console.log(`sf_write(${stream_name}) = ${count}`)
+
+		return Errno.SUCCESS
 	},
 
-	"result_write": (
-		str_offset: number,
-		str_size: number
-	) => {
+	"sf_flush": (
+		stream: number
+	): number => {
+		if (stream == Stream.Perform) {
+			try {
+				const obj = JSON.parse(TEXT.decoder.decode(STATE.perform.result.data))
+				STATE.perform.result.data = new Uint8Array()
+				
+				console.log("result:", obj)
+				return Errno.SUCCESS
+			} catch {
+				return Errno.INVAL
+			}
+		} else if (Stream.Http) {
+			try {
+				const obj = JSON.parse(TEXT.decoder.decode(STATE.http.request.data))
+				STATE.http.request.data = new Uint8Array()
 
+				console.log("request:", obj)
+				do_http_request(obj)
+
+				return Errno.SUCCESS
+			} catch {
+				return Errno.INVAL
+			}
+		} else {
+			return Errno.INVAL
+		}
 	}
 }
 
