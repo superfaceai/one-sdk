@@ -1,0 +1,9 @@
+[package]
+name = "wasm-ir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+
+wasmi = "0.22"
