@@ -1,7 +1,6 @@
-// inspired by https://github.com/AssemblyScript/wasi-shim/blob/main/assembly/bindings/wasi_snapshot_preview1.ts
-
 export declare function test_me(arg: i32): i32;
 
+// inspired by https://github.com/AssemblyScript/wasi-shim/blob/main/assembly/bindings/wasi_snapshot_preview1.ts
 export type ptr<T> = usize;
 export type HttpHandle = i32;
 
@@ -19,3 +18,8 @@ export declare function http_get(url_buf: ptr<u8>, url_len: usize): HttpHandle;
 * TODO: error handling
 */
 export declare function http_read_response(handle: HttpHandle, buf: ptr<u8>, len: usize): usize;
+
+export declare function abort(): void;
+export function abort_std(message: usize, fileName: usize, line: u32, column: u32): void {
+	abort();
+}

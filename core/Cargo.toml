@@ -7,3 +7,6 @@ edition = "2021"
 anyhow = "1"
 
 wasmi = "0.22"
+
+# TODO: for testing only, when we are in wasm we'll use host stack
+reqwest = { version = "0.11", features = ["blocking"] }
