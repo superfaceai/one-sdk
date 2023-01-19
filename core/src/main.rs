@@ -56,6 +56,8 @@ fn main() -> anyhow::Result<()> {
 		)
 	?;
 
+	// eprintln!("memory: {:?}", &instance.get_export(&store, "memory").and_then(Extern::into_memory).unwrap().data(&store)[..20]);
+
 	
 	// let result = module_entry.call(&mut store, 1).context("Failed to call sf_entry")?;
 	// println!("Result: {}", result);

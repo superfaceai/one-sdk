@@ -1,7 +1,11 @@
 (module
   (func $test_me (import "sf_unstable" "test_me") (param i32) (result i32))
+  
+  (memory 1)
+  (export "memory" (memory 0))
+  (data (i32.const 8) "hello world\n")
+
   (func (export "sf_entry") (param i32) (result i32)
-    (local $var i32)
     local.get 0
     
     i32.const 1
