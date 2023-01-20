@@ -1,15 +1,18 @@
-use std::{fmt, collections::HashMap, io::Read};
+use std::{fmt, collections::HashMap};
 
 use anyhow::Context;
 
 use wasmi::{
-	Engine, Module, Store, Func, Caller, Linker, Extern, TypedResumableCall,
+	Engine, Module, Store, Linker, Extern, TypedResumableCall,
 	core::{Trap, HostError, Value}, TypedFunc, Instance
 };
 
+mod sf_host;
+mod sf_core;
+
 struct HostState {
 	http_next_id: u32,
-	http_requests: HashMap<u32, reqwest::blocking::Response>
+	http_requests: HashMap<sf_core::unstable::HttpHandle, sf_host::unstable::HttpHandle>
 }
 impl HostState {
 	pub fn new() -> Self {
@@ -18,15 +21,42 @@ impl HostState {
 			http_requests: HashMap::new()
 		}
 	}
+}
+impl sf_core::unstable::SfCoreUnstable for HostState {
+    fn test_me(&mut self, value: i32) -> Result<i32, Trap> {
+        eprintln!("core: test_me({})", value);
 
-	pub fn start_request(&mut self, url: &str) -> u32 {
+		return Err(
+			ResumableMarkerTrap::TestMeFn(value).into()
+		);
+    }
+
+    fn abort(&mut self) -> Result<(), Trap> {
+		eprintln!("core: abort()");
+
+        return Err(
+			ResumableMarkerTrap::Abort.into()
+		);
+    }
+
+    fn http_get(&mut self, url: &str, headers: &[[&str; 2]]) -> sf_core::unstable::HttpHandle {
+        eprintln!("core: http_get({}, {:?})", url, headers);
+		
 		let id = self.http_next_id;
 		self.http_next_id += 1;
 
-		self.http_requests.insert(id, reqwest::blocking::get(url).unwrap());
-		
+		self.http_requests.insert(id, sf_host::unstable::http_get(url, headers));
+
 		id
-	}
+    }
+
+    fn http_response_read(&mut self, handle: sf_core::unstable::HttpHandle, out: &mut [u8]) -> usize {
+        eprintln!("core: http_response_read({}, u8[{}])", handle, out.len());
+		
+		let handle = self.http_requests.get(&handle).unwrap();
+
+		sf_host::unstable::http_response_read(*handle, out)
+    }
 }
 
 #[derive(Debug)]
@@ -44,74 +74,25 @@ impl fmt::Display for ResumableMarkerTrap {
 }
 impl HostError for ResumableMarkerTrap {}
 
-fn define_exports(
-	mut store: &mut Store<HostState>,
-	linker: &mut Linker<HostState>
-) -> anyhow::Result<()> {
-	let abort = Func::wrap(&mut store, |_caller: Caller<'_, HostState>| -> Result<(), Trap> {
-		return Err(
-			ResumableMarkerTrap::Abort.into()
-		);
-	});
-	// TODO: maybe should be in env::abort?
-	linker.define("sf_unstable", "abort", abort).context("Failed to define sf_unstable::abort")?;
-
-	let test_me = Func::wrap(&mut store, |_caller: Caller<'_, HostState>, param: i32| -> Result<i32, Trap> {
-		eprintln!("test_me({})", param);
-
-		return Err(
-			ResumableMarkerTrap::TestMeFn(param).into()
-		);
-	});
-	linker.define("sf_unstable", "test_me", test_me).context("Failed to define sf_unstable::test_me")?;
-
-	let http_get = Func::wrap(&mut store, |mut caller: Caller<'_, HostState>, url_buf: i32, url_len: i32| -> i32 {
-		let memory = caller.get_export("memory").and_then(Extern::into_memory).unwrap();
-		let (memory, state) = memory.data_and_store_mut(&mut caller);
-
-		let url = std::str::from_utf8(&memory[url_buf as usize..][..url_len as usize]).unwrap(); // TODO: error handling
-		let http_id = state.start_request(url);
-		eprintln!("http_get({}) = {}", url, http_id);
-
-		return http_id as i32;
-	});
-	linker.define("sf_unstable", "http_get", http_get).context("Failed to define sf_unstable::http_get")?;
-
-	let http_read_response = Func::wrap(&mut store, |mut caller: Caller<'_, HostState>, handle: i32, buf: i32, len: i32| -> i32 {
-		let memory = caller.get_export("memory").and_then(Extern::into_memory).unwrap();
-		let (memory, state) = memory.data_and_store_mut(&mut caller);
-
-		let request = state.http_requests.get_mut(&(handle as u32)).unwrap();
-		let buffer = &mut memory[buf as usize..][..len as usize];
-		
-		let read_count = request.read(buffer).unwrap();
-		eprintln!("http_read_response({}, {}+{}) = {}", handle, buf, len, read_count);
-		
-		return read_count as i32;
-	});
-	linker.define("sf_unstable", "http_read_response", http_read_response).context("Failed to define sf_unstable::http_read_response")?;
-
-	Ok(())
-}
-
 fn run(
 	_instance: &Instance, // for access to memory from resumable functions
 	mut store: &mut Store<HostState>,
-	entry: TypedFunc<i32, i32>
+	entry: TypedFunc<i32, i32>,
+	input: i32
 ) -> anyhow::Result<()> {
-	let mut partial = entry.call_resumable(&mut store, 42).context("Failed to call sf_entry")?;
+	let mut partial = entry.call_resumable(&mut store, input).context("Failed to call sf_entry")?;
 
 	while let TypedResumableCall::Resumable(invocation) = partial {
 		let mark = invocation.host_error().downcast_ref::<ResumableMarkerTrap>().context("Resumed with an unknown trap")?;
 		
-		eprintln!("Partial: {:?}", mark);
+		eprintln!("core: partial: {:?}", mark);
 
 		partial = match mark {
 			ResumableMarkerTrap::Abort => {
 				anyhow::bail!("Wasm aborted");
 			}
 			ResumableMarkerTrap::TestMeFn(param) => {
-				let values = [Value::I32(param + 100)];
+				let values = [Value::I32(param - 1)];
 				invocation.resume(&mut store, &values)
 			}
 		}.context("Failed to result sf_entry")?;
@@ -119,7 +100,7 @@ fn run(
 
 	match partial {
 		TypedResumableCall::Finished(result) => {
-			println!("Result: {}", result);
+			println!("core: result: {}", result);
 		}
 		_ => unreachable!()
 	};
@@ -128,7 +109,10 @@ fn run(
 }
 
 fn main() -> anyhow::Result<()> {
-	let file_name = std::env::args().nth(1).context("Required argument missing")?;
+	let mut args = std::env::args().skip(1);
+	let file_name = args.next().context("Required argument 1 missing")?;
+	let input_arg: i32 = args.next().context("Required argument 2 missing")?.parse().context("Argument 2 must be a number")?;
+
 	let wasm = std::fs::read(file_name).context("Failed to read input file")?;
 
 	let engine = Engine::default();
@@ -137,7 +121,7 @@ fn main() -> anyhow::Result<()> {
 	let mut store = Store::<HostState>::new(&engine, HostState::new());
 	let mut linker = Linker::<HostState>::new();
 
-	define_exports(&mut store, &mut linker)?;
+	sf_core::unstable::link_to(&mut linker, &mut store).context("Failed to export sf_unstable")?;
 
 	// instance links store and module
 	let instance = linker.instantiate(&mut store, &module).context("Failed to instantiate module")?;
@@ -153,7 +137,7 @@ fn main() -> anyhow::Result<()> {
 		)
 	?;
 
-	run(&instance, &mut store, module_entry)?;
+	run(&instance, &mut store, module_entry, input_arg)?;
 
 	Ok(())
 }

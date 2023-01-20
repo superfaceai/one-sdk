@@ -9,17 +9,14 @@ export type HttpHandle = i32;
 *
 * Returns an opaque handle used to read retrieve response information.
 */
-export declare function http_get(url_buf: ptr<u8>, url_len: usize): HttpHandle;
+export declare function http_get(url_ptr: ptr<u8>, url_len: usize, headers_ptr: ptr<u8>, headers_len: usize): HttpHandle;
 
 /**
-* Read up to `len` bytes from HTTP response `handle` to `buf`.
+* Read response bytes from `handle` to `out`.
 *
 * Returns number of bytes read.
 * TODO: error handling
 */
-export declare function http_read_response(handle: HttpHandle, buf: ptr<u8>, len: usize): usize;
+export declare function http_read_response(handle: HttpHandle, out_ptr: ptr<u8>, out_len: usize): usize;
 
 export declare function abort(): void;
-export function abort_std(message: usize, fileName: usize, line: u32, column: u32): void {
-	abort();
-}

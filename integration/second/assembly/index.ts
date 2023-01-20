@@ -1,8 +1,23 @@
-import { test_me, HttpHandle, http_get, http_read_response } from "./sf_unstable";
+import { abort, test_me, HttpHandle, http_get, http_read_response } from "./sf_core_unstable";
 
-function http_get_std(url: string): HttpHandle {
+export function abort_std(message: usize, fileName: usize, line: u32, column: u32): void {
+	abort();
+}
+
+
+function http_get_std(url: string, headers: Array<string>): HttpHandle {
 	const url_utf8 = String.UTF8.encode(url);
-	return http_get(changetype<usize>(url_utf8), url_utf8.byteLength);
+
+  let headers_str = "";
+  for (let i = 0; i < headers.length / 2; i += 1) {
+    headers_str += `${headers[i * 2]}:${headers[i * 2 + 1]}\n`;
+  }
+  const headers_utf8 = String.UTF8.encode(headers_str);
+
+	return http_get(
+    changetype<usize>(url_utf8), url_utf8.byteLength,
+    changetype<usize>(headers_utf8), headers_utf8.byteLength,
+  );
 }
 
 function http_read_response_string_std(handle: HttpHandle): string {
@@ -35,8 +50,8 @@ function http_read_response_string_std(handle: HttpHandle): string {
 export function sf_entry(a: i32): i32 {
   const param = test_me(a + 1);
   
-  const url = `https://example.com/${param}`;
-  const http = http_get_std(url);
+  const url = `https://swapi.dev/api/people/${param}`;
+  const http = http_get_std(url, ['accept', 'application/json', 'foo', 'bar', 'accept', 'application/xml']);
   const response = http_read_response_string_std(http);
 
   return response.length;
