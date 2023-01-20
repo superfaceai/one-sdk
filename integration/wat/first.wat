@@ -1,5 +1,5 @@
 (module
-  (func $test_me (import "sf_unstable" "test_me") (param i32) (result i32))
+  (func $test_me (import "sf_core_unstable" "test_me") (param i32) (result i32))
   
   (memory 1)
   (export "memory" (memory 0))

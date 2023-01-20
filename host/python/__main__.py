@@ -60,6 +60,7 @@ def __export_http_get(url_ptr, url_len, headers_ptr, headers_len):
 	url = _read_str(memory, url_ptr, url_len)
 	
 	headers = defaultdict(list)
+	# header-key:header-value\nheader-key:header-value
 	headers_str = _read_str(memory, headers_ptr, headers_len)
 	for header_str in filter(lambda s: len(s) != 0, headers_str.split("\n")):
 		key, value = header_str.split(":")

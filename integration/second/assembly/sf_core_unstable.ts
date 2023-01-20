@@ -20,3 +20,49 @@ export declare function http_get(url_ptr: ptr<u8>, url_len: usize, headers_ptr: 
 export declare function http_read_response(handle: HttpHandle, out_ptr: ptr<u8>, out_len: usize): usize;
 
 export declare function abort(): void;
+
+export function abort_std(message: usize, fileName: usize, line: u32, column: u32): void {
+  abort();
+}
+
+export function http_get_std(url: string, headers: Array<string>): HttpHandle {
+  const url_utf8 = String.UTF8.encode(url);
+
+  let headers_str = "";
+  for (let i = 0; i < headers.length / 2; i += 1) {
+    headers_str += `${headers[i * 2]}:${headers[i * 2 + 1]}\n`;
+  }
+  const headers_utf8 = String.UTF8.encode(headers_str);
+
+  return http_get(
+    changetype<usize>(url_utf8), url_utf8.byteLength,
+    changetype<usize>(headers_utf8), headers_utf8.byteLength,
+  );
+}
+
+export function http_read_response_string_std(handle: HttpHandle): string {
+  const ALLOC_SIZE: usize = 1024;
+
+  let buffer = heap.alloc(ALLOC_SIZE);
+  let len: usize = 0;
+  let capacity: usize = ALLOC_SIZE;
+
+  while (true) {
+    const read = http_read_response(handle, buffer + len, capacity - len);
+
+    if (read === 0) {
+      break;
+    }
+
+    len += read;
+    if (len === capacity) {
+      buffer = heap.realloc(buffer, capacity + ALLOC_SIZE);
+      capacity += ALLOC_SIZE;
+    }
+  }
+
+  const result = String.UTF8.decodeUnsafe(buffer, len);
+  heap.free(buffer);
+
+  return result;
+}

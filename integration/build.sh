@@ -14,7 +14,7 @@ build_asc() {
 
 	cd "$base/$name"
 	yarn install
-	yarn run asbuild:release --disable bulk-memory --use abort=assembly/index/abort_std
+	yarn run asbuild:release --disable bulk-memory --use abort=assembly/sf_core_unstable/abort_std
 	cd -
 	
 	cp "$base/$name/build/release.wasm" "$base/wasm/$name.wasm"
