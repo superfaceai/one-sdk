@@ -8,6 +8,7 @@ Requres installed rust (`cargo`) and `wasm-tools` (`brew install wasm-tools`).
 
 Requirements:
 ```
+rustup
 cargo
 brew install wasm-tools
 python3 -m pip install wasmtime requests
