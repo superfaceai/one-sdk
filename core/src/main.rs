@@ -116,7 +116,8 @@ fn run(
 }
 
 fn main() -> anyhow::Result<()> {
-    let mut args = std::env::args().skip(1);
+    let mut args = std::env::args();
+
     let file_name = args.next().context("Required argument 1 missing")?;
     let input_arg: i32 = args
         .next()

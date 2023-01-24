@@ -1,9 +1,7 @@
-import sys
 import functools
-from collections import defaultdict
-
 import requests
-
+import sys
+from collections import defaultdict
 from wasmtime import Engine, Store, Module, Linker, WasiConfig, FuncType, ValType
 
 engine = Engine()
@@ -11,33 +9,14 @@ engine = Engine()
 linker = Linker(engine)
 linker.define_wasi()
 
-STORE = Store(engine)
-
 wasi = WasiConfig()
 wasi.inherit_stdout()
 wasi.inherit_stderr()
-wasi.argv = sys.argv[1:]
+wasi.argv = sys.argv[2:] # skip running file name and core name
 wasi.preopen_dir("integration/wasm/", "integration/wasm/")
+
+STORE = Store(engine)
 STORE.set_wasi(wasi)
-
-def _strace_inner(fn, name, *args):
-	result = fn(*args)
-	print(f"host: {name}{args} = {result}")
-	return result
-def strace(fn, name):
-	return functools.partial(_strace_inner, fn, name)
-
-def _read_bytes(memory, ptr, len):
-	return bytes(memory[ptr : ptr + len])
-def _read_str(memory, ptr, len):
-	return _read_bytes(memory, ptr, len).decode("utf-8")
-
-def _write_bytes(memory, ptr, max_len, source_bytes):
-	count = min(max_len, len(source_bytes))
-	for i in range(count):
-		memory[ptr + i] = source_bytes[i]
-	
-	return count
 
 STATE = {
 	"next_id": 0,
@@ -49,6 +28,22 @@ STATE = {
 		# }
 	}
 }
+
+def _strace_inner(fn, name, *args):
+	result = fn(*args)
+	print(f"host: {name}{args} = {result}")
+	return result
+def strace(fn, name):
+	return functools.partial(_strace_inner, fn, name)
+def _read_bytes(memory, ptr, len):
+	return bytes(memory[ptr : ptr + len])
+def _read_str(memory, ptr, len):
+	return _read_bytes(memory, ptr, len).decode("utf-8")
+def _write_bytes(memory, ptr, max_len, source_bytes):
+	count = min(max_len, len(source_bytes))
+	for i in range(count):
+		memory[ptr + i] = source_bytes[i]
+	return count
 
 def __export_http_get(url_ptr, url_len, headers_ptr, headers_len):
 	global STATE
@@ -103,6 +98,8 @@ linker.define_func(
 module = Module.from_file(engine, sys.argv[1])
 module = linker.instantiate(STORE, module)
 MEMORY = module.exports(STORE)["memory"]
+
+# WASI exports _start functin, which is wrapper similarly used in C to init program execution
 run = module.exports(STORE)["_start"]
 return_code = run(STORE)
 
