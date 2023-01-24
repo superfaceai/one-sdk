@@ -12,12 +12,12 @@ build_wat() {
 build_asc() {
 	local name="$1"
 
-	cd "$base/$name"
+	cd "$base/asc"
 	yarn install
 	yarn run asbuild:release --disable bulk-memory --use abort=assembly/sf_core_unstable/abort_std
 	cd -
 	
-	cp "$base/$name/build/release.wasm" "$base/wasm/$name.wasm"
+	cp "$base/asc/build/release.wasm" "$base/wasm/$name.wasm"
 }
 
 case "$1" in
