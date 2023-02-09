@@ -15,3 +15,11 @@ python3 -m pip install wasmtime requests
 ```
 
 Run `./run.sh`. See its source for more commands.
+
+## Development
+
+https://bytecodealliance.github.io/cargo-wasi/steps.html
+
+```
+cargo install cargo-wasi
+```

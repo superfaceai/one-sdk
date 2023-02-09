@@ -1,7 +1,10 @@
 pub mod unstable {
     use std::fmt::Write;
 
+    use crate::sf_abi;
+
     pub type HttpHandle = u32;
+
     pub fn http_get(url: &str, headers: &[[&str; 2]]) -> HttpHandle {
         let mut headers_str = String::new();
         for [key, value] in headers {
@@ -29,7 +32,11 @@ pub mod unstable {
         #[cfg_attr(target_arch = "wasm32", link_name = "http_get")]
         fn __import_http_get(url_ptr: i32, url_len: i32, headers_ptr: i32, headers_len: i32)
             -> i32;
+
         #[cfg_attr(target_arch = "wasm32", link_name = "http_response_read")]
         fn __import_http_response_read(handle: i32, out_ptr: i32, out_len: i32) -> i32;
+
+        // #[cfg_attr(target_arch = "wasm32", link_name = "message_test")]
+        // fn __import_message_test(msg_ptr: i32, msg_len: i32, out_ptr: i32, out_len: i32) -> i64;
     }
 }
