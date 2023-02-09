@@ -3,10 +3,11 @@ use std::{collections::HashMap, fmt};
 use anyhow::Context;
 
 use wasmi::{
-    core::{HostError, Trap, Value},
-    Engine, Extern, Instance, Linker, Module, Store, TypedFunc, TypedResumableCall,
+    core::{HostError, Trap},
+    Engine, Extern, Instance, Linker, Module, Store, TypedFunc, TypedResumableCall, Value,
 };
 
+mod sf_abi;
 mod sf_core;
 mod sf_host;
 

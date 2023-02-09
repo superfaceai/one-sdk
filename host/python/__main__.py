@@ -34,12 +34,17 @@ def _strace_inner(fn, name, *args):
 	print(f"host: {name}{args} = {result}")
 	return result
 def strace(fn, name):
+	"""Use on a function to wrap with a debug print when called."""
 	return functools.partial(_strace_inner, fn, name)
+
 def _read_bytes(memory, ptr, len):
+	"""Read exactly `len` bytes from `ptr`."""
 	return bytes(memory[ptr : ptr + len])
 def _read_str(memory, ptr, len):
+	"""Read exactly `len` bytes from `ptr` and interpret it as utf-8 string."""
 	return _read_bytes(memory, ptr, len).decode("utf-8")
 def _write_bytes(memory, ptr, max_len, source_bytes):
+	"""Write up to `max_len` bytes from `source_bytes` to `ptr`."""
 	count = min(max_len, len(source_bytes))
 	for i in range(count):
 		memory[ptr + i] = source_bytes[i]

@@ -28,7 +28,7 @@ pub mod unstable {
     ) -> anyhow::Result<()> {
         let abort = Func::wrap(
             &mut store,
-            |mut caller: Caller<'_, H>| -> Result<(), Trap> { caller.host_data_mut().abort() },
+            |mut caller: Caller<'_, H>| -> Result<(), Trap> { caller.data_mut().abort() },
         );
         // TODO: maybe should be in env::abort?
         linker
@@ -38,7 +38,7 @@ pub mod unstable {
         let test_me = Func::wrap(
             &mut store,
             |mut caller: Caller<'_, H>, param: i32| -> Result<i32, Trap> {
-                caller.host_data_mut().test_me(param)
+                caller.data_mut().test_me(param)
             },
         );
         linker
