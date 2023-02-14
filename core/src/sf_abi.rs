@@ -27,74 +27,116 @@ use std::io;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 
-/// Type for `i64` rerepsenting a `(i32, i32)`.
-struct AbiResultTuple(u32, u32);
-impl From<i64> for AbiResultTuple {
-    fn from(value: i64) -> Self {
-        // to avoid unwanted sign extension
-        let input = value as u64;
+mod bits {
+    //! Here we define bit sizes of types we need.
+    //!
+    //! We can mostly rely on rust `usize` which is both pointer- and `size_t`-sized.
+    //! We use unsigned types to avoid sign extension trouble.
+    //!
+    //! These definitions also allow us to compile tests on 64-bit platforms without breaking.
 
-        let lower = (input & 0xFFFFFFFF) as u32;
-        let upper = (input >> 32) as u32;
+    /// ABI pointer-sized type.
+    pub type Ptr = usize;
+    /// ABI `size_t`-sized type.
+    ///
+    /// See https://en.cppreference.com/w/c/types/size_t.
+    pub type Size = usize;
+    /// ABI pair representation.
+    ///
+    /// The actual type used in FFI to represent a pair.
+    pub type PairRepr = u64;
 
-        Self(lower, upper)
+    /// Struct representing a pair of `(Size, Size)` in ABI.
+    ///
+    /// On 32-bit platforms we rely on using `i64` to store two `i32`s. However since `u128` is not
+    /// FFI-safe, we cannot do the same thing on 64bit platforms (x86_64, wasm64, aarch64), so we split
+    /// 64 bits to 48/16. This is __usually__ right since sizes are not expected to be greater than 48 bits in practice, and
+    /// we do not transfer pointers using these pairs.
+    pub struct AbiPair(pub Size, pub Size);
+    impl AbiPair {
+        #[cfg(target_pointer_width = "32")]
+        const LOWER_BITS: usize = 32;
+        #[cfg(target_pointer_width = "64")]
+        const LOWER_BITS: usize = 48;
+        const LOWER_MASK: PairRepr = ((1 as PairRepr) << Self::LOWER_BITS) - 1;
     }
-}
-impl From<AbiResultTuple> for i64 {
-    fn from(value: AbiResultTuple) -> Self {
-        let lower = value.0 as u64;
-        let upper = (value.1 as u64) << 32;
+    impl From<PairRepr> for AbiPair {
+        fn from(value: PairRepr) -> Self {
+            let lower = (value & Self::LOWER_MASK) as Size;
+            let upper = (value >> Self::LOWER_BITS) as Size;
 
-        let output = lower | upper;
-
-        output as i64
+            Self(lower, upper)
+        }
     }
-}
+    impl From<AbiPair> for PairRepr {
+        fn from(pair: AbiPair) -> Self {
+            let lower = pair.0 as PairRepr;
+            let upper = (pair.1 as PairRepr) << AbiPair::LOWER_BITS;
 
-/// Type for `i64` representing a `Result<i32, i32>`.
-enum AbiResultEnum {
-    Ok(i32),
-    Err(i32),
-}
-impl AbiResultEnum {
-    const TAG_OK: u32 = 0;
-    const TAG_ERR: u32 = 1;
-
-    pub fn to_io_result(self) -> io::Result<i32> {
-        match self {
-            Self::Ok(v) => Ok(v),
-            Self::Err(errno) => Err(errno::errno_to_io_error_kind(errno).into()),
+            lower | upper
+        }
+    }
+    impl std::fmt::Debug for AbiPair {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "AbiPair(lower: {}, upper: {})", self.0, self.1)
         }
     }
 }
-impl From<i64> for AbiResultEnum {
-    fn from(value: i64) -> Self {
-        let AbiResultTuple(tag, value) = AbiResultTuple::from(value);
 
-        match tag {
-            Self::TAG_OK => Self::Ok(value as i32),
-            Self::TAG_ERR => Self::Err(value as i32),
-            _ => unreachable!(),
-        }
-    }
-}
-impl From<AbiResultEnum> for i64 {
-    fn from(value: AbiResultEnum) -> Self {
-        match value {
-            AbiResultEnum::Ok(value) => AbiResultTuple(AbiResultEnum::TAG_OK, value as u32),
-            AbiResultEnum::Err(value) => AbiResultTuple(AbiResultEnum::TAG_ERR, value as u32),
-        }
-        .into()
-    }
-}
-
-mod errno {
+mod error {
     //! WASI errno definitions.
     //!
     //! See https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-errno-variant.
 
-    pub fn errno_to_io_error_kind(errno: i32) -> std::io::ErrorKind {
-        todo!()
+    use super::bits;
+
+    /// ABI result representation.
+    ///
+    /// The actual type used in FFI to represent result enum.
+    pub type ResultRepr = bits::PairRepr;
+
+    /// Enum representing a `Result<Size>` in ABI.
+    ///
+    /// This is represented as a pair of `(value, tag)` - tag is smaller than the value on 64-bit platforms.
+    pub enum AbiResult {
+        Ok(bits::Size),
+        Err(bits::Size),
+    }
+    impl AbiResult {
+        const TAG_OK: bits::Size = 0;
+        const TAG_ERR: bits::Size = 1;
+
+        pub fn into_io_result(self) -> std::io::Result<bits::Size> {
+            match self {
+                Self::Ok(value) => Ok(value),
+                Self::Err(err) => Err(errno_to_io_error_kind(err).into()),
+            }
+        }
+    }
+    impl From<ResultRepr> for AbiResult {
+        fn from(value: ResultRepr) -> Self {
+            let bits::AbiPair(value, tag) = bits::AbiPair::from(value);
+
+            match tag {
+                Self::TAG_OK => Self::Ok(value),
+                Self::TAG_ERR => Self::Err(value),
+                _ => panic!("Invalid tag {} for AbiResult", tag),
+            }
+        }
+    }
+    impl From<AbiResult> for ResultRepr {
+        fn from(value: AbiResult) -> Self {
+            match value {
+                AbiResult::Ok(value) => bits::AbiPair(value, AbiResult::TAG_OK),
+                AbiResult::Err(value) => bits::AbiPair(value, AbiResult::TAG_ERR),
+            }
+            .into()
+        }
+    }
+
+    fn errno_to_io_error_kind(errno: super::bits::Size) -> std::io::ErrorKind {
+        // TODO: implement mappings from WASI
+        std::io::ErrorKind::Other
     }
 }
 
@@ -110,18 +152,18 @@ pub struct MessageFn {
     /// Send message and get response or handle to stored response.
     ///
     /// `fn(msg_ptr, msg_len, out_ptr, out_len) -> (size, handle)`
-    exchange_fn: fn(i32, i32, i32, i32) -> i64,
+    exchange_fn: fn(bits::Ptr, bits::Size, bits::Ptr, bits::Size) -> bits::PairRepr,
     /// Retrieve stored response message.
     ///
     /// `fn(handle, out_ptr, out_len) -> Result<size, errno>`
-    retrieve_fn: fn(i32, i32, i32) -> i64,
+    retrieve_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
 }
 impl MessageFn {
     const DEFAULT_RESPONSE_BUFFER_SIZE: usize = 256;
 
     pub const fn new(
-        exchange_fn: fn(i32, i32, i32, i32) -> i64,
-        retrieve_fn: fn(i32, i32, i32) -> i64,
+        exchange_fn: fn(bits::Ptr, bits::Size, bits::Ptr, bits::Size) -> bits::PairRepr,
+        retrieve_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
     ) -> Self {
         Self {
             exchange_fn,
@@ -133,33 +175,31 @@ impl MessageFn {
     pub fn invoke(&self, message: &[u8]) -> Vec<u8> {
         let mut response_buffer = Vec::<u8>::with_capacity(Self::DEFAULT_RESPONSE_BUFFER_SIZE);
 
-        let AbiResultTuple(result_size, result_handle) = {
-            let msg_ptr = message.as_ptr() as i32;
-            let msg_len = message.len() as i32;
+        let bits::AbiPair(result_size, result_handle) = {
+            let msg_ptr = message.as_ptr() as bits::Ptr;
+            let msg_len = message.len() as bits::Size;
 
-            let out_ptr = response_buffer.as_mut_ptr() as i32;
-            let out_len = response_buffer.capacity() as i32;
+            let out_ptr = response_buffer.as_mut_ptr() as bits::Ptr;
+            let out_len = response_buffer.capacity() as bits::Size;
 
             (self.exchange_fn)(msg_ptr, msg_len, out_ptr, out_len)
         }
         .into();
-        let result_size = result_size as usize;
-        let result_handle = result_handle as i32;
 
         if result_size > response_buffer.capacity() {
             // response buffer was too small, we must retrieve the message with a second function call
             // extend to at least result_size
             response_buffer.reserve(result_size);
 
-            let result: AbiResultEnum = {
-                let out_ptr = response_buffer.as_mut_ptr() as i32;
-                let out_len = response_buffer.capacity() as i32;
+            let result: error::AbiResult = {
+                let out_ptr = response_buffer.as_mut_ptr() as usize;
+                let out_len = response_buffer.capacity() as usize;
 
                 (self.retrieve_fn)(result_handle, out_ptr, out_len)
             }
             .into();
 
-            match result.to_io_result() {
+            match result.into_io_result() {
                 Ok(written) => assert_eq!(written as usize, result_size),
                 Err(err) => panic!("Failed to retrieve stored message: {}", err),
             }
@@ -193,21 +233,21 @@ pub struct StreamFn {
     /// Read up to `out_len` bytes from stream at `handle`, return number of read bytes.
     ///
     /// `fn(handle, out_ptr, out_len) -> Result<read, errno>`
-    read_fn: fn(i32, i32, i32) -> i64,
+    read_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
     /// Write up to `in_len` bytes to stream at `handle`, return number of written bytes.
     ///
     /// `fn(handle, in_ptr, in_len) -> Result<written, errno>`
-    write_fn: fn(i32, i32, i32) -> i64,
+    write_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
     /// Close stream at `handle`, signalling it will not be read from or written to again.
     ///
     /// `fn(handle) -> Result<(), errno>`
-    close_fn: fn(i32) -> i64,
+    close_fn: fn(bits::Size) -> error::ResultRepr,
 }
 impl StreamFn {
     pub const fn new(
-        read_fn: fn(i32, i32, i32) -> i64,
-        write_fn: fn(i32, i32, i32) -> i64,
-        close_fn: fn(i32) -> i64,
+        read_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
+        write_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
+        close_fn: fn(bits::Size) -> error::ResultRepr,
     ) -> Self {
         Self {
             read_fn,
@@ -216,28 +256,28 @@ impl StreamFn {
         }
     }
 
-    pub fn read(&self, handle: i32, buf: &mut [u8]) -> io::Result<usize> {
-        let out_ptr = buf.as_mut_ptr() as i32;
-        let out_len = buf.len() as i32;
+    pub fn read(&self, handle: bits::Size, buf: &mut [u8]) -> io::Result<bits::Size> {
+        let out_ptr = buf.as_mut_ptr() as bits::Ptr;
+        let out_len = buf.len() as bits::Size;
 
-        let result: AbiResultEnum = (self.read_fn)(handle, out_ptr, out_len).into();
+        let result: error::AbiResult = (self.read_fn)(handle, out_ptr, out_len).into();
 
-        result.to_io_result().map(|read| read as usize)
+        result.into_io_result().map(|read| read)
     }
 
-    pub fn write(&self, handle: i32, buf: &[u8]) -> io::Result<usize> {
-        let in_ptr = buf.as_ptr() as i32;
-        let in_len = buf.len() as i32;
+    pub fn write(&self, handle: bits::Size, buf: &[u8]) -> io::Result<bits::Size> {
+        let in_ptr = buf.as_ptr() as bits::Ptr;
+        let in_len = buf.len() as bits::Size;
 
-        let result: AbiResultEnum = (self.write_fn)(handle, in_ptr, in_len).into();
+        let result: error::AbiResult = (self.write_fn)(handle, in_ptr, in_len).into();
 
-        result.to_io_result().map(|written| written as usize)
+        result.into_io_result().map(|written| written)
     }
 
-    pub fn close(&self, handle: i32) -> io::Result<()> {
-        let result: AbiResultEnum = (self.close_fn)(handle).into();
+    pub fn close(&self, handle: bits::Size) -> io::Result<()> {
+        let result: error::AbiResult = (self.close_fn)(handle).into();
 
-        result.to_io_result().map(|_| ())
+        result.into_io_result().map(|_| ())
     }
 }
 
@@ -245,7 +285,7 @@ impl StreamFn {
 mod test {
     use serde::{Deserialize, Serialize};
 
-    use super::{AbiResultEnum, AbiResultTuple, MessageFn};
+    use super::{bits, error, MessageFn, StreamFn};
 
     #[derive(Serialize, Deserialize)]
     struct TestMsg {
@@ -253,66 +293,80 @@ mod test {
         f2: String,
     }
 
-    const MESSAGE_FN: MessageFn = {
-        // very simple message storage - only for testing and only in single-threaded context (WASM)
-        static mut STORED_MESSAGES: Vec<(i32, String)> = Vec::new();
-        static mut STORED_MESSAGED_ID: i32 = 1;
-        fn test_message_target_fn(msg_ptr: i32, msg_len: i32, out_ptr: i32, out_len: i32) -> i64 {
-            let msg_bytes = unsafe {
-                std::slice::from_raw_parts(msg_ptr as usize as *const u8, msg_len as usize)
-            };
-            let msg: TestMsg = serde_json::from_slice(msg_bytes).unwrap();
+    // very simple message storage
+    // Note that we use a mutex here but since WASM has no threads it doesn't do much.
+    // It does make sure that our tests don't cause UB on other platforms though, since we expect them to
+    // pass on amd64/aarch64 as well.
+    static STORED_MESSAGES: std::sync::Mutex<(bits::Size, Vec<(bits::Size, String)>)> =
+        std::sync::Mutex::new((1, Vec::new()));
 
-            let result = serde_json::to_string(&msg).unwrap();
-            let result_len = result.len();
+    fn test_message_exchange_fn(
+        msg_ptr: bits::Ptr,
+        msg_len: bits::Size,
+        out_ptr: bits::Ptr,
+        out_len: bits::Size,
+    ) -> bits::PairRepr {
+        let msg_bytes = unsafe { std::slice::from_raw_parts(msg_ptr as *const u8, msg_len) };
+        let msg: TestMsg = serde_json::from_slice(msg_bytes).unwrap();
 
-            let handle = if result_len > out_len as usize {
-                // store the message, generate the handle
-                unsafe {
-                    let handle = STORED_MESSAGED_ID;
-                    STORED_MESSAGED_ID += 1;
-                    STORED_MESSAGES.push((handle, result));
+        let result = serde_json::to_string(&msg).unwrap();
+        let result_len = result.len();
 
-                    handle
-                }
-            } else {
-                // output the message, no handle needed
+        let handle = if result_len > out_len {
+            // store the message, generate the handle
+            {
+                let mut lock = STORED_MESSAGES.lock().unwrap();
+
+                let handle = lock.0;
+                lock.0 += 1;
+                lock.1.push((handle, result));
+
+                handle
+            }
+        } else {
+            // output the message, no handle needed
+            let out_ptr = out_ptr as *mut u8;
+            for (i, byte) in result.as_bytes().iter().enumerate() {
+                unsafe { out_ptr.add(i).write(*byte) };
+            }
+
+            0
+        };
+
+        bits::AbiPair(result_len, handle).into()
+    }
+
+    fn test_message_retrieve_fn(
+        handle: bits::Size,
+        out_ptr: bits::Ptr,
+        out_len: bits::Size,
+    ) -> error::ResultRepr {
+        let mut lock = STORED_MESSAGES.lock().unwrap();
+
+        let index = lock
+            .1
+            .iter()
+            .enumerate()
+            .find_map(|(index, (h, _))| (handle == *h).then_some(index));
+
+        match index {
+            None => error::AbiResult::Err(1),
+            Some(index) => {
+                let msg = { lock.1.swap_remove(index) }.1;
+
                 let out_ptr = out_ptr as *mut u8;
-                for (i, byte) in result.as_bytes().iter().enumerate() {
+                for (i, byte) in msg.as_bytes().iter().enumerate().take(out_len as usize) {
                     unsafe { out_ptr.add(i).write(*byte) };
                 }
 
-                0
-            };
-
-            AbiResultTuple(result_len as u32, handle as u32).into()
-        }
-        fn test_message_retrieve_fn(handle: i32, out_ptr: i32, out_len: i32) -> i64 {
-            let index = unsafe {
-                STORED_MESSAGES
-                    .iter()
-                    .enumerate()
-                    .find_map(|(index, (h, _))| (handle == *h).then_some(index))
-            };
-
-            match index {
-                None => AbiResultEnum::Err(1),
-                Some(index) => {
-                    let msg = unsafe { STORED_MESSAGES.swap_remove(index) }.1;
-
-                    let out_ptr = out_ptr as *mut u8;
-                    for (i, byte) in msg.as_bytes().iter().enumerate().take(out_len as usize) {
-                        unsafe { out_ptr.add(i).write(*byte) };
-                    }
-
-                    AbiResultEnum::Ok(msg.len() as i32)
-                }
+                error::AbiResult::Ok(msg.len())
             }
-            .into()
         }
+        .into()
+    }
 
-        MessageFn::new(test_message_target_fn, test_message_retrieve_fn)
-    };
+    const MESSAGE_FN: MessageFn =
+        MessageFn::new(test_message_exchange_fn, test_message_retrieve_fn);
 
     #[test]
     fn test_invoke_message_roundtrip() {
