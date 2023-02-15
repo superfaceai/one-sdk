@@ -4,19 +4,46 @@ import sys
 from collections import defaultdict
 from wasmtime import Engine, Store, Module, Linker, WasiConfig, FuncType, ValType
 
-engine = Engine()
+import sf_host
 
-linker = Linker(engine)
-linker.define_wasi()
+class App:
+	def __init__(self, argv):
+		self.engine = Engine()
+		self.linker = Linker(self.engine)
+		self.store = Store(self.engine)
+		self.module = None
+		self.memory = None
+		self.entry = None
 
-wasi = WasiConfig()
-wasi.inherit_stdout()
-wasi.inherit_stderr()
-wasi.argv = sys.argv[2:] # skip running file name and core name
-wasi.preopen_dir("integration/wasm/", "integration/wasm/")
+		# prepare wasi context
+		self.linker.define_wasi()
 
-STORE = Store(engine)
-STORE.set_wasi(wasi)
+		self.wasi = WasiConfig()
+		self.wasi.inherit_stdout()
+		self.wasi.inherit_stderr()
+		self.wasi.argv = argv
+		self.wasi.preopen_dir("integration/wasm/", "integration/wasm/")
+		self.store.set_wasi(self.wasi)
+
+	def load_wasi_module(self, path):
+		module = Module.from_file(self.engine, path)
+		self.module = self.linker.instantiate(self.store, module)
+		self.memory = self.module.exports(self.store)["memory"]
+		# WASI exports _start functin, which is wrapper similarly used in C to init program execution
+		self.entry = self.module.exports(self.store)["_start"]
+
+	def run(self):
+		return self.entry(self.store)
+
+	def memory_data(self):
+		return self.memory.data_ptr(self.store)
+
+	def handle_message(self, message):
+		print("Received message:", message)
+		return { "response_handle": 123 }
+
+
+APP = App(sys.argv[2:]) # skip running file name and core name
 
 STATE = {
 	"next_id": 0,
@@ -56,7 +83,7 @@ def __export_http_get(url_ptr, url_len, headers_ptr, headers_len):
 	next_id = STATE["next_id"]
 	STATE["next_id"] += 1
 
-	memory = MEMORY.data_ptr(STORE)
+	memory = APP.memory_data()
 	url = _read_str(memory, url_ptr, url_len)
 	
 	headers = defaultdict(list)
@@ -80,7 +107,7 @@ def __export_http_get(url_ptr, url_len, headers_ptr, headers_len):
 	}
 
 	return next_id
-linker.define_func(
+APP.linker.define_func(
 	"sf_host_unstable", "http_get",
 	FuncType([ValType.i32(), ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i32()]),
 	strace(__export_http_get, "http_get")
@@ -92,20 +119,16 @@ def __export_http_response_read(handle, out_ptr, out_len):
 
 	print(f"host: Read {len(data)} bytes:", data.decode("utf-8", errors = "replace"))
 	
-	memory = MEMORY.data_ptr(STORE)
+	memory = APP.memory_data()
 	return _write_bytes(memory, out_ptr, out_len, data)
-linker.define_func(
+APP.linker.define_func(
 	"sf_host_unstable", "http_response_read",
 	FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i32()]),
 	strace(__export_http_response_read, "http_response_read")
 )
 
-module = Module.from_file(engine, sys.argv[1])
-module = linker.instantiate(STORE, module)
-MEMORY = module.exports(STORE)["memory"]
-
-# WASI exports _start functin, which is wrapper similarly used in C to init program execution
-run = module.exports(STORE)["_start"]
-return_code = run(STORE)
+sf_host.link(APP)
+APP.load_wasi_module(sys.argv[1])
+return_code = APP.run()
 
 print("host: result:", return_code)

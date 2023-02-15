@@ -27,7 +27,7 @@ use std::io;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 
-mod bits {
+pub mod bits {
     //! Here we define bit sizes of types we need.
     //!
     //! We can mostly rely on rust `usize` which is both pointer- and `size_t`-sized.
@@ -83,7 +83,7 @@ mod bits {
     }
 }
 
-mod error {
+pub mod error {
     //! WASI errno definitions.
     //!
     //! See https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-errno-variant.
@@ -152,18 +152,27 @@ pub struct MessageFn {
     /// Send message and get response or handle to stored response.
     ///
     /// `fn(msg_ptr, msg_len, out_ptr, out_len) -> (size, handle)`
-    exchange_fn: fn(bits::Ptr, bits::Size, bits::Ptr, bits::Size) -> bits::PairRepr,
+    exchange_fn:
+        unsafe extern "C" fn(bits::Ptr, bits::Size, bits::Ptr, bits::Size) -> bits::PairRepr,
     /// Retrieve stored response message.
     ///
     /// `fn(handle, out_ptr, out_len) -> Result<size, errno>`
-    retrieve_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
+    retrieve_fn: unsafe extern "C" fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
 }
 impl MessageFn {
     const DEFAULT_RESPONSE_BUFFER_SIZE: usize = 256;
 
-    pub const fn new(
-        exchange_fn: fn(bits::Ptr, bits::Size, bits::Ptr, bits::Size) -> bits::PairRepr,
-        retrieve_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
+    /// ## Safety
+    ///
+    /// Calling any of `exchange_fn`, `retrieve_fn` according to their ABI must not cause undefined behavior.
+    pub const unsafe fn new(
+        exchange_fn: unsafe extern "C" fn(
+            bits::Ptr,
+            bits::Size,
+            bits::Ptr,
+            bits::Size,
+        ) -> bits::PairRepr,
+        retrieve_fn: unsafe extern "C" fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
     ) -> Self {
         Self {
             exchange_fn,
@@ -182,20 +191,22 @@ impl MessageFn {
             let out_ptr = response_buffer.as_mut_ptr() as bits::Ptr;
             let out_len = response_buffer.capacity() as bits::Size;
 
-            (self.exchange_fn)(msg_ptr, msg_len, out_ptr, out_len)
+            // SAFETY: caller of constructor promises it is safe
+            unsafe { (self.exchange_fn)(msg_ptr, msg_len, out_ptr, out_len) }
         }
         .into();
 
         if result_size > response_buffer.capacity() {
             // response buffer was too small, we must retrieve the message with a second function call
-            // extend to at least result_size
-            response_buffer.reserve(result_size);
+
+            response_buffer.reserve(result_size); // extend to at least result_size
 
             let result: error::AbiResult = {
                 let out_ptr = response_buffer.as_mut_ptr() as usize;
                 let out_len = response_buffer.capacity() as usize;
 
-                (self.retrieve_fn)(result_handle, out_ptr, out_len)
+                // SAFETY: caller of constructor promises it is safe
+                unsafe { (self.retrieve_fn)(result_handle, out_ptr, out_len) }
             }
             .into();
 
@@ -233,21 +244,24 @@ pub struct StreamFn {
     /// Read up to `out_len` bytes from stream at `handle`, return number of read bytes.
     ///
     /// `fn(handle, out_ptr, out_len) -> Result<read, errno>`
-    read_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
+    read_fn: unsafe extern "C" fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
     /// Write up to `in_len` bytes to stream at `handle`, return number of written bytes.
     ///
     /// `fn(handle, in_ptr, in_len) -> Result<written, errno>`
-    write_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
+    write_fn: unsafe extern "C" fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
     /// Close stream at `handle`, signalling it will not be read from or written to again.
     ///
     /// `fn(handle) -> Result<(), errno>`
-    close_fn: fn(bits::Size) -> error::ResultRepr,
+    close_fn: unsafe extern "C" fn(bits::Size) -> error::ResultRepr,
 }
 impl StreamFn {
-    pub const fn new(
-        read_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
-        write_fn: fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
-        close_fn: fn(bits::Size) -> error::ResultRepr,
+    /// ## Safety
+    ///
+    /// Calling any of `read_fn`, `write_fn` and `close_fn` according to their ABI must not cause undefined behavior.
+    pub const unsafe fn new(
+        read_fn: unsafe extern "C" fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
+        write_fn: unsafe extern "C" fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
+        close_fn: unsafe extern "C" fn(bits::Size) -> error::ResultRepr,
     ) -> Self {
         Self {
             read_fn,
@@ -260,7 +274,8 @@ impl StreamFn {
         let out_ptr = buf.as_mut_ptr() as bits::Ptr;
         let out_len = buf.len() as bits::Size;
 
-        let result: error::AbiResult = (self.read_fn)(handle, out_ptr, out_len).into();
+        // SAFETY: caller of constructor promises it is safe
+        let result: error::AbiResult = unsafe { (self.read_fn)(handle, out_ptr, out_len).into() };
 
         result.into_io_result().map(|read| read)
     }
@@ -269,13 +284,15 @@ impl StreamFn {
         let in_ptr = buf.as_ptr() as bits::Ptr;
         let in_len = buf.len() as bits::Size;
 
-        let result: error::AbiResult = (self.write_fn)(handle, in_ptr, in_len).into();
+        // SAFETY: caller of constructor promises it is safe
+        let result: error::AbiResult = unsafe { (self.write_fn)(handle, in_ptr, in_len).into() };
 
         result.into_io_result().map(|written| written)
     }
 
     pub fn close(&self, handle: bits::Size) -> io::Result<()> {
-        let result: error::AbiResult = (self.close_fn)(handle).into();
+        // SAFETY: caller of constructor promises it is safe
+        let result: error::AbiResult = unsafe { (self.close_fn)(handle).into() };
 
         result.into_io_result().map(|_| ())
     }
@@ -300,7 +317,7 @@ mod test {
     static STORED_MESSAGES: std::sync::Mutex<(bits::Size, Vec<(bits::Size, String)>)> =
         std::sync::Mutex::new((1, Vec::new()));
 
-    fn test_message_exchange_fn(
+    extern "C" fn test_message_exchange_fn(
         msg_ptr: bits::Ptr,
         msg_len: bits::Size,
         out_ptr: bits::Ptr,
@@ -336,7 +353,7 @@ mod test {
         bits::AbiPair(result_len, handle).into()
     }
 
-    fn test_message_retrieve_fn(
+    extern "C" fn test_message_retrieve_fn(
         handle: bits::Size,
         out_ptr: bits::Ptr,
         out_len: bits::Size,
@@ -366,7 +383,7 @@ mod test {
     }
 
     const MESSAGE_FN: MessageFn =
-        MessageFn::new(test_message_exchange_fn, test_message_retrieve_fn);
+        unsafe { MessageFn::new(test_message_exchange_fn, test_message_retrieve_fn) };
 
     #[test]
     fn test_invoke_message_roundtrip() {
