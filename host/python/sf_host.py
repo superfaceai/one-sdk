@@ -45,7 +45,9 @@ def link(app):
 		message = json.loads(message_json)
 
 		# handle message using callback and UTF-8 JSON encode response
+		print("host: Received message:", message)
 		response = app.handle_message(message)
+		print("host: Response message:", response)
 		response_json = json.dumps(response).encode("utf-8")
 
 		handle = 0

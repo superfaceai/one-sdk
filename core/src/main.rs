@@ -1,7 +1,4 @@
-use std::{
-    collections::{hash_map, HashMap},
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use anyhow::Context;
 
@@ -16,7 +13,7 @@ mod sf_host;
 
 struct HostState {
     http_next_id: u32,
-    http_requests: HashMap<sf_core::unstable::HttpHandle, sf_host::unstable::HttpHandle>,
+    http_requests: HashMap<sf_core::unstable::HttpHandle, usize>,
 }
 impl HostState {
     pub fn new() -> Self {
@@ -40,29 +37,26 @@ impl sf_core::unstable::SfCoreUnstable for HostState {
     }
 
     fn http_get(&mut self, url: &str, headers: &[[&str; 2]]) -> sf_core::unstable::HttpHandle {
-        {
-            let headers = {
-                let mut headers = HashMap::new();
-
-                headers.insert("foo".to_string(), vec!["a".to_string()]);
-                headers.insert(
-                    "bar".to_string(),
-                    vec!["123".to_string(), "seven".to_string()],
-                );
-
-                headers
-            };
-            let handle = sf_host::unstable::http_call("https://example.com", "GET", &headers);
-            eprintln!("core: http_call() = {}", handle);
-        }
-
         eprintln!("core: http_get({}, {:?})", url, headers);
+
+        let headers_map = {
+            let mut headers_map = HashMap::<String, Vec<String>>::new();
+
+            for &[key, value] in headers {
+                headers_map
+                    .entry(key.to_string())
+                    .or_default()
+                    .push(value.to_string());
+            }
+
+            headers_map
+        };
+        let http = sf_host::unstable::http_call(url, "GET", &headers_map);
 
         let id = self.http_next_id;
         self.http_next_id += 1;
 
-        self.http_requests
-            .insert(id, sf_host::unstable::http_get(url, headers));
+        self.http_requests.insert(id, http.response_handle);
 
         id
     }
