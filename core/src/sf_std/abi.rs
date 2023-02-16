@@ -210,6 +210,8 @@ impl MessageFn {
             }
             .into();
 
+            // these errors are very unlikely and indicate an error in the host implementation
+            // therefore we don't propagate them out
             match result.into_io_result() {
                 Ok(written) => assert_eq!(written as usize, result_size),
                 Err(err) => panic!("Failed to retrieve stored message: {}", err),
@@ -298,11 +300,16 @@ impl StreamFn {
     }
 }
 
-#[cfg(test)]
+// #[cfg(test)]
 mod test {
+    use std::sync::Mutex;
+
     use serde::{Deserialize, Serialize};
 
-    use super::{bits, error, MessageFn, StreamFn};
+    use super::{
+        bits::{self, Ptr, Size},
+        error, MessageFn, StreamFn,
+    };
 
     #[derive(Serialize, Deserialize)]
     struct TestMsg {
@@ -314,14 +321,13 @@ mod test {
     // Note that we use a mutex here but since WASM has no threads it doesn't do much.
     // It does make sure that our tests don't cause UB on other platforms though, since we expect them to
     // pass on amd64/aarch64 as well.
-    static STORED_MESSAGES: std::sync::Mutex<(bits::Size, Vec<(bits::Size, String)>)> =
-        std::sync::Mutex::new((1, Vec::new()));
+    static STORED_MESSAGES: Mutex<(Size, Vec<(Size, String)>)> = Mutex::new((1, Vec::new()));
 
     extern "C" fn test_message_exchange_fn(
-        msg_ptr: bits::Ptr,
-        msg_len: bits::Size,
-        out_ptr: bits::Ptr,
-        out_len: bits::Size,
+        msg_ptr: Ptr,
+        msg_len: Size,
+        out_ptr: Ptr,
+        out_len: Size,
     ) -> bits::PairRepr {
         let msg_bytes = unsafe { std::slice::from_raw_parts(msg_ptr as *const u8, msg_len) };
         let msg: TestMsg = serde_json::from_slice(msg_bytes).unwrap();
@@ -354,9 +360,9 @@ mod test {
     }
 
     extern "C" fn test_message_retrieve_fn(
-        handle: bits::Size,
-        out_ptr: bits::Ptr,
-        out_len: bits::Size,
+        handle: Size,
+        out_ptr: Ptr,
+        out_len: Size,
     ) -> error::ResultRepr {
         let mut lock = STORED_MESSAGES.lock().unwrap();
 
@@ -422,6 +428,87 @@ mod test {
         assert_eq!(response.f2, long_string);
     }
 
+    extern "C" fn test_stream_read(handle: Size, out_ptr: Ptr, out_len: Size) -> error::ResultRepr {
+        if handle == 123 {
+            let data: [u8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            let to_write = out_len.min(data.len());
+
+            let out_ptr = out_ptr as *mut u8;
+            for (i, byte) in data.into_iter().take(to_write).enumerate() {
+                unsafe { out_ptr.add(i).write(byte) };
+            }
+
+            return error::AbiResult::Ok(to_write).into();
+        }
+
+        return error::AbiResult::Err(handle).into();
+    }
+    extern "C" fn test_stream_write(handle: Size, in_ptr: Ptr, in_len: Size) -> error::ResultRepr {
+        if handle == 124 {
+            let mut buffer = [0u8; 10];
+            let to_read = in_len.min(buffer.len());
+
+            let in_ptr = in_ptr as *const u8;
+            for i in 0..to_read {
+                buffer[i] = unsafe { in_ptr.add(i).read() };
+            }
+
+            return error::AbiResult::Ok(to_read).into();
+        }
+
+        return error::AbiResult::Err(handle).into();
+    }
+    extern "C" fn test_stream_close(handle: Size) -> error::ResultRepr {
+        if handle == 124 {
+            return error::AbiResult::Ok(0).into();
+        }
+
+        return error::AbiResult::Err(handle).into();
+    }
+    const STREAM_IO: StreamFn =
+        unsafe { StreamFn::new(test_stream_read, test_stream_write, test_stream_close) };
+
     #[test]
-    fn test_invoke_stream() {}
+    fn test_invoke_stream_read_5() {
+        let mut buffer = [0u8; 5];
+        assert_eq!(STREAM_IO.read(123, &mut buffer).unwrap(), 5);
+        assert_eq!(buffer, [1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_invoke_stream_read_10() {
+        let mut buffer = [0u8; 10];
+        assert_eq!(STREAM_IO.read(123, &mut buffer).unwrap(), 10);
+        assert_eq!(buffer, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    }
+
+    #[test]
+    fn test_invoke_stream_read_15() {
+        let mut buffer = [0u8; 15];
+        assert_eq!(STREAM_IO.read(123, &mut buffer).unwrap(), 10);
+        assert_eq!(buffer, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_invoke_stream_write_5() {
+        let data = [1, 2, 3, 4, 5];
+        assert_eq!(STREAM_IO.write(124, &data).unwrap(), 5);
+    }
+
+    #[test]
+    fn test_invoke_stream_write_10() {
+        let data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(STREAM_IO.write(124, &data).unwrap(), 10);
+    }
+
+    #[test]
+    fn test_invoke_stream_write_15() {
+        let data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        assert_eq!(STREAM_IO.write(124, &data).unwrap(), 10);
+    }
+
+    #[test]
+    fn test_invoke_stream_close() {
+        assert_eq!(STREAM_IO.close(124).unwrap(), ());
+    }
 }

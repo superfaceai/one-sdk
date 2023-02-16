@@ -5,7 +5,7 @@ from wasmtime import FuncType, ValType
 
 def _strace_inner(fn, name, *args):
 	result = fn(*args)
-	print(f"host: {name}{args} = {result}")
+	print(f"host: [strace] {name}{args} = {result}")
 	return result
 def strace(fn, name):
 	"""Use on a function to wrap with a debug print when called."""
@@ -32,12 +32,32 @@ def _split_u64(value):
 
 	return (lower, upper)
 
-MESSAGE_STORAGE = {
-	"next_id": 1,
-	"messages": {}
-}
+def _abi_ok(value):
+	return _join_u64(value, 0)
+def _abi_err(value):
+	return _join_u64(value, 1)
+
+class MessageStoage:
+	def __init__(self):
+		self.next_id = 1
+		self.messages = dict()
+	
+	def store(self, message):
+		handle = self.next_id
+		self.next_id += 1
+
+		self.messages[handle] = message
+		return handle
+	
+	def get(self, handle):
+		return self.messages.get(handle, None)
+	
+	def remove(self, handle):
+		return self.messages.pop(handle, None)
 
 def link(app):
+	message_store = MessageStoage()
+
 	def __export_message_exchange(msg_ptr, msg_len, out_ptr, out_len):
 		# read UTF-8 JSON message from memory
 		memory = app.memory_data()
@@ -54,11 +74,7 @@ def link(app):
 		response_size = len(response_json)
 		if response_size > out_len:
 			# output buffer is too small, store message and return the handle
-			global MESSAGE_STORAGE
-
-			handle = MESSAGE_STORAGE.next_id
-			MESSAGE_STORAGE.next_id += 1
-			MESSAGE_STORAGE.messages[next_id] = response_json
+			handle = message_store.store(response_json)
 		else:
 			# output buffer is big enough, write the message immediatelly
 			# handle stays 0
@@ -66,35 +82,6 @@ def link(app):
 		
 		# return (size, handle)
 		return _join_u64(response_size, handle)
-
-	def __export_message_exchange_retrieve(handle, out_ptr, out_len):
-		global MESSAGE_STORAGE
-
-		# handle invalid handle
-		if handle not in MESSAGE_STORAGE.messages:
-			# TODO: Err(errno) - choose which errno for invalid handle
-			# return Err(1)
-			return _join_u64(1, 1)
-		
-		# retrieve message, but don't delete it from store yet
-		response_json = MESSAGE_STORAGE.messages[handle]
-		response_size = len(response_json)
-		# handle buffer too small
-		if response_size > out_len:
-			# TODO: Err(errno) - choose which errno for invalid argument (buffer too small, but we advised on size in exchange call)
-			# return Err(2)
-			return _join_u64(2, 1)
-		
-		# write message to buffer
-		memory = app.memory_data()
-		_write_bytes(memory, out_ptr, out_len, response_json)
-
-		# finally, remove the message from the store
-		del MESSAGE_STORAGE.messages[handle]
-
-		# return Ok(response_size)
-		return _join_u64(response_size, 0)
-
 	app.linker.define_func(
 		"sf_host_unstable", "message_exchange",
 		# exchange(msg_ptr, msg_len, out_ptr, out_len) -> (Size, Size)
@@ -102,9 +89,99 @@ def link(app):
 		strace(__export_message_exchange, "sf_host_unstable::message_exchange")
 	)
 
+	def __export_message_exchange_retrieve(handle, out_ptr, out_len):		
+		response_json = message_store.get(handle)
+
+		# handle invalid handle
+		if response_json is None:
+			# TODO: Err(errno) - choose which errno for invalid handle
+			return _abi_err(1)
+		
+		# retrieve message, but don't delete it from store yet
+		response_size = len(response_json)
+		# handle buffer too small
+		if response_size > out_len:
+			# TODO: Err(errno) - choose which errno for invalid argument (buffer too small, but we advised on size in exchange call)
+			return _abi_err(2)
+		
+		# write message to buffer
+		memory = app.memory_data()
+		_write_bytes(memory, out_ptr, out_len, response_json)
+
+		# finally, remove the message from the store
+		message_store.remove(handle)
+
+		# return Ok(response_size)
+		return _abi_ok(response_size)
 	app.linker.define_func(
 		"sf_host_unstable", "message_exchange_retrieve",
 		# retrieve(handle, out_ptr, out_len) -> Result<Size, Errno>
 		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i64()]),
 		strace(__export_message_exchange_retrieve, "sf_host_unstable::message_exchange_retrieve")
+	)
+
+
+	def __export_stream_read(handle, out_ptr, out_len):
+		stream = app.streams.get(handle)
+		if stream is None:
+			# TODO: Err(errno) - choose which errno for invalid stream handle
+			return _abi_err(10)
+		
+		try:
+			data = stream.read(out_len)
+		except:
+			# TODO: what err
+			return _abi_err(123)
+		print(f"host: Read {len(data)} bytes from stream {handle}")
+
+		memory = app.memory_data()
+		read_count = _write_bytes(memory, out_ptr, out_len, data)
+
+		return _abi_ok(read_count)
+	app.linker.define_func(
+		"sf_host_unstable", "stream_read",
+		# read(handle, out_ptr, out_len) -> Result<Size, Errno>
+		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i64()]),
+		strace(__export_stream_read, "sf_host_unstable::stream_read")
+	)
+
+	def __export_stream_write(handle, in_ptr, in_len):
+		stream = app.streams.get(handle)
+		if stream is None:
+			# TODO: Err(errno) - choose which errno for invalid stream handle
+			return _abi_err(10)
+
+		memory = app.memory_data()
+		data = _read_bytes(memory, in_ptr, in_len)
+		
+		try:
+			write_count = stream.write(data)
+		except:
+			# TODO: what err
+			return _abi_err(123)
+		
+		print(f"host: Wrote {write_count} bytes to stream {handle}")
+		return _abi_ok(write_count)
+		
+	app.linker.define_func(
+		"sf_host_unstable", "stream_write",
+		# write(handle, in_ptr, in_len) -> Result<Size, Errno>
+		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i64()]),
+		strace(__export_stream_write, "sf_host_unstable::stream_write")
+	)
+
+	def __export_stream_close(handle):
+		stream = app.streams.close(handle)
+		if stream is None:
+			# TODO: Err(errno) - choose which errno for invalid stream handle
+			return _abi_err(10)
+
+		print(f"host: Closed stream {handle}")
+
+		return _abi_ok(0)
+	app.linker.define_func(
+		"sf_host_unstable", "stream_close",
+		# close(handle) -> Result<Size, Errno>
+		FuncType([ValType.i32()], [ValType.i64()]),
+		strace(__export_stream_close, "sf_host_unstable::stream_close")
 	)

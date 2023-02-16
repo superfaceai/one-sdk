@@ -11,18 +11,27 @@ class StreamManager:
 		self.next_id = 1
 		self.streams = dict()
 	
-	def register(self, stream):
+	def register(self, stream, close_hook = None):
 		handle = self.next_id
 		self.next_id += 1
 
-		self.streams[handle] = stream
+		self.streams[handle] = { "stream": stream, "close_hook": close_hook }
 		return handle
 	
 	def get(self, handle):
-		return self.streams.get(handle, None)
+		state = self.streams.get(handle, None)
+		if state is None:
+			return None
 		
-	def remove(self, handle):
-		return self.streams.pop(handle, None)
+		return state["stream"]
+		
+	def close(self, handle):
+		state = self.streams.pop(handle, None)
+		if state is None:
+			return None
+		
+		state["close_hook"]()
+		return state["stream"]
 
 class HttpManager:
 	def __init__(self, streams):
@@ -31,12 +40,12 @@ class HttpManager:
 
 		self.streams = streams
 
-	def http_call(self, request):
-		response_handle = self.next_id
+	def http_call(self, msg):
+		handle = self.next_id
 		self.next_id += 1
 
-		url = request["url"]
-		headers = request["headers"]
+		url = msg["url"]
+		headers = msg["headers"]
 		print(f"host: Making GET request to {url} with headers {headers}")
 
 		# TODO: have to join to use this library
@@ -48,14 +57,15 @@ class HttpManager:
 		response = requests.get(
 			url, headers = headers_joined, stream = True
 		)
-		self.requests[response_handle] = {
+		self.requests[handle] = {
 			"response": response,
-			"response_stream_handle": self.streams.register(response.raw)
+			"response_stream_handle": self.streams.register(response.raw, lambda: self._cleanup_http(handle))
 		}
 
-		return { "kind": "ok", "response_handle": response_handle }
+		return { "kind": "ok", "handle": handle }
 
-	def http_call_retrieve_head(self, handle):
+	def http_call_retrieve_head(self, msg):
+		handle = msg["handle"]
 		if handle not in self.requests:
 			return { "kind": "err", "error": "Invalid request handle" }
 		
@@ -64,7 +74,15 @@ class HttpManager:
 		headers = response.headers
 		body_handle = self.requests[handle]["response_stream_handle"]
 
-		return { "kind": "ok", "status": status, "headers": headers, "body_handle": body_handle }
+		# transform headers into map[str, list[str]]
+		headers_multi = defaultdict(list)
+		for key, value in headers.items():
+			headers_multi[key].append(value)
+
+		return { "kind": "ok", "status": status, "headers": headers_multi, "body_handle": body_handle }
+	
+	def _cleanup_http(self, handle):
+		del self.requests[handle]
 
 class App:
 	def __init__(self, argv):
@@ -112,43 +130,6 @@ class App:
 
 
 APP = App(sys.argv[2:]) # skip running file name and core name
-
-def _strace_inner(fn, name, *args):
-	result = fn(*args)
-	print(f"host: {name}{args} = {result}")
-	return result
-def strace(fn, name):
-	"""Use on a function to wrap with a debug print when called."""
-	return functools.partial(_strace_inner, fn, name)
-
-# def _read_bytes(memory, ptr, len):
-# 	"""Read exactly `len` bytes from `ptr`."""
-# 	return bytes(memory[ptr : ptr + len])
-# def _read_str(memory, ptr, len):
-# 	"""Read exactly `len` bytes from `ptr` and interpret it as utf-8 string."""
-# 	return _read_bytes(memory, ptr, len).decode("utf-8")
-def _write_bytes(memory, ptr, max_len, source_bytes):
-	"""Write up to `max_len` bytes from `source_bytes` to `ptr`."""
-	count = min(max_len, len(source_bytes))
-	for i in range(count):
-		memory[ptr + i] = source_bytes[i]
-	return count
-
-def __export_http_response_read(handle, out_ptr, out_len):
-	stream = APP.streams.get(
-		APP.http.requests[handle]["response_stream_handle"]
-	)
-	data = stream.read(out_len)
-
-	print(f"host: Read {len(data)} bytes:", data.decode("utf-8", errors = "replace"))
-	
-	memory = APP.memory_data()
-	return _write_bytes(memory, out_ptr, out_len, data)
-APP.linker.define_func(
-	"sf_host_unstable", "http_response_read",
-	FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i32()]),
-	strace(__export_http_response_read, "http_response_read")
-)
 
 sf_host.link(APP)
 APP.load_wasi_module(sys.argv[1])

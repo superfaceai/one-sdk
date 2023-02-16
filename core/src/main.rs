@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, io::Read};
 
 use anyhow::Context;
 
@@ -7,13 +7,14 @@ use wasmi::{
     Engine, Extern, Instance, Linker, Module, Store, TypedFunc, TypedResumableCall, Value,
 };
 
-mod sf_abi;
 mod sf_core;
-mod sf_host;
+mod sf_std;
+
+use sf_std::host::unstable::HttpRequest;
 
 struct HostState {
     http_next_id: u32,
-    http_requests: HashMap<sf_core::unstable::HttpHandle, usize>,
+    http_requests: HashMap<sf_core::unstable::HttpHandle, HttpRequest>,
 }
 impl HostState {
     pub fn new() -> Self {
@@ -51,12 +52,13 @@ impl sf_core::unstable::SfCoreUnstable for HostState {
 
             headers_map
         };
-        let http = sf_host::unstable::http_call(url, "GET", &headers_map);
+        let request =
+            sf_std::host::unstable::HttpRequest::fire("GET", url, &headers_map, None).unwrap();
 
         let id = self.http_next_id;
         self.http_next_id += 1;
 
-        self.http_requests.insert(id, http.response_handle);
+        self.http_requests.insert(id, request);
 
         id
     }
@@ -68,9 +70,14 @@ impl sf_core::unstable::SfCoreUnstable for HostState {
     ) -> usize {
         eprintln!("core: http_response_read({}, u8[{}])", handle, out.len());
 
-        let handle = self.http_requests.get(&handle).unwrap();
+        let response = self
+            .http_requests
+            .get_mut(&handle)
+            .unwrap()
+            .response()
+            .unwrap();
 
-        sf_host::unstable::http_response_read(*handle, out)
+        response.body().read(out).unwrap()
     }
 }
 
