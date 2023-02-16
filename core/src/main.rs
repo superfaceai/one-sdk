@@ -77,7 +77,14 @@ impl sf_core::unstable::SfCoreUnstable for HostState {
             .response()
             .unwrap();
 
-        response.body().read(out).unwrap()
+        let count = response.body().read(out).unwrap();
+
+        if count == 0 {
+            // TODO: where to clean up the request?
+            self.http_requests.remove(&handle);
+        }
+
+        return count;
     }
 }
 

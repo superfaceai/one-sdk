@@ -20,7 +20,7 @@
 //! ## Streams
 //!
 //! Streams are byte sequences of unknown length. They use POSIX-style `read` and `write` functions to transfer data with ABI
-//! taken from WASI `fd_read` and `fd_write`. See https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#fd_read.
+//! taken from WASI `fd_read` and `fd_write`. See <https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#fd_read>.
 
 use std::io;
 
@@ -39,7 +39,7 @@ pub mod bits {
     pub type Ptr = usize;
     /// ABI `size_t`-sized type.
     ///
-    /// See https://en.cppreference.com/w/c/types/size_t.
+    /// See <https://en.cppreference.com/w/c/types/size_t>.
     pub type Size = usize;
     /// ABI pair representation.
     ///
@@ -86,7 +86,7 @@ pub mod bits {
 pub mod error {
     //! WASI errno definitions.
     //!
-    //! See https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-errno-variant.
+    //! See <https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-errno-variant>.
 
     use super::bits;
 
@@ -109,7 +109,7 @@ pub mod error {
         pub fn into_io_result(self) -> std::io::Result<bits::Size> {
             match self {
                 Self::Ok(value) => Ok(value),
-                Self::Err(err) => Err(errno_to_io_error_kind(err).into()),
+                Self::Err(err) => Err(std::io::Error::from_raw_os_error(err as i32)),
             }
         }
     }
@@ -132,11 +132,6 @@ pub mod error {
             }
             .into()
         }
-    }
-
-    fn errno_to_io_error_kind(errno: super::bits::Size) -> std::io::ErrorKind {
-        // TODO: implement mappings from WASI
-        std::io::ErrorKind::Other
     }
 }
 

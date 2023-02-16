@@ -45,6 +45,12 @@ impl std::io::Read for ReadStream {
         STREAM_IO.read(self.0, buf)
     }
 }
+impl Drop for ReadStream {
+    fn drop(&mut self) {
+        STREAM_IO.close(self.0).unwrap()
+    }
+}
+
 /// Stream which can be written to.
 pub struct WriteStream(Size);
 impl std::io::Write for WriteStream {
