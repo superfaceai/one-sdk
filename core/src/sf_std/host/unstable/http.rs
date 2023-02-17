@@ -119,6 +119,14 @@ pub struct HttpResponse {
     body: ReadStream,
 }
 impl HttpResponse {
+    pub fn status(&self) -> u16 {
+        self.status
+    }
+
+    pub fn headers(&self) -> &HashMap<String, Vec<String>> {
+        &self.headers
+    }
+
     pub fn body(&mut self) -> impl Read + '_ {
         &mut self.body
     }

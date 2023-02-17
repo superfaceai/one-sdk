@@ -295,7 +295,7 @@ impl StreamFn {
     }
 }
 
-// #[cfg(test)]
+#[cfg(test)]
 mod test {
     use std::sync::Mutex;
 
