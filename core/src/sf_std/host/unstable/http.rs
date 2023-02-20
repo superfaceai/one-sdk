@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::Read};
 
 use serde::{Deserialize, Serialize};
 
-use super::{ReadStream, WriteStream, EXCHANGE_MESSAGE};
+use super::{ReadStream, EXCHANGE_MESSAGE};
 use crate::sf_std::abi::bits::Size;
 
 #[derive(Serialize)]
@@ -104,7 +104,7 @@ impl HttpRequest {
                 self.response = Some(HttpResponse {
                     status,
                     headers,
-                    body: ReadStream(body_handle),
+                    body: ReadStream::from_raw_handle(body_handle),
                 });
 
                 Ok(self.response.as_mut().unwrap())

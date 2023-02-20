@@ -109,7 +109,7 @@ pub mod error {
         pub fn into_io_result(self) -> std::io::Result<bits::Size> {
             match self {
                 Self::Ok(value) => Ok(value),
-                Self::Err(err) => Err(std::io::Error::from_raw_os_error(err as i32)),
+                Self::Err(err) => Err(from_wasi_errno(err)),
             }
         }
     }
@@ -133,6 +133,10 @@ pub mod error {
             .into()
         }
     }
+
+    pub fn from_wasi_errno(errno: bits::Size) -> std::io::Error {
+        std::io::Error::from_raw_os_error(errno as i32)
+    }
 }
 
 #[derive(Debug, Error)]
@@ -155,6 +159,7 @@ pub struct MessageFn {
     retrieve_fn: unsafe extern "C" fn(bits::Size, bits::Ptr, bits::Size) -> error::ResultRepr,
 }
 impl MessageFn {
+    // TODO: tweak to bigger value?
     const DEFAULT_RESPONSE_BUFFER_SIZE: usize = 256;
 
     /// ## Safety

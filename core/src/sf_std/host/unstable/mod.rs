@@ -6,8 +6,8 @@ use crate::sf_std::abi::{
     MessageFn, StreamFn,
 };
 
-mod http;
-pub use http::*;
+pub mod fs;
+pub mod http;
 
 //////////////
 // MESSAGES //
@@ -38,22 +38,21 @@ extern "C" {
 // STREMAS //
 /////////////
 
-/// Stream which can be read from.
-pub struct ReadStream(Size);
-impl std::io::Read for ReadStream {
+/// Stream which can be read from or written to.
+///
+/// Not all streams can be both read from and written to. See [ReadStream] and [WriteStream].
+pub struct IoStream(Size);
+impl IoStream {
+    pub(in crate::sf_std) fn from_raw_handle(handle: Size) -> Self {
+        Self(handle)
+    }
+}
+impl std::io::Read for IoStream {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         STREAM_IO.read(self.0, buf)
     }
 }
-impl Drop for ReadStream {
-    fn drop(&mut self) {
-        STREAM_IO.close(self.0).unwrap()
-    }
-}
-
-/// Stream which can be written to.
-pub struct WriteStream(Size);
-impl std::io::Write for WriteStream {
+impl std::io::Write for IoStream {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         STREAM_IO.write(self.0, buf)
     }
@@ -63,9 +62,39 @@ impl std::io::Write for WriteStream {
         Ok(())
     }
 }
-impl Drop for WriteStream {
+impl Drop for IoStream {
     fn drop(&mut self) {
         STREAM_IO.close(self.0).unwrap()
+    }
+}
+
+/// Stream which can be read from.
+pub struct ReadStream(IoStream);
+impl ReadStream {
+    pub(in crate::sf_std) fn from_raw_handle(handle: Size) -> Self {
+        Self(IoStream::from_raw_handle(handle))
+    }
+}
+impl std::io::Read for ReadStream {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.0.read(buf)
+    }
+}
+
+/// Stream which can be written to.
+pub struct WriteStream(IoStream);
+impl WriteStream {
+    pub(in crate::sf_std) fn from_raw_handle(handle: Size) -> Self {
+        Self(IoStream::from_raw_handle(handle))
+    }
+}
+impl std::io::Write for WriteStream {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.0.flush()
     }
 }
 

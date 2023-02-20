@@ -30,7 +30,9 @@ class StreamManager:
 		if state is None:
 			return None
 		
-		state["close_hook"]()
+		close_hook = state["close_hook"]
+		if close_hook is not None:
+			close_hook()
 		return state["stream"]
 
 class HttpManager:
@@ -84,6 +86,32 @@ class HttpManager:
 	def _cleanup_http(self, handle):
 		del self.requests[handle]
 
+class FsManager:
+	def __init__(self, streams):
+		self.streams = streams
+	
+	def file_open(self, msg):
+		path = msg["path"]
+		mode = "b"
+
+		if msg["create_new"] == True:
+			mode += "x"
+		elif msg["create"] == True:
+			pass # no idea?
+
+		if msg["truncate"] == True:
+			mode += "w"
+		elif msg["append"] == True:
+			mode += "a"
+		elif msg["write"] == True:
+			mode += "+"
+		elif msg["read"] == True:
+			mode += "r"
+		
+		handle = self.streams.register(open(path, mode))
+
+		return { "kind": "ok", "handle": handle }
+
 class App:
 	def __init__(self, argv):
 		self.engine = Engine()
@@ -106,6 +134,7 @@ class App:
 		# module managers
 		self.streams = StreamManager()
 		self.http = HttpManager(self.streams)
+		self.fs = FsManager(self.streams)
 
 	def load_wasi_module(self, path):
 		module = Module.from_file(self.engine, path)
@@ -125,8 +154,11 @@ class App:
 			return self.http.http_call(message)
 		if message["kind"] == "http-call-head":
 			return self.http.http_call_retrieve_head(message)
+		
+		if message["kind"] == "file-open":
+			return self.fs.file_open(message)
 
-		return { "error": "Unknown message" }
+		return "Unknown message"
 
 
 APP = App(sys.argv[2:]) # skip running file name and core name

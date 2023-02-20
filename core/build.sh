@@ -7,4 +7,4 @@ rustup target add wasm32-wasi
 cargo build --release --target wasm32-wasi
 cd -
 
-cp "$base/target/wasm32-wasi/release/core.wasm" "$base/core.wasm"
+cp "$base/target/wasm32-wasi/release/superface_core.wasm" "$base/core.wasm"

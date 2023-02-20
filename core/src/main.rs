@@ -10,7 +10,7 @@ use wasmi::{
 mod sf_core;
 mod sf_std;
 
-use sf_std::host::unstable::HttpRequest;
+use sf_std::host::unstable::{fs::OpenOptions, http::HttpRequest};
 
 struct HostState {
     http_next_id: u32,
@@ -52,8 +52,7 @@ impl sf_core::unstable::SfCoreUnstable for HostState {
 
             headers_map
         };
-        let request =
-            sf_std::host::unstable::HttpRequest::fire("GET", url, &headers_map, None).unwrap();
+        let request = HttpRequest::fire("GET", url, &headers_map, None).unwrap();
 
         let id = self.http_next_id;
         self.http_next_id += 1;
@@ -153,7 +152,17 @@ fn main() -> anyhow::Result<()> {
         .parse()
         .context("Argument 2 must be a number")?;
 
-    let wasm = std::fs::read(file_name).context("Failed to read input file")?;
+    let wasm = {
+        let mut bytes = Vec::new();
+        let mut file = OpenOptions::new()
+            .read(true)
+            .open(&file_name)
+            .context("Failed to open input file")?;
+        file.read_to_end(&mut bytes)
+            .context("Failed to read input file")?;
+
+        bytes
+    };
 
     let engine = Engine::default();
     let module = Module::new(&engine, wasm.as_slice()).context("Failed to initializem module")?;
