@@ -1,3 +1,4 @@
+import time
 import functools
 import requests
 import sys
@@ -113,13 +114,16 @@ class FsManager:
 		return { "kind": "ok", "handle": handle }
 
 class App:
-	def __init__(self, argv):
+	def __init__(self):
 		self.engine = Engine()
 		self.linker = Linker(self.engine)
 		self.store = Store(self.engine)
 		self.module = None
 		self.memory = None
-		self.entry = None
+
+		self.fn_setup = None
+		self.fn_teardown = None
+		self.fn_perform = None
 
 		# prepare wasi context
 		self.linker.define_wasi()
@@ -127,8 +131,8 @@ class App:
 		self.wasi = WasiConfig()
 		self.wasi.inherit_stdout()
 		self.wasi.inherit_stderr()
-		self.wasi.argv = argv
-		self.wasi.preopen_dir("integration/wasm/", "integration/wasm/")
+		# self.wasi.argv = argv
+		# self.wasi.preopen_dir("integration/wasm/", "integration/wasm/")
 		self.store.set_wasi(self.wasi)
 
 		# module managers
@@ -136,20 +140,47 @@ class App:
 		self.http = HttpManager(self.streams)
 		self.fs = FsManager(self.streams)
 
+		# perform state
+		self.perform_map = None
+		self.perform_input = None
+		self.perform_output = None
+
 	def load_wasi_module(self, path):
 		module = Module.from_file(self.engine, path)
 		self.module = self.linker.instantiate(self.store, module)
 		self.memory = self.module.exports(self.store)["memory"]
-		# WASI exports _start functin, which is wrapper similarly used in C to init program execution
-		self.entry = self.module.exports(self.store)["_start"]
+		# our WASI module exports these functions
+		self.fn_setup = self.module.exports(self.store)["superface_core_setup"]
+		self.fn_teardown = self.module.exports(self.store)["superface_core_teardown"]
+		self.fn_perform = self.module.exports(self.store)["superface_core_perform"]
 
-	def run(self):
-		return self.entry(self.store)
+	def __enter__(self):
+		self.fn_setup(self.store)
+		return self
+	
+	def __exit__(self, exc_type, exc_value, traceback):
+		self.fn_teardown(self.store)
+
+	def perform(self, map_name, input_value = None):
+		self.perform_map = map_name
+		self.perform_input = input_value
+		self.fn_perform(self.store)
+		self.perform_input = None
+
+		output = self.perform_output
+		self.perform_output = None
+		return output
 
 	def memory_data(self):
 		return self.memory.data_ptr(self.store)
 
 	def handle_message(self, message):
+		if message["kind"] == "perform-input":
+			return { "kind": "ok", "map_name": self.perform_map, "map_input": self.perform_input }
+		if message["kind"] == "perform-output":
+			self.perform_output = message["map_result"]
+			return { "kind": "ok" }
+
 		if message["kind"] == "http-call":
 			return self.http.http_call(message)
 		if message["kind"] == "http-call-head":
@@ -160,11 +191,17 @@ class App:
 
 		return "Unknown message"
 
-
-APP = App(sys.argv[2:]) # skip running file name and core name
+MAP_NAME = sys.argv[2]  # skip running file name and core name
+APP = App()
 
 sf_host.link(APP)
 APP.load_wasi_module(sys.argv[1])
-return_code = APP.run()
 
-print("host: result:", return_code)
+with APP as app:
+	print("host: result:", app.perform(MAP_NAME, { "person": 1 }))
+	print("host: ==================================================")
+	print("host: result2:", app.perform(MAP_NAME, { "person": 2, "debug_stream": { "__type": "iostream", "handle": 123 } }))
+	print("host: ==================================================")
+
+	time.sleep(5) # wait here to trigger recache
+	print("host: result3:", app.perform(MAP_NAME, 3))

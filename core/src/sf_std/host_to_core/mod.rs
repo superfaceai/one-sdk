@@ -34,11 +34,12 @@ macro_rules! define_exchange {
     (
         $( #[$in_attr: meta] )*
         struct $name: ident $(< $($lifetimes: lifetime),+ $(,)?>)? {
-            kind: $kind: literal,
+            kind: $kind: literal
             $(
+                ,
                 $( #[$in_field_attr: meta] )*
                 $field_name: ident : $field_type: ty
-            ),+ $(,)?
+            )* $(,)?
         } ->
         $( #[$out_attr: meta] )*
         enum $response_name: ident {
@@ -57,17 +58,17 @@ macro_rules! define_exchange {
             $(
                 $( #[$in_field_attr] )*
                 $field_name: $field_type
-            ),+
+            ),*
         }
         impl $(< $($lifetimes),+ >)? $name $(< $($lifetimes),+ >)? {
             pub const KIND: &'static str = $kind;
 
             pub fn new(
-                $( $field_name: $field_type ),+
+                $( $field_name: $field_type ),*
             ) -> Self {
                 Self {
                     kind: Self::KIND,
-                    $( $field_name ),+
+                    $( $field_name ),*
                 }
             }
 

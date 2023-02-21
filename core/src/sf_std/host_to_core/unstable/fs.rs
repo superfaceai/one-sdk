@@ -22,7 +22,10 @@ define_exchange! {
         create: bool,
         create_new: bool,
     } -> enum OutFileOpen {
-        Ok { handle: Size },
+        Ok {
+            #[serde(with = "super::serde_iostream")]
+            handle: IoStream
+        },
         Err { errno: Size }
     }
 }
@@ -95,7 +98,7 @@ impl OpenOptions {
         .unwrap();
 
         match response {
-            OutFileOpen::Ok { handle } => Ok(IoStream::from_raw_handle(handle)),
+            OutFileOpen::Ok { handle } => Ok(handle),
             OutFileOpen::Err { errno } => Err(from_wasi_errno(errno)),
         }
     }

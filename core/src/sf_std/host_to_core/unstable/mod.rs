@@ -8,6 +8,7 @@ use crate::sf_std::abi::{
 
 pub mod fs;
 pub mod http;
+pub mod perform;
 
 //////////////
 // MESSAGES //
@@ -41,9 +42,10 @@ extern "C" {
 /// Stream which can be read from or written to.
 ///
 /// Not all streams can be both read from and written to. See [ReadStream] and [WriteStream].
-pub struct IoStream(Size);
+#[derive(Debug)]
+pub struct IoStream(usize);
 impl IoStream {
-    pub(in crate::sf_std) fn from_raw_handle(handle: Size) -> Self {
+    pub(in crate::sf_std) fn from_raw_handle(handle: usize) -> Self {
         Self(handle)
     }
 }
@@ -67,8 +69,22 @@ impl Drop for IoStream {
         STREAM_IO.close(self.0).unwrap()
     }
 }
+mod serde_iostream {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    use super::IoStream;
+
+    pub fn serialize<S: Serializer>(value: &IoStream, ser: S) -> Result<S::Ok, S::Error> {
+        value.0.serialize(ser)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(de: D) -> Result<IoStream, D::Error> {
+        usize::deserialize(de).map(IoStream::from_raw_handle)
+    }
+}
 
 /// Stream which can be read from.
+#[derive(Debug)]
 pub struct ReadStream(IoStream);
 impl ReadStream {
     pub(in crate::sf_std) fn from_raw_handle(handle: Size) -> Self {
@@ -82,6 +98,7 @@ impl std::io::Read for ReadStream {
 }
 
 /// Stream which can be written to.
+#[derive(Debug)]
 pub struct WriteStream(IoStream);
 impl WriteStream {
     pub(in crate::sf_std) fn from_raw_handle(handle: Size) -> Self {
