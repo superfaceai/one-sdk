@@ -41,7 +41,7 @@ pub fn perform_input() -> PerformInput {
             map_input,
         } => PerformInput {
             map_name,
-            map_input: map_input,
+            map_input
         },
     }
 }
@@ -66,8 +66,7 @@ pub fn perform_output(output: PerformOutput) {
 ///
 /// In addition to variants in [serde_json::Value] we also define our custom types, such as streams.
 ///
-/// Our custom types are always objects with `__type` field signalling which type to parse. Any object with
-/// `__type` key will be eligible to be parsed as one of our types.
+/// Our custom types are always objects with one field: `{ "$StructuredValue::<type>": <type_serialized> }`
 #[derive(Debug, PartialEq, Eq)]
 pub enum StructuredValue {
     // custom
