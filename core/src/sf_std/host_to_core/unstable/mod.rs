@@ -1,5 +1,7 @@
 //! Unstable functions provide no stability guarantees
 
+use serde::{Deserialize, Serialize};
+
 use crate::sf_std::abi::{
     bits::{PairRepr, Ptr, Size},
     error::ResultRepr,
@@ -21,6 +23,7 @@ const EXCHANGE_MESSAGE: MessageFn = unsafe {
         __import_message_exchange_retrieve,
     )
 };
+#[cfg(not(test))]
 #[link(wasm_import_module = "sf_host_unstable")]
 extern "C" {
     #[link_name = "message_exchange"]
@@ -34,6 +37,24 @@ extern "C" {
     #[link_name = "message_exchange_retrieve"]
     fn __import_message_exchange_retrieve(handle: Size, out_ptr: Ptr, out_len: Size) -> ResultRepr;
 }
+// this is impractical but the imports don't get stripped when we are testing cdylib, so we stub them out
+#[cfg(test)]
+extern "C" fn __import_message_exchange(
+    _msg_ptr: Ptr,
+    _msg_len: Size,
+    _out_ptr: Ptr,
+    _out_len: Size,
+) -> PairRepr {
+    unreachable!()
+}
+#[cfg(test)]
+extern "C" fn __import_message_exchange_retrieve(
+    _handle: Size,
+    _out_ptr: Ptr,
+    _out_len: Size,
+) -> ResultRepr {
+    unreachable!()
+}
 
 /////////////
 // STREMAS //
@@ -41,12 +62,16 @@ extern "C" {
 
 /// Stream which can be read from or written to.
 ///
-/// Not all streams can be both read from and written to. See [ReadStream] and [WriteStream].
-#[derive(Debug)]
+/// Not all streams can be both read from and written to, those will return an error.
+#[derive(Debug, PartialEq, Eq)]
 pub struct IoStream(usize);
 impl IoStream {
     pub(in crate::sf_std) fn from_raw_handle(handle: usize) -> Self {
         Self(handle)
+    }
+
+    pub(in crate::sf_std) fn to_raw_handle(&self) -> usize {
+        self.0
     }
 }
 impl std::io::Read for IoStream {
@@ -69,49 +94,14 @@ impl Drop for IoStream {
         STREAM_IO.close(self.0).unwrap()
     }
 }
-mod serde_iostream {
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    use super::IoStream;
-
-    pub fn serialize<S: Serializer>(value: &IoStream, ser: S) -> Result<S::Ok, S::Error> {
-        value.0.serialize(ser)
+impl Serialize for IoStream {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        self.0.serialize(ser)
     }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(de: D) -> Result<IoStream, D::Error> {
+}
+impl<'de> Deserialize<'de> for IoStream {
+    fn deserialize<D: serde::Deserializer<'de>>(de: D) -> Result<IoStream, D::Error> {
         usize::deserialize(de).map(IoStream::from_raw_handle)
-    }
-}
-
-/// Stream which can be read from.
-#[derive(Debug)]
-pub struct ReadStream(IoStream);
-impl ReadStream {
-    pub(in crate::sf_std) fn from_raw_handle(handle: Size) -> Self {
-        Self(IoStream::from_raw_handle(handle))
-    }
-}
-impl std::io::Read for ReadStream {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.0.read(buf)
-    }
-}
-
-/// Stream which can be written to.
-#[derive(Debug)]
-pub struct WriteStream(IoStream);
-impl WriteStream {
-    pub(in crate::sf_std) fn from_raw_handle(handle: Size) -> Self {
-        Self(IoStream::from_raw_handle(handle))
-    }
-}
-impl std::io::Write for WriteStream {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.0.flush()
     }
 }
 
@@ -123,6 +113,8 @@ const STREAM_IO: StreamFn = unsafe {
         __import_stream_close,
     )
 };
+
+#[cfg(not(test))]
 #[link(wasm_import_module = "sf_host_unstable")]
 extern "C" {
     #[link_name = "stream_read"]
@@ -133,4 +125,21 @@ extern "C" {
 
     #[link_name = "stream_close"]
     fn __import_stream_close(handle: Size) -> ResultRepr;
+}
+// this is impractical but the imports don't get stripped when we are testing cdylib, so we stub them out
+#[cfg(test)]
+extern "C" fn __import_stream_read(_handle: Size, _out_ptr: Ptr, _out_len: Size) -> ResultRepr {
+    unreachable!()
+}
+#[cfg(test)]
+extern "C" fn __import_stream_write(_handle: Size, _in_ptr: Ptr, _in_len: Size) -> ResultRepr {
+    unreachable!()
+}
+#[cfg(test)]
+extern "C" fn __import_stream_close(handle: Size) -> ResultRepr {
+    use crate::sf_std::abi::error::AbiResult;
+    // this is actually called in tests which construct IoStreams, so we always succeed here
+    // TODO: this should possibly be configurable on per-test basis
+    assert_ne!(handle, 0);
+    AbiResult::Ok(0).into()
 }

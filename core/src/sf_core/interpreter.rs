@@ -8,7 +8,7 @@ use wasmi::{
 };
 
 use crate::sf_std::core_to_map::unstable as ctm_unstable;
-use crate::sf_std::host_to_core::unstable::{http::HttpRequest, perform::StructuredData};
+use crate::sf_std::host_to_core::unstable::{http::HttpRequest, perform::StructuredValue};
 
 struct InterpreterState {
     http_next_id: u32,
@@ -121,8 +121,8 @@ impl Interpreter {
         &mut self,
         wasm: &[u8],
         entry: &str,
-        input: StructuredData,
-    ) -> anyhow::Result<StructuredData> {
+        input: StructuredValue,
+    ) -> anyhow::Result<StructuredValue> {
         let module = Module::new(&self.engine, wasm).context("Failed to initialize wasm module")?;
 
         // instance links store and module
@@ -182,14 +182,10 @@ impl Interpreter {
         println!("core: map input: {:?}", input);
 
         let input_value = match input {
-            StructuredData::Value(serde_json::Value::Number(ref num)) if num.is_i64() => {
-                num.as_i64().unwrap()
-            }
-            StructuredData::Value(serde_json::Value::Object(ref object))
-                if object.contains_key("person") =>
-            {
+            StructuredValue::Number(ref num) if num.is_i64() => num.as_i64().unwrap(),
+            StructuredValue::Object(ref object) if object.contains_key("person") => {
                 match object.get("person").unwrap() {
-                    serde_json::Value::Number(ref num) if num.is_i64() => num.as_i64().unwrap(),
+                    StructuredValue::Number(ref num) if num.is_i64() => num.as_i64().unwrap(),
                     _ => todo!(),
                 }
             }
@@ -200,6 +196,6 @@ impl Interpreter {
             .context("Failed to call entry function")?;
         println!("core: result: {}", result);
 
-        Ok(StructuredData::Value(result.into()))
+        Ok(StructuredValue::Number(result.into()))
     }
 }

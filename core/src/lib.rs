@@ -52,6 +52,8 @@ pub extern "C" fn __export_superface_core_teardown() {
 #[export_name = "superface_core_perform"]
 /// Executes perform.
 ///
+/// Must be called after [__export_superface_core_setup] and before [__export_superface_core_teardown].
+///
 /// All information about map to be performed will be retrieved through messages.
 pub extern "C" fn __export_superface_core_perform() {
     let mut lock = GLOBAL_STATE.lock().unwrap();

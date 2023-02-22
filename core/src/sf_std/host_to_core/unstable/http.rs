@@ -2,13 +2,13 @@ use std::{collections::HashMap, io::Read};
 
 use serde::{Deserialize, Serialize};
 
-use super::{ReadStream, EXCHANGE_MESSAGE};
+use super::{IoStream, EXCHANGE_MESSAGE};
 use crate::sf_std::abi::bits::Size;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 enum InHttpCallBody<'a> {
     Data(&'a [u8]),
-    Stream, // TODO: make this work
+    Stream, // TODO: make this work or decide not to support it for now
 }
 define_exchange! {
     struct InHttpCall<'a> {
@@ -20,7 +20,7 @@ define_exchange! {
     } -> enum OutHttpCall {
         Ok {
             #[serde(default)]
-            request_body_handle: Option<Size>,
+            request_body_stream: Option<IoStream>,
             handle: Size,
         },
         Err {
@@ -36,7 +36,7 @@ define_exchange! {
         Ok {
             status: u16,
             headers: HashMap<String, Vec<String>>,
-            body_handle: Size, // TODO: optional?
+            body_stream: IoStream, // TODO: optional?
         },
         Err {
             error: String
@@ -68,10 +68,10 @@ impl HttpRequest {
 
         match response {
             OutHttpCall::Ok {
-                request_body_handle,
+                request_body_stream,
                 handle,
             } => {
-                assert!(request_body_handle.is_none());
+                assert!(request_body_stream.is_none());
                 Ok(Self {
                     handle,
                     response: None,
@@ -99,12 +99,12 @@ impl HttpRequest {
             OutHttpCallRetrieveHead::Ok {
                 status,
                 headers,
-                body_handle,
+                body_stream,
             } => {
                 self.response = Some(HttpResponse {
                     status,
                     headers,
-                    body: ReadStream::from_raw_handle(body_handle),
+                    body: body_stream,
                 });
 
                 Ok(self.response.as_mut().unwrap())
@@ -116,7 +116,7 @@ impl HttpRequest {
 pub struct HttpResponse {
     status: u16,
     headers: HashMap<String, Vec<String>>,
-    body: ReadStream,
+    body: IoStream,
 }
 impl HttpResponse {
     pub fn status(&self) -> u16 {

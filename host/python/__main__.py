@@ -5,12 +5,17 @@ import sys
 from collections import defaultdict
 from wasmtime import Engine, Store, Module, Linker, WasiConfig, FuncType, ValType
 
+from types import SimpleNamespace
+
 import sf_host
 
 class StreamManager:
 	def __init__(self):
 		self.next_id = 1
 		self.streams = dict()
+	
+	def __repr__(self):
+		return str(self.streams)
 	
 	def register(self, stream, close_hook = None):
 		handle = self.next_id
@@ -35,6 +40,9 @@ class StreamManager:
 		if close_hook is not None:
 			close_hook()
 		return state["stream"]
+	
+	def _debug_ensure_no_leaks(self):
+		return len(self.streams) == 0
 
 class HttpManager:
 	def __init__(self, streams):
@@ -42,6 +50,9 @@ class HttpManager:
 		self.requests = dict()
 
 		self.streams = streams
+	
+	def __repr__(self):
+		return str(self.requests)
 
 	def http_call(self, msg):
 		handle = self.next_id
@@ -82,10 +93,13 @@ class HttpManager:
 		for key, value in headers.items():
 			headers_multi[key].append(value)
 
-		return { "kind": "ok", "status": status, "headers": headers_multi, "body_handle": body_handle }
+		return { "kind": "ok", "status": status, "headers": headers_multi, "body_stream": body_handle }
 	
 	def _cleanup_http(self, handle):
 		del self.requests[handle]
+	
+	def _debug_ensure_no_leaks(self):
+		return len(self.requests) == 0
 
 class FsManager:
 	def __init__(self, streams):
@@ -111,7 +125,11 @@ class FsManager:
 		
 		handle = self.streams.register(open(path, mode))
 
-		return { "kind": "ok", "handle": handle }
+		return { "kind": "ok", "stream": handle }
+	
+	def _debug_ensure_no_leaks(self):
+		# we don't store metadata about files, so we defer to stream manager
+		return True
 
 class App:
 	def __init__(self):
@@ -160,12 +178,14 @@ class App:
 	
 	def __exit__(self, exc_type, exc_value, traceback):
 		self.fn_teardown(self.store)
+		self.debug_ensure_no_leaks()
 
 	def perform(self, map_name, input_value = None):
 		self.perform_map = map_name
 		self.perform_input = input_value
 		self.fn_perform(self.store)
 		self.perform_input = None
+		self.perform_map = None
 
 		output = self.perform_output
 		self.perform_output = None
@@ -191,6 +211,30 @@ class App:
 
 		return "Unknown message"
 
+	def debug_ensure_no_leaks(self):
+		"""
+		Ensure that all streams are closed and that there are no dangling http requests.
+		"""
+
+		leaks = []
+
+		if not self.streams._debug_ensure_no_leaks():
+			leaks.append("streams")
+			print("streams:", self.streams)
+		if not self.http._debug_ensure_no_leaks():
+			leaks.append("http")
+			print("http:", self.http)
+		if not self.fs._debug_ensure_no_leaks():
+			leaks.append("fs")
+			print("fs:", self.fs)
+		if not (self.perform_map is None and self.perform_input is None and self.perform_output is None):
+			leaks.append("perform")
+			print(f"perform: ({self.perform_input}, {self.perform_map}, {self.perform_output})")
+		
+		if len(leaks) > 0:
+			raise RuntimeError("Leaks were found in: " + ", ".join(leaks))
+		
+
 MAP_NAME = sys.argv[2]  # skip running file name and core name
 APP = App()
 
@@ -198,10 +242,14 @@ sf_host.link(APP)
 APP.load_wasi_module(sys.argv[1])
 
 with APP as app:
+	print("host: ==================================================")
 	print("host: result:", app.perform(MAP_NAME, { "person": 1 }))
 	print("host: ==================================================")
-	print("host: result2:", app.perform(MAP_NAME, { "person": 2, "debug_stream": { "__type": "iostream", "handle": 123 } }))
+	debug_stream = app.streams.register(SimpleNamespace(close = lambda: None))
+	print("host: result2:", app.perform(MAP_NAME, { "person": 2, "debug_stream": { "$StructuredValue::Stream": debug_stream } }))
 	print("host: ==================================================")
 
-	time.sleep(5) # wait here to trigger recache
+	print("host: waiting 5 seconds to trigger recache...")
+	time.sleep(5)
 	print("host: result3:", app.perform(MAP_NAME, 3))
+	print("host: ==================================================")

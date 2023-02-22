@@ -52,7 +52,7 @@ macro_rules! define_exchange {
         }
     ) => {
         $( #[$in_attr] )*
-        #[derive(Serialize)]
+        #[derive(Debug, Serialize)]
         struct $name $(< $($lifetimes),+ >)? {
             kind: &'static str,
             $(
@@ -78,7 +78,7 @@ macro_rules! define_exchange {
         }
 
         $( #[$out_attr] )*
-        #[derive(Deserialize)]
+        #[derive(Debug, Deserialize)]
         #[serde(tag = "kind")]
         #[serde(rename_all = "kebab-case")]
         enum $response_name {
