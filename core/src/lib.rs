@@ -7,6 +7,7 @@ use sf_core::SuperfaceCore;
 
 static GLOBAL_STATE: Mutex<Option<SuperfaceCore>> = Mutex::new(None);
 
+// WASI functions which would be automatically called from `_start`, but we need to explicitly call them since we are a lib.
 extern "C" {
     fn __wasm_call_ctors();
     fn __wasm_call_dtors();
@@ -18,6 +19,7 @@ extern "C" {
 ///
 /// This function must not be called twice without calling teardown in between.
 pub extern "C" fn __export_superface_core_setup() {
+    // call ctors first
     unsafe { __wasm_call_ctors() };
     println!("core: superface_core_setup called");
 
@@ -37,15 +39,17 @@ pub extern "C" fn __export_superface_core_setup() {
 /// This function must be called exactly once after calling core setup.
 pub extern "C" fn __export_superface_core_teardown() {
     println!("core: superface_core_teardown called");
-    unsafe { __wasm_call_dtors() };
 
     let mut lock = GLOBAL_STATE.lock().unwrap(); // TODO: this will usually fail if perform panicked - decide what to do
     if lock.is_none() {
-        panic!("Not setup or already teardown");
+        panic!("Not setup or already torn down");
     }
 
     let state = lock.take();
     std::mem::drop(state); // just to be explicit, would be dropped implicitly anyway
+
+    // call dtors last
+    unsafe { __wasm_call_dtors() };
 }
 
 #[no_mangle]

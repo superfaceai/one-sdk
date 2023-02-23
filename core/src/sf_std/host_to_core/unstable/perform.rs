@@ -41,7 +41,7 @@ pub fn perform_input() -> PerformInput {
             map_input,
         } => PerformInput {
             map_name,
-            map_input
+            map_input,
         },
     }
 }

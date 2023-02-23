@@ -9,6 +9,9 @@ use crate::sf_std::abi::{bits::Size, error::from_wasi_errno};
 // the use it with `std::fs::File::from_raw_fd`, but the ability to allocate/inject fds into
 // wasi context is not available in all host runtimes (i.e. wasmtime-py does not expose this
 // even though wasmtime rust crate has this API).
+//
+// Instead we rely on our own read/write/close methods and only expose `Read` and `Write` for now. the `fs::File` API will still work
+// but only for files which have been preopened through WASI.
 
 define_exchange! {
     struct InFileOpen<'a> {
@@ -31,7 +34,7 @@ define_exchange! {
 
 /// File open options.
 ///
-/// See <https://doc.rust-lang.org/std/fs/struct.OpenOptions.html>.
+/// See [std::fs::OpenOptions].
 pub struct OpenOptions {
     read: bool,
     write: bool,

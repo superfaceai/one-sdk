@@ -19,11 +19,14 @@
 ///         foo: &'a str,
 ///         bar: u32
 ///     } -> enum OutMessage {
+///         // "kind": "ok"
 ///         Ok {
 ///            baz: String,
 ///            bar: f32
 ///         },
+///         // "kind": "try-again"
 ///         TryAgain,
+///         // "kind": "err"
 ///         Err {
 ///             error: String
 ///         }

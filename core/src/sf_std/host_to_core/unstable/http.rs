@@ -92,7 +92,6 @@ impl HttpRequest {
             .unwrap();
 
         match exchange_response {
-            // TODO: propagate out
             OutHttpCallRetrieveHead::Err { error } => {
                 Err(format!("HttpCallRetrieveHead error: {}", error))
             }
