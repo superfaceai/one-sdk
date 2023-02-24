@@ -79,6 +79,20 @@ impl ctm_unstable::SfCoreUnstable for InterpreterState {
 
         return count;
     }
+
+    fn handle_message(&mut self, message: &[u8]) -> Vec<u8> {
+        vec![message.len() as u8]
+    }
+
+    fn store_message(&mut self, message: Vec<u8>) -> usize {
+        // TODO: implement
+        0
+    }
+
+    fn retrieve_message(&mut self, id: usize) -> Option<Vec<u8>> {
+        // TODO: implement
+        None
+    }
 }
 
 #[derive(Debug)]
@@ -108,7 +122,7 @@ impl Interpreter {
         let mut store = Store::<InterpreterState>::new(&engine, InterpreterState::new());
         let mut linker = Linker::<InterpreterState>::new();
 
-        ctm_unstable::link_to(&mut linker, &mut store).context("Failed to export sf_unstable")?;
+        ctm_unstable::link(&mut linker, &mut store).context("Failed to export sf_unstable")?;
 
         Ok(Self {
             engine,

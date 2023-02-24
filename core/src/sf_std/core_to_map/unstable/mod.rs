@@ -1,7 +1,9 @@
 use anyhow::Context;
 use wasmi::{core::Trap, Caller, Extern, Func, Linker, Store};
 
-use super::mem_as_str;
+use crate::sf_std::abi::{AbiPair, AbiResult, PairRepr, Ptr, ResultRepr, Size};
+
+use super::{mem_as_str, PtrWasmi, SizeWasmi};
 
 const MODULE_NAME: &str = "sf_core_unstable";
 
@@ -13,10 +15,14 @@ pub trait SfCoreUnstable {
     fn http_get(&mut self, url: &str, headers: &[[&str; 2]]) -> HttpHandle;
     // fn http_response_headers(&mut self, handle: HttpHandle, ) TODO
     fn http_response_read(&mut self, handle: HttpHandle, out: &mut [u8]) -> usize;
+
+    fn handle_message(&mut self, message: &[u8]) -> Vec<u8>;
+    fn store_message(&mut self, message: Vec<u8>) -> usize;
+    fn retrieve_message(&mut self, id: usize) -> Option<Vec<u8>>;
 }
 
 // TODO: should not be anyhow::Result
-pub fn link_to<H: SfCoreUnstable>(
+pub fn link<H: SfCoreUnstable + 'static>(
     linker: &mut Linker<H>,
     mut store: &mut Store<H>,
 ) -> anyhow::Result<()> {
@@ -27,7 +33,7 @@ pub fn link_to<H: SfCoreUnstable>(
     // TODO: maybe should be in env::abort?
     linker
         .define(MODULE_NAME, "abort", abort)
-        .context("Failed to define sf_unstable::abort")?;
+        .context("Failed to define sf_core_unstable::abort")?;
 
     let test_me = Func::wrap(
         &mut store,
@@ -37,7 +43,7 @@ pub fn link_to<H: SfCoreUnstable>(
     );
     linker
         .define(MODULE_NAME, "test_me", test_me)
-        .context("Failed to define sf_unstable::test_me")?;
+        .context("Failed to define sf_core_unstable::test_me")?;
 
     let http_get = Func::wrap(
         &mut store,
@@ -68,7 +74,7 @@ pub fn link_to<H: SfCoreUnstable>(
     );
     linker
         .define(MODULE_NAME, "http_get", http_get)
-        .context("Failed to define sf_unstable::http_get")?;
+        .context("Failed to define sf_core_unstable::http_get")?;
 
     let http_read_response = Func::wrap(
         &mut store,
@@ -87,7 +93,123 @@ pub fn link_to<H: SfCoreUnstable>(
     );
     linker
         .define(MODULE_NAME, "http_read_response", http_read_response)
-        .context("Failed to define sf_unstable::http_read_response")?;
+        .context("Failed to define sf_core_unstable::http_read_response")?;
+
+    linker
+        .define(
+            MODULE_NAME,
+            "message_exchange",
+            Func::wrap(&mut store, __export_message_exchange::<H>),
+        )
+        .context("Failed to define sf_core_unstable::message_exchange")?;
+
+    linker
+        .define(
+            MODULE_NAME,
+            "message_exchange_retrieve",
+            Func::wrap(&mut store, __export_message_exchange_retrieve::<H>),
+        )
+        .context("Failed to define sf_core_unstable::message_exchange_retrieve")?;
+
+    linker
+        .define(
+            MODULE_NAME,
+            "print",
+            Func::wrap(&mut store, __export_print::<H>),
+        )
+        .context("Failed to define sf_core_unstable::print")?;
 
     Ok(())
+}
+
+fn __export_message_exchange<H: SfCoreUnstable + 'static>(
+    mut caller: Caller<'_, H>,
+    msg_ptr: PtrWasmi,
+    msg_len: SizeWasmi,
+    out_ptr: PtrWasmi,
+    out_len: SizeWasmi,
+) -> PairRepr {
+    let msg_ptr = msg_ptr as Ptr;
+    let msg_len = msg_len as Size;
+    let out_ptr = out_ptr as Ptr;
+    let out_len = out_len as Size;
+
+    let memory = caller
+        .get_export("memory")
+        .and_then(Extern::into_memory)
+        .unwrap();
+    let (memory, state) = memory.data_and_store_mut(&mut caller);
+
+    let msg_bytes = &memory[msg_ptr..][..msg_len];
+    let response = state.handle_message(msg_bytes);
+    let response_len = response.len();
+
+    let response_handle = if response_len <= out_len {
+        let written = response_len.min(out_len);
+        memory[out_ptr..][..written].copy_from_slice(&response);
+
+        0
+    } else {
+        state.store_message(response)
+    };
+
+    AbiPair(response_len, response_handle).into()
+}
+
+fn __export_message_exchange_retrieve<H: SfCoreUnstable + 'static>(
+    mut caller: Caller<'_, H>,
+    handle: SizeWasmi,
+    out_ptr: PtrWasmi,
+    out_len: SizeWasmi,
+) -> ResultRepr {
+    let handle = handle as Size;
+    let out_ptr = out_ptr as Ptr;
+    let out_len = out_len as Size;
+
+    let memory = caller
+        .get_export("memory")
+        .and_then(Extern::into_memory)
+        .unwrap();
+    let (memory, state) = memory.data_and_store_mut(&mut caller);
+
+    match state.retrieve_message(handle) {
+        None => AbiResult::Err(1), // TODO: wasi errno
+        Some(response) => {
+            let response_len = response.len();
+
+            if response_len <= out_len {
+                let written = response_len.min(out_len);
+                memory[out_ptr..][..written].copy_from_slice(&response);
+
+                AbiResult::Ok(written)
+            } else {
+                // TODO: this drops the message and thus it won't be retrievable anymore - what do?
+                //  although this error should never happen with a comforming guest
+                // TODO: wasi errno
+                AbiResult::Err(2)
+            }
+        }
+    }
+    .into()
+}
+
+fn __export_print<H: SfCoreUnstable + 'static>(
+    mut caller: Caller<'_, H>,
+    msg_ptr: PtrWasmi,
+    msg_len: SizeWasmi,
+) {
+    let msg_ptr = msg_ptr as Ptr;
+    let msg_len = msg_len as Size;
+
+    let memory = caller
+        .get_export("memory")
+        .and_then(Extern::into_memory)
+        .unwrap();
+    let memory = memory.data(&mut caller);
+
+    let msg_bytes = &memory[msg_ptr..][..msg_len];
+    match std::str::from_utf8(msg_bytes) {
+        Ok(message) => println!("{}", message),
+        Err(err) => println!("Failed to print from map: {}", err),
+    }
 }

@@ -68,6 +68,6 @@ pub extern "C" fn __export_superface_core_perform() {
         // if there is an error here that means the core couldn't send a message
         // to the host
         // TODO: should be call teardown and abort or let the host call teardown?
-        println!("core: perform error: {}", err);
+        println!("core: perform error: {:#}", err);
     }
 }

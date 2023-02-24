@@ -146,5 +146,5 @@ pub enum JsonMessageError {
 
 pub use self::{
     bits::{AbiPair, PairRepr, Ptr, Size},
-    result::{AbiResult, ResultRepr, err_from_wasi_errno},
+    result::{err_from_wasi_errno, AbiResult, ResultRepr},
 };

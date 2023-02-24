@@ -6,7 +6,7 @@ base=$(dirname "$0")
 
 build_wat() {
 	local name="$1"
-	wasm-tools parse "$base/wat/$name.wat" -o "$base/wasm/$name.wasm"
+	wasm-tools parse "$base/wat/$name.wat" -o "$base/wasm/$name.wasm" || exit 1
 }
 
 build_asc() {
@@ -14,7 +14,7 @@ build_asc() {
 
 	cd "$base/asc"
 	yarn install
-	yarn run asbuild:release --disable bulk-memory --use abort=assembly/sf_core_unstable/abort_std
+	yarn run asbuild:release --disable bulk-memory --use abort=assembly/sf_core_unstable/abort_std || exit 1
 	cd -
 	
 	cp "$base/asc/build/release.wasm" "$base/wasm/$name.wasm"
