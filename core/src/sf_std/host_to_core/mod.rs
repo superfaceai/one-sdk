@@ -75,7 +75,7 @@ macro_rules! define_exchange {
                 }
             }
 
-            pub fn send_json(&self, fun: &$crate::sf_std::abi::MessageFn) -> Result<$response_name, $crate::sf_std::abi::InvokeJsonMessageError> {
+            pub fn send_json(&self, fun: &$crate::sf_std::host_to_core::abi::MessageFn) -> Result<$response_name, $crate::sf_std::abi::JsonMessageError> {
                 fun.invoke_json(self)
             }
         }
@@ -95,4 +95,5 @@ macro_rules! define_exchange {
     };
 }
 
+pub mod abi;
 pub mod unstable;

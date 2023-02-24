@@ -26,13 +26,13 @@ impl ctm_unstable::SfCoreUnstable for InterpreterState {
     fn test_me(&mut self, value: i32) -> Result<i32, Trap> {
         eprintln!("core: test_me({})", value);
 
-        return Err(ResumableMarkerTrap::TestMeFn(value).into());
+        Err(ResumableMarkerTrap::TestMeFn(value).into())
     }
 
     fn abort(&mut self) -> Result<(), Trap> {
         eprintln!("core: abort()");
 
-        return Err(ResumableMarkerTrap::Abort.into());
+        Err(ResumableMarkerTrap::Abort.into())
     }
 
     fn http_get(&mut self, url: &str, headers: &[[&str; 2]]) -> ctm_unstable::HttpHandle {

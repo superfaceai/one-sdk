@@ -2,11 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::sf_std::abi::{
-    bits::{PairRepr, Ptr, Size},
-    error::ResultRepr,
-    MessageFn, StreamFn,
-};
+use super::abi::{MessageFn, StreamFn};
+use crate::sf_std::abi::{PairRepr, Ptr, ResultRepr, Size};
 
 pub mod fs;
 pub mod http;
@@ -137,7 +134,7 @@ extern "C" fn __import_stream_write(_handle: Size, _in_ptr: Ptr, _in_len: Size) 
 }
 #[cfg(test)]
 extern "C" fn __import_stream_close(handle: Size) -> ResultRepr {
-    use crate::sf_std::abi::error::AbiResult;
+    use crate::sf_std::abi::AbiResult;
     // this is actually called in tests which construct IoStreams, so we always succeed here
     // TODO: this should possibly be configurable on per-test basis
     assert_ne!(handle, 0);
