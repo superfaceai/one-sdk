@@ -22,7 +22,7 @@
 //! Streams are byte sequences of unknown length. They use POSIX-style `read` and `write` functions to transfer data with ABI
 //! taken from WASI `fd_read` and `fd_write`. See <https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#fd_read>.
 
-pub mod bits {
+mod bits {
     //! Here we define bit sizes of types we need.
     //!
     //! We can mostly rely on rust `usize` which is both pointer- and `size_t`-sized.
@@ -78,7 +78,7 @@ pub mod bits {
     }
 }
 
-pub mod result {
+mod result {
     //! WASI errno definitions.
     //!
     //! See <https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-errno-variant>.
@@ -104,7 +104,7 @@ pub mod result {
         pub fn into_io_result(self) -> std::io::Result<bits::Size> {
             match self {
                 Self::Ok(value) => Ok(value),
-                Self::Err(err) => Err(from_wasi_errno(err)),
+                Self::Err(err) => Err(err_from_wasi_errno(err)),
             }
         }
     }
@@ -129,7 +129,7 @@ pub mod result {
         }
     }
 
-    pub fn from_wasi_errno(errno: bits::Size) -> std::io::Error {
+    pub fn err_from_wasi_errno(errno: bits::Size) -> std::io::Error {
         std::io::Error::from_raw_os_error(errno as i32)
     }
 }
@@ -146,5 +146,5 @@ pub enum JsonMessageError {
 
 pub use self::{
     bits::{AbiPair, PairRepr, Ptr, Size},
-    result::{AbiResult, ResultRepr},
+    result::{AbiResult, ResultRepr, err_from_wasi_errno},
 };

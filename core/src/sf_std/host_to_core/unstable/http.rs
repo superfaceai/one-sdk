@@ -3,7 +3,7 @@ use std::{collections::HashMap, io::Read};
 use serde::{Deserialize, Serialize};
 
 use super::{IoStream, EXCHANGE_MESSAGE};
-use crate::sf_std::abi::bits::Size;
+use crate::sf_std::abi::Size;
 
 #[derive(Debug, Serialize)]
 enum InHttpCallBody<'a> {
