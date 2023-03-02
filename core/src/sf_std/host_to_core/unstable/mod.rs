@@ -2,7 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::abi::{MessageFn, StreamFn};
+use super::{
+    abi::{MessageFn, StreamFn},
+    MessageExchange,
+};
 use crate::sf_std::abi::{PairRepr, Ptr, ResultRepr, Size};
 
 pub mod fs;

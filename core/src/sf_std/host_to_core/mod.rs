@@ -8,7 +8,7 @@
 /// the struct and its fields. Defines a response enum with newtype or struct variants and kebab-case kind.
 ///
 /// Defines a `new` method which automatically fills `kind` field.
-/// Defines a convenience `send_json` method which ties the message with its response.
+/// Implements trait `MessageExchange`.
 ///
 /// For example, the following defines `InMessage` with kind `my-kind` and two fields and defines a response `OutMessage` enum with three
 /// variants with kinds `ok`, `try-again`, and `err`, each with different number of fields.
@@ -66,6 +66,7 @@ macro_rules! define_exchange {
         impl $(< $($lifetimes),+ >)? $name $(< $($lifetimes),+ >)? {
             pub const KIND: &'static str = $kind;
 
+            #[allow(unused)]
             pub fn new(
                 $( $field_name: $field_type ),*
             ) -> Self {
@@ -74,10 +75,9 @@ macro_rules! define_exchange {
                     $( $field_name ),*
                 }
             }
-
-            pub fn send_json(&self, fun: &$crate::sf_std::host_to_core::abi::MessageFn) -> Result<$response_name, $crate::sf_std::abi::JsonMessageError> {
-                fun.invoke_json(self)
-            }
+        }
+        impl $(< $($lifetimes),+ >)? $crate::sf_std::host_to_core::MessageExchange for $name $(< $($lifetimes),+ >)? {
+            type Response = $response_name;
         }
 
         $( #[$out_attr] )*
@@ -93,6 +93,20 @@ macro_rules! define_exchange {
             ),+
         }
     };
+}
+
+use serde::{de::DeserializeOwned, Serialize};
+
+use super::abi::JsonMessageError;
+use abi::MessageFn;
+
+trait MessageExchange: Sized + Serialize {
+    type Response: DeserializeOwned;
+
+    /// Convenience for invoking `fun` and expecting `Self::Response`.
+    fn send_json(&self, fun: &MessageFn) -> Result<Self::Response, JsonMessageError> {
+        fun.invoke_json(self)
+    }
 }
 
 pub mod abi;

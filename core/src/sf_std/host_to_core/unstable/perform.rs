@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{ser::SerializeMap, Deserialize, Serialize};
 
-use super::{IoStream, EXCHANGE_MESSAGE};
+use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
 
 define_exchange! {
     struct InPerformInput {
@@ -16,9 +16,9 @@ define_exchange! {
 }
 
 define_exchange! {
-    struct InPerformOutput {
+    struct InPerformOutput<'a> {
         kind: "perform-output",
-        map_result: StructuredValue
+        map_result: &'a StructuredValue
     } -> enum OutPerformOutput {
         Ok
     }
@@ -29,11 +29,7 @@ pub struct PerformInput {
     pub map_input: StructuredValue,
 }
 pub fn perform_input() -> PerformInput {
-    let response = InPerformInput {
-        kind: InPerformInput::KIND,
-    }
-    .send_json(&EXCHANGE_MESSAGE)
-    .unwrap();
+    let response = InPerformInput::new().send_json(&EXCHANGE_MESSAGE).unwrap();
 
     match response {
         OutPerformInput::Ok {
@@ -50,12 +46,9 @@ pub struct PerformOutput {
     pub map_result: StructuredValue,
 }
 pub fn perform_output(output: PerformOutput) {
-    let response = InPerformOutput {
-        kind: InPerformOutput::KIND,
-        map_result: output.map_result,
-    }
-    .send_json(&EXCHANGE_MESSAGE)
-    .unwrap();
+    let response = InPerformOutput::new(&output.map_result)
+        .send_json(&EXCHANGE_MESSAGE)
+        .unwrap();
 
     match response {
         OutPerformOutput::Ok => (),
@@ -261,7 +254,7 @@ mod test {
     fn test_message_in_perform_output() {
         let actual = serde_json::to_value(InPerformOutput {
             kind: InPerformOutput::KIND,
-            map_result: StructuredValue::String("hello".into()),
+            map_result: &StructuredValue::String("hello".into()),
         })
         .unwrap();
 

@@ -1,22 +1,17 @@
-use std::{collections::HashMap, io::Read};
+use std::io::Read;
 
 use serde::{Deserialize, Serialize};
 
-use super::{IoStream, EXCHANGE_MESSAGE};
-use crate::sf_std::abi::Size;
+use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
+use crate::sf_std::{abi::Size, HeadersMultiMap};
 
-#[derive(Debug, Serialize)]
-enum InHttpCallBody<'a> {
-    Data(&'a [u8]),
-    Stream, // TODO: make this work or decide not to support it for now
-}
 define_exchange! {
     struct InHttpCall<'a> {
         kind: "http-call",
         url: &'a str,
         method: &'a str,
-        headers: &'a HashMap<String, Vec<String>>,
-        body: Option<InHttpCallBody<'a>>
+        headers: &'a HeadersMultiMap,
+        body: Option<&'a [u8]>
     } -> enum OutHttpCall {
         Ok {
             #[serde(default)]
@@ -29,13 +24,13 @@ define_exchange! {
     }
 }
 define_exchange! {
-    struct InHttpCallRetrieveHead {
+    struct InHttpCallHead {
         kind: "http-call-head",
         handle: Size
-    } -> enum OutHttpCallRetrieveHead {
+    } -> enum OutHttpCallHead {
         Ok {
             status: u16,
-            headers: HashMap<String, Vec<String>>,
+            headers: HeadersMultiMap,
             body_stream: IoStream, // TODO: optional?
         },
         Err {
@@ -53,7 +48,7 @@ impl HttpRequest {
     pub fn fire(
         method: &str,
         url: &str,
-        headers: &HashMap<String, Vec<String>>,
+        headers: &HeadersMultiMap,
         body: Option<&[u8]>,
     ) -> Result<Self, String> {
         let response = InHttpCall {
@@ -61,7 +56,7 @@ impl HttpRequest {
             url,
             method,
             headers,
-            body: body.map(InHttpCallBody::Data),
+            body: body,
         }
         .send_json(&EXCHANGE_MESSAGE)
         .unwrap();
@@ -87,15 +82,13 @@ impl HttpRequest {
             return Ok(response);
         }
 
-        let exchange_response = InHttpCallRetrieveHead::new(self.handle)
+        let exchange_response = InHttpCallHead::new(self.handle)
             .send_json(&EXCHANGE_MESSAGE)
             .unwrap();
 
         match exchange_response {
-            OutHttpCallRetrieveHead::Err { error } => {
-                Err(format!("HttpCallRetrieveHead error: {}", error))
-            }
-            OutHttpCallRetrieveHead::Ok {
+            OutHttpCallHead::Err { error } => Err(format!("OutHttpCallHead error: {}", error)),
+            OutHttpCallHead::Ok {
                 status,
                 headers,
                 body_stream,
@@ -114,7 +107,7 @@ impl HttpRequest {
 
 pub struct HttpResponse {
     status: u16,
-    headers: HashMap<String, Vec<String>>,
+    headers: HeadersMultiMap,
     body: IoStream,
 }
 impl HttpResponse {
@@ -122,7 +115,7 @@ impl HttpResponse {
         self.status
     }
 
-    pub fn headers(&self) -> &HashMap<String, Vec<String>> {
+    pub fn headers(&self) -> &HeadersMultiMap {
         &self.headers
     }
 

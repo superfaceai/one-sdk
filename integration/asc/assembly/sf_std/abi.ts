@@ -1,3 +1,5 @@
+import { print } from './unstable';
+
 export type Ptr = usize;
 export type Size = usize;
 export type PairRepr = u64;
@@ -282,7 +284,28 @@ export class MessageFn {
     return response_buffer;
   }
 
+  /**
+  * Invokes message exchange by sending `M` and receiving `R`.
+  *
+  * `M` is expected to have a method `to_json(): string`.
+  *
+  * `R` is expected to have a trivial constructor `constructor()` and a `from_json(string)` method.
+  */
   public invoke_json<M, R>(message: M): R {
-    throw 'todo'
+    const message_json: string = message.to_json();
+    print(`Sending message: ${message_json}`);
+    const message_json_utf8 = String.UTF8.encode(message_json);
+
+    const response_json_utf8 = this.invoke(message_json_utf8);
+    const response_json = String.UTF8.decode(response_json_utf8);
+    print(`Response message: ${response_json}`);
+
+    // just like Java beans - trivial constructors and setters :gun:
+    const response: R = instantiate<R>();
+    response.from_json(response_json);
+    
+    return response;
   }
 }
+
+// TODO: StreamFn

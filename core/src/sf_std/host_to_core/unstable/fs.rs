@@ -2,16 +2,16 @@ use std::io;
 
 use serde::{Deserialize, Serialize};
 
-use super::{IoStream, EXCHANGE_MESSAGE};
+use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
 use crate::sf_std::abi::{err_from_wasi_errno, Size};
 
 // Initial idea was to use the file-open message to obtain a fd from the host
 // the use it with `std::fs::File::from_raw_fd`, but the ability to allocate/inject fds into
 // wasi context is not available in all host runtimes (i.e. wasmtime-py does not expose this
-// even though wasmtime rust crate has this API).
+// even though wasmtime rust crate has this API, wasmer is more complex).
 //
 // Instead we rely on our own read/write/close methods and only expose `Read` and `Write` for now. the `fs::File` API will still work
-// but only for files which have been preopened through WASI.
+// but only for files which have been preopened through WASI, otherwise we'll rely on out messages and streams.
 
 define_exchange! {
     struct InFileOpen<'a> {

@@ -4,15 +4,15 @@ use anyhow::Context;
 
 use wasmi::{
     core::{HostError, Trap},
-    Engine, Extern, Linker, Module, Store,
+    Engine, Extern, Linker, Module, Store, TypedResumableCall,
 };
 
 use crate::sf_std::core_to_map::unstable as ctm_unstable;
 use crate::sf_std::host_to_core::unstable::{http::HttpRequest, perform::StructuredValue};
 
 struct InterpreterState {
-    http_next_id: u32,
-    http_requests: HashMap<ctm_unstable::HttpHandle, HttpRequest>,
+    http_next_id: usize,
+    http_requests: HashMap<usize, HttpRequest>,
 }
 impl InterpreterState {
     pub fn new() -> Self {
@@ -23,18 +23,6 @@ impl InterpreterState {
     }
 }
 impl ctm_unstable::SfCoreUnstable for InterpreterState {
-    fn test_me(&mut self, value: i32) -> Result<i32, Trap> {
-        eprintln!("core: test_me({})", value);
-
-        Err(ResumableMarkerTrap::TestMeFn(value).into())
-    }
-
-    fn abort(&mut self) -> Result<(), Trap> {
-        eprintln!("core: abort()");
-
-        Err(ResumableMarkerTrap::Abort.into())
-    }
-
     fn http_get(&mut self, url: &str, headers: &[[&str; 2]]) -> ctm_unstable::HttpHandle {
         eprintln!("core: http_get({}, {:?})", url, headers);
 
@@ -57,7 +45,7 @@ impl ctm_unstable::SfCoreUnstable for InterpreterState {
 
         self.http_requests.insert(id, request);
 
-        id
+        id as _
     }
 
     fn http_response_read(&mut self, handle: ctm_unstable::HttpHandle, out: &mut [u8]) -> usize {
@@ -65,7 +53,7 @@ impl ctm_unstable::SfCoreUnstable for InterpreterState {
 
         let response = self
             .http_requests
-            .get_mut(&handle)
+            .get_mut(&(handle as _))
             .unwrap()
             .response()
             .unwrap();
@@ -74,37 +62,75 @@ impl ctm_unstable::SfCoreUnstable for InterpreterState {
 
         if count == 0 {
             // TODO: where to clean up the request?
-            self.http_requests.remove(&handle);
+            self.http_requests.remove(&(handle as _));
         }
 
         return count;
     }
 
-    fn handle_message(&mut self, message: &[u8]) -> Vec<u8> {
-        vec![message.len() as u8]
-    }
-
-    fn store_message(&mut self, message: Vec<u8>) -> usize {
+    fn store_message(&mut self, _message: Vec<u8>) -> usize {
         // TODO: implement
         0
     }
 
-    fn retrieve_message(&mut self, id: usize) -> Option<Vec<u8>> {
+    fn retrieve_message(&mut self, _id: usize) -> Option<Vec<u8>> {
         // TODO: implement
         None
+    }
+
+    fn abort(
+        &mut self,
+        message: &str,
+        filename: &str,
+        line: usize,
+        column: usize,
+    ) -> Result<(), Trap> {
+        Err(ResumableMarkerTrap::Abort(format!(
+            "{} in ({}:{}:{})",
+            message, filename, line, column
+        ))
+        .into())
+    }
+
+    fn print(&mut self, message: &str) -> Result<(), Trap> {
+        println!("map: {}", message);
+
+        Ok(())
+    }
+
+    fn http_call(&mut self, params: ctm_unstable::HttpRequest<'_>) -> usize {
+        let request = HttpRequest::fire(params.method, params.url, params.headers, params.body).unwrap();
+        
+        let id = self.http_next_id;
+        self.http_next_id += 1;
+        self.http_requests.insert(id, request);
+
+        id
+    }
+
+    fn http_call_head(&mut self, handle: usize) -> Result<ctm_unstable::HttpResponse, ctm_unstable::HttpCallHeadError> {
+        match self.http_requests.remove(&handle) {
+            None => Err(ctm_unstable::HttpCallHeadError::InvalidHandle),
+            Some(mut request) => match request.response() {
+                Err(err) => Err(ctm_unstable::HttpCallHeadError::ResponseError(err)),
+                Ok(response) => Ok(ctm_unstable::HttpResponse {
+                    status: response.status(),
+                    headers: response.headers().clone(),
+                    body_stream: ()
+                })
+            }
+        }
     }
 }
 
 #[derive(Debug)]
 enum ResumableMarkerTrap {
-    Abort,
-    TestMeFn(i32),
+    Abort(String),
 }
 impl fmt::Display for ResumableMarkerTrap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Abort => write!(f, "abort"),
-            Self::TestMeFn(arg1) => write!(f, "test_me({})", arg1),
+            Self::Abort(msg) => write!(f, "abort: {}", msg),
         }
     }
 }
@@ -159,40 +185,6 @@ impl Interpreter {
                     .context("Incorrectly typed entry symbol")
             })?;
 
-        // here we can `call_resumable` instead
-        /*
-        let mut partial = entry
-        .call_resumable(&mut store, input)
-        .context("Failed to call sf_entry")?;
-
-        while let TypedResumableCall::Resumable(invocation) = partial {
-            let mark = invocation
-                .host_error()
-                .downcast_ref::<ResumableMarkerTrap>()
-                .context("Resumed with an unknown trap")?;
-
-            eprintln!("core: partial: {:?}", mark);
-
-            partial = match mark {
-                ResumableMarkerTrap::Abort => {
-                    anyhow::bail!("Wasm aborted");
-                }
-                ResumableMarkerTrap::TestMeFn(param) => {
-                    let values = [Value::I32(param - 1)];
-                    invocation.resume(&mut store, &values)
-                }
-            }
-            .context("Failed to result sf_entry")?;
-        }
-
-        match partial {
-            TypedResumableCall::Finished(result) => {
-                println!("core: result: {}", result);
-            }
-            _ => unreachable!(),
-        };
-        */
-
         println!("core: map input: {:?}", input);
 
         let input_value = match input {
@@ -206,8 +198,23 @@ impl Interpreter {
             _ => todo!(),
         };
         let result = module_entry
-            .call(&mut self.store, input_value as i32)
+            .call_resumable(&mut self.store, input_value as i32)
             .context("Failed to call entry function")?;
+
+        let result = match result {
+            TypedResumableCall::Finished(result) => result,
+            TypedResumableCall::Resumable(invocation) => {
+                match invocation
+                    .host_error()
+                    .downcast_ref::<ResumableMarkerTrap>()
+                    .context("Resumed with an unknown trap")?
+                {
+                    ResumableMarkerTrap::Abort(message) => {
+                        anyhow::bail!("Wasm aborted: {}", message)
+                    }
+                }
+            }
+        };
         println!("core: result: {}", result);
 
         Ok(StructuredValue::Number(result.into()))

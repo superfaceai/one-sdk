@@ -19,12 +19,6 @@ export declare function http_get(url_ptr: ptr<u8>, url_len: usize, headers_ptr: 
 */
 export declare function http_read_response(handle: HttpHandle, out_ptr: ptr<u8>, out_len: usize): usize;
 
-export declare function abort(): void;
-
-export function abort_std(message: usize, fileName: usize, line: u32, column: u32): void {
-  abort();
-}
-
 export function http_get_std(url: string, headers: Array<string>): HttpHandle {
   const url_utf8 = String.UTF8.encode(url);
 
