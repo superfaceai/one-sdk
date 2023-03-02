@@ -30,34 +30,34 @@ pub enum StructuredValue {
     Array(Vec<StructuredValue>),
     String(String),
     Number(i64),
-    Bool(bool)
+    Bool(bool),
 }
 impl StructuredValue {
     pub fn unwrap_object(&self) -> &StructuredObject {
         match self {
             Self::Object(o) => o,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
     pub fn unwrap_array(&self) -> &[StructuredValue] {
         match self {
             Self::Array(a) => a,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
     pub fn unwrap_str(&self) -> &str {
         match self {
             Self::String(s) => s,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
     pub fn unwrap_number(&self) -> i64 {
         match self {
             Self::Number(n) => *n,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
@@ -80,7 +80,7 @@ impl<T: Into<StructuredValue>> From<Option<T>> for StructuredValue {
     fn from(value: Option<T>) -> Self {
         match value {
             None => Self::Null,
-            Some(t) => t.into()
+            Some(t) => t.into(),
         }
     }
 }
@@ -123,7 +123,7 @@ impl std::fmt::Debug for StructuredValue {
             Self::Array(arr) => f.debug_list().entries(arr.iter()).finish(),
             Self::String(s) => write!(f, "\"{}\"", s),
             Self::Number(n) => write!(f, "{}", n),
-            Self::Bool(b) => write!(f, "{}", b)
+            Self::Bool(b) => write!(f, "{}", b),
         }
     }
 }
@@ -137,11 +137,9 @@ impl From<JsonValue> for StructuredValue {
             JsonValue::Number(n) => Self::Number(n.as_i64().unwrap()),
             JsonValue::String(s) => Self::String(s),
             JsonValue::Array(array) => Self::Array(array.into_iter().map(|v| v.into()).collect()),
-            JsonValue::Object(obj) => Self::Object(
-                StructuredObject(BTreeMap::from_iter(
-                    obj.into_iter().map(|(key, value)| (key, value.into()))
-                ))
-            )
+            JsonValue::Object(obj) => Self::Object(StructuredObject(BTreeMap::from_iter(
+                obj.into_iter().map(|(key, value)| (key, value.into())),
+            ))),
         }
     }
 }
@@ -204,7 +202,9 @@ pub struct Multimap {
 }
 impl Multimap {
     pub fn new() -> Self {
-        Self { map: Default::default() }
+        Self {
+            map: Default::default(),
+        }
     }
 
     pub fn add(&mut self, key: String, value: String) {
@@ -530,7 +530,7 @@ pub enum HttpRequestError {
 pub struct HttpResponse {
     status: u16,
     headers: Multimap,
-    body: Option<StructuredValue>
+    body: Option<StructuredValue>,
 }
 impl HttpResponse {
     pub fn status(&self) -> u16 {
@@ -538,7 +538,9 @@ impl HttpResponse {
     }
 
     pub fn content_type(&self) -> Option<&str> {
-        self.headers.get("content-type").and_then(|h| h.get(0).map(|s| s.as_str()))
+        self.headers
+            .get("content-type")
+            .and_then(|h| h.get(0).map(|s| s.as_str()))
     }
 
     pub fn body(&self) -> Option<&StructuredValue> {

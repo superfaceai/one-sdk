@@ -177,16 +177,14 @@ fn list_activities(input: StructuredValue) -> Result<StructuredValue, Structured
             let body = response.body().unwrap();
             let errors = body.get("errors").map(|e| e.unwrap_array());
 
-            let unauthorized_error = {
-                errors.and_then(|errors| {
-                    errors.iter().find(|err| {
-                        err.get("extensions")
-                            .and_then(|ext| ext.get("classification"))
-                            .map(|c| c.unwrap_str() == "UnauthorizedError")
-                            .unwrap_or(false)
-                    })
+            let unauthorized_error = errors.and_then(|errors| {
+                errors.iter().find(|err| {
+                    err.get("extensions")
+                        .and_then(|ext| ext.get("classification"))
+                        .map(|c| c.unwrap_str() == "UnauthorizedError")
+                        .unwrap_or(false)
                 })
-            };
+            });
             if let Some(err) = unauthorized_error {
                 return Err(object! {
                     "title" => "Unauthorized Error",
