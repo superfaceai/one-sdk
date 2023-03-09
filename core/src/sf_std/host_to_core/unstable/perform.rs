@@ -10,7 +10,10 @@ define_exchange! {
     } -> enum OutPerformInput {
         Ok {
             map_name: String,
-            map_input: StructuredValue
+            map_usecase: String,
+            map_input: StructuredValue,
+            map_parameters: StructuredValue,
+            map_security: StructuredValue
         }
     }
 }
@@ -26,7 +29,10 @@ define_exchange! {
 
 pub struct PerformInput {
     pub map_name: String,
+    pub map_usecase: String,
     pub map_input: StructuredValue,
+    pub map_parameters: StructuredValue,
+    pub map_security: StructuredValue,
 }
 pub fn perform_input() -> PerformInput {
     let response = InPerformInput::new().send_json(&EXCHANGE_MESSAGE).unwrap();
@@ -35,9 +41,15 @@ pub fn perform_input() -> PerformInput {
         OutPerformInput::Ok {
             map_name,
             map_input,
+            map_usecase,
+            map_parameters,
+            map_security,
         } => PerformInput {
             map_name,
+            map_usecase,
             map_input,
+            map_parameters,
+            map_security,
         },
     }
 }
@@ -236,16 +248,25 @@ mod test {
         let actual = json!({
             "kind": "ok",
             "map_name": "foo",
-            "map_input": true
+            "map_usecase": "bar",
+            "map_input": true,
+            "map_parameters": null,
+            "map_security": "banana"
         });
 
         match serde_json::from_value::<OutPerformInput>(actual).unwrap() {
             OutPerformInput::Ok {
                 map_name,
+                map_usecase,
                 map_input,
+                map_parameters,
+                map_security,
             } => {
                 assert_eq!(map_name, "foo");
+                assert_eq!(map_usecase, "bar");
                 assert_eq!(map_input, StructuredValue::Bool(true));
+                assert_eq!(map_parameters, StructuredValue::None);
+                assert_eq!(map_security, StructuredValue::String("banana".into()));
             }
         }
     }

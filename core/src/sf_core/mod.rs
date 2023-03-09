@@ -12,7 +12,7 @@ use crate::sf_std::host_to_core::unstable::{
 };
 
 mod interpreter;
-use interpreter::Interpreter;
+use interpreter::{quickjs::JsInterpreter, wasmi::WasmInterpreter, Interpreter};
 
 struct MapCacheEntry {
     store_time: Instant,
@@ -41,7 +41,8 @@ impl SuperfaceCore {
             _ => (),
         }
 
-        let file_name = format!("integration/wasm/{}.wasm", map_name);
+        // let file_name = format!("integration/wasm/{}.wasm", map_name);
+        let file_name = format!("integration/js/{}.js", map_name);
 
         let mut bytes = Vec::new();
         let mut file = OpenOptions::new()
@@ -76,12 +77,15 @@ impl SuperfaceCore {
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = Interpreter::new().context("Failed to initialize interpreter")?;
+        // let mut interpreter = WasmInterpreter::new().context("Failed to initialize interpreter")?;
+        let mut interpreter = JsInterpreter::new().context("Failed to initialize interpreter")?;
 
-        let entry_name = format!("sf_entry_{}", perform_input.map_name);
         let map_result = interpreter
-            .run(wasm, entry_name.as_str(), perform_input.map_input)
-            .context(format!("Failed to run map \"{}\"", entry_name))?;
+            .run(wasm, &perform_input.map_usecase, perform_input.map_input)
+            .context(format!(
+                "Failed to run map \"{}:{}\"",
+                perform_input.map_name, perform_input.map_usecase
+            ))?;
 
         perform_output(PerformOutput { map_result });
 

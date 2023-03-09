@@ -159,9 +159,7 @@ class App:
 		self.fs = FsManager(self.streams)
 
 		# perform state
-		self.perform_map = None
-		self.perform_input = None
-		self.perform_output = None
+		self.perform_state = None
 
 	def load_wasi_module(self, path):
 		module = Module.from_file(self.engine, path)
@@ -180,15 +178,25 @@ class App:
 		self.fn_teardown(self.store)
 		self.debug_ensure_no_leaks()
 
-	def perform(self, map_name, input_value = None):
-		self.perform_map = map_name
-		self.perform_input = input_value
+	def perform(
+		self,
+		map_name,
+		map_usecase,
+		map_input = None,
+		map_parameters = None,
+		map_security = None
+	):
+		self.perform_state = {
+			"map_name": map_name,
+			"map_usecase": map_usecase,
+			"map_input": map_input,
+			"map_parameters": map_parameters,
+			"map_security": map_security,
+			"map_output": None
+		}
 		self.fn_perform(self.store)
-		self.perform_input = None
-		self.perform_map = None
-
-		output = self.perform_output
-		self.perform_output = None
+		output = self.perform_state["map_output"]
+		self.perform_state = None
 		return output
 
 	def memory_data(self):
@@ -196,9 +204,16 @@ class App:
 
 	def handle_message(self, message):
 		if message["kind"] == "perform-input":
-			return { "kind": "ok", "map_name": self.perform_map, "map_input": self.perform_input }
+			return {
+				"kind": "ok",
+				"map_name": self.perform_state["map_name"],
+				"map_usecase": self.perform_state["map_usecase"],
+				"map_input": self.perform_state["map_input"],
+				"map_parameters": self.perform_state["map_parameters"],
+				"map_security": self.perform_state["map_security"]
+			}
 		if message["kind"] == "perform-output":
-			self.perform_output = message["map_result"]
+			self.perform_state["map_output"] = message["map_result"]
 			return { "kind": "ok" }
 
 		if message["kind"] == "http-call":
@@ -227,15 +242,16 @@ class App:
 		if not self.fs._debug_ensure_no_leaks():
 			leaks.append("fs")
 			print("fs:", self.fs)
-		if not (self.perform_map is None and self.perform_input is None and self.perform_output is None):
+		if self.perform_state is not None:
 			leaks.append("perform")
-			print(f"perform: ({self.perform_input}, {self.perform_map}, {self.perform_output})")
+			print(f"perform: {self.perform_state}")
 		
 		if len(leaks) > 0:
 			raise RuntimeError("Leaks were found in: " + ", ".join(leaks))
 		
 
 MAP_NAME = sys.argv[2]  # skip running file name and core name
+MAP_USECASE = sys.argv[3]
 APP = App()
 
 sf_host.link(APP)
@@ -243,13 +259,13 @@ APP.load_wasi_module(sys.argv[1])
 
 with APP as app:
 	print("host: ==================================================")
-	print("host: result:", app.perform(MAP_NAME, { "person": 1 }))
+	print("host: result:", app.perform(MAP_NAME, MAP_USECASE, { "person": 1 }, { "foo": "bar" }, { "baz": 1 }))
 	print("host: ==================================================")
 	debug_stream = app.streams.register(SimpleNamespace(close = lambda: None))
-	print("host: result2:", app.perform(MAP_NAME, { "person": 2, "debug_stream": { "$StructuredValue::Stream": debug_stream } }))
+	print("host: result2:", app.perform(MAP_NAME, MAP_USECASE, { "person": 2, "debug_stream": { "$StructuredValue::Stream": debug_stream } }))
 	print("host: ==================================================")
 
 	print("host: waiting 5 seconds to trigger recache...")
 	time.sleep(5)
-	print("host: result3:", app.perform(MAP_NAME, 3))
+	print("host: result3:", app.perform(MAP_NAME, MAP_USECASE, 3))
 	print("host: ==================================================")

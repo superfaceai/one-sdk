@@ -1,8 +1,0 @@
-[package]
-name = "interpreter-javy"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-quickjs-wasm-rs = { version = "0.1", features = [] }
-serde_json = "1"
