@@ -8,8 +8,8 @@ use crate::sf_std::{abi::Size, HeadersMultiMap};
 define_exchange! {
     struct InHttpCall<'a> {
         kind: "http-call",
-        url: &'a str,
         method: &'a str,
+        url: &'a str,
         headers: &'a HeadersMultiMap,
         body: Option<&'a [u8]>
     } -> enum OutHttpCall {
@@ -41,16 +41,15 @@ define_exchange! {
 
 pub struct HttpRequest {
     handle: usize,
-    response: Option<HttpResponse>,
 }
 impl HttpRequest {
-    // TODO: proper errors, not strings
+    // TODO: proper errors
     pub fn fire(
         method: &str,
         url: &str,
         headers: &HeadersMultiMap,
         body: Option<&[u8]>,
-    ) -> Result<Self, String> {
+    ) -> anyhow::Result<Self> {
         let response = InHttpCall {
             kind: InHttpCall::KIND,
             url,
@@ -67,40 +66,29 @@ impl HttpRequest {
                 handle,
             } => {
                 assert!(request_body_stream.is_none());
-                Ok(Self {
-                    handle,
-                    response: None,
-                })
+                Ok(Self { handle })
             }
-            OutHttpCall::Err { error } => Err(format!("HttpCall error: {}", error)),
+            OutHttpCall::Err { error } => anyhow::bail!("HttpCall error: {}", error),
         }
     }
 
-    // TODO: proper errors, not strings
-    pub fn response(&mut self) -> Result<&'_ mut HttpResponse, String> {
-        if let Some(ref mut response) = self.response {
-            return Ok(response);
-        }
-
+    // TODO: proper errors
+    pub fn into_response(&mut self) -> anyhow::Result<HttpResponse> {
         let exchange_response = InHttpCallHead::new(self.handle)
             .send_json(&EXCHANGE_MESSAGE)
             .unwrap();
 
         match exchange_response {
-            OutHttpCallHead::Err { error } => Err(format!("OutHttpCallHead error: {}", error)),
+            OutHttpCallHead::Err { error } => anyhow::bail!("OutHttpCallHead error: {}", error),
             OutHttpCallHead::Ok {
                 status,
                 headers,
                 body_stream,
-            } => {
-                self.response = Some(HttpResponse {
-                    status,
-                    headers,
-                    body: body_stream,
-                });
-
-                Ok(self.response.as_mut().unwrap())
-            }
+            } => Ok(HttpResponse {
+                status,
+                headers,
+                body: body_stream,
+            }),
         }
     }
 }
@@ -119,7 +107,15 @@ impl HttpResponse {
         &self.headers
     }
 
+    #[allow(dead_code)]
     pub fn body(&mut self) -> impl Read + '_ {
         &mut self.body
+    }
+
+    // like <https://docs.rs/hyper/latest/hyper/struct.Response.html#method.into_body>
+    pub fn into_body(self) -> IoStream {
+        let HttpResponse { body, .. } = self;
+
+        body
     }
 }

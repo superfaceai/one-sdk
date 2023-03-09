@@ -12,6 +12,7 @@ mod sf_std;
 
 pub struct JsInterpreter {
     context: Context,
+    #[allow(dead_code)]
     state: Rc<RefCell<InterpreterState>>,
 }
 impl JsInterpreter {
@@ -48,7 +49,6 @@ impl super::Interpreter for JsInterpreter {
             .eval_global("entry.js", &entry)
             .context("Failed to evaluate entry")?;
         let result = result.as_f64().unwrap();
-        println!("core: result: {}", result);
 
         Ok(StructuredValue::Number(
             serde_json::Number::from_f64(result).unwrap(),

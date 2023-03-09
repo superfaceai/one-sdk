@@ -12,7 +12,7 @@ use crate::sf_std::host_to_core::unstable::{
 };
 
 mod interpreter;
-use interpreter::{quickjs::JsInterpreter, wasmi::WasmInterpreter, Interpreter};
+use interpreter::{quickjs::JsInterpreter, Interpreter};
 
 struct MapCacheEntry {
     store_time: Instant,
@@ -83,7 +83,7 @@ impl SuperfaceCore {
         let map_result = interpreter
             .run(wasm, &perform_input.map_usecase, perform_input.map_input)
             .context(format!(
-                "Failed to run map \"{}:{}\"",
+                "Failed to run map \"{}::{}\"",
                 perform_input.map_name, perform_input.map_usecase
             ))?;
 

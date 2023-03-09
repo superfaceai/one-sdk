@@ -3,19 +3,19 @@ use thiserror::Error;
 
 use crate::sf_std::{abi::Size, HeadersMultiMap};
 
+#[allow(dead_code)]
 pub const MODULE_NAME: &str = "sf_core_unstable";
 
-pub type HttpHandle = u32;
 pub struct HttpRequest<'a> {
-    pub url: &'a str,
     pub method: &'a str,
+    pub url: &'a str,
     pub headers: &'a HeadersMultiMap,
     pub body: Option<&'a [u8]>,
 }
 pub struct HttpResponse {
     pub status: u16,
     pub headers: HeadersMultiMap,
-    pub body_stream: (),
+    pub body_stream: usize,
 }
 
 #[derive(Debug, Error)]
@@ -27,17 +27,14 @@ pub enum HttpCallHeadError {
 }
 
 pub trait SfCoreUnstable {
-    // old prototype
-    fn http_get(&mut self, url: &str, headers: &[[&str; 2]]) -> HttpHandle;
-    fn http_response_read(&mut self, handle: HttpHandle, out: &mut [u8]) -> usize;
-
-    // messaging - internal
-    fn store_message(&mut self, message: Vec<u8>) -> usize;
-    fn retrieve_message(&mut self, id: usize) -> Option<Vec<u8>>;
-
     // env
     fn print(&mut self, message: &str);
     fn abort(&mut self, message: &str, filename: &str, line: usize, column: usize) -> String;
+
+    // streams
+    fn stream_read(&mut self, handle: usize, buf: &mut [u8]) -> std::io::Result<usize>;
+    fn stream_write(&mut self, handle: usize, buf: &[u8]) -> std::io::Result<usize>;
+    fn stream_close(&mut self, handle: usize) -> std::io::Result<()>;
 
     // http
     fn http_call(&mut self, params: HttpRequest<'_>) -> usize;
@@ -52,9 +49,9 @@ pub trait SfCoreUnstable {
 #[serde(rename_all = "kebab-case")]
 enum MessageUnstable<'a> {
     HttpCall {
-        url: &'a str,
         method: &'a str,
-        // TODO: we could optimize this to borrow the data instead, but it would add complexity
+        url: &'a str,
+        // TODO: we could optimize this to borrow the strings instead (just like method and url), but it would add complexity
         // for performance which might not be critical
         headers: HeadersMultiMap,
         body: Option<Vec<u8>>,
@@ -72,9 +69,9 @@ enum OutHttpCall {
         request_body_stream: Option<()>, // TODO: streams
         handle: Size,
     },
-    Err {
-        error: String,
-    },
+    // Err {
+    //     error: String,
+    // },
 }
 
 #[derive(Serialize)]
@@ -84,29 +81,30 @@ enum OutHttpCallHead {
     Ok {
         status: u16,
         headers: HeadersMultiMap,
+        body_stream: usize,
     },
     Err {
         error: String,
     },
 }
-pub fn handle_message<H: SfCoreUnstable>(state: &mut H, message: &[u8]) -> Vec<u8> {
+pub fn handle_message<H: SfCoreUnstable>(state: &mut H, message: &[u8]) -> String {
     match serde_json::from_slice::<MessageUnstable>(message) {
         Err(err) => {
             let error = serde_json::json!({
                 "kind": "err",
                 "error": format!("Failed to deserialize message: {}", err)
             });
-            serde_json::to_vec(&error)
+            serde_json::to_string(&error)
         }
         Ok(MessageUnstable::HttpCall {
-            url,
             method,
+            url,
             headers,
             body,
         }) => {
             let handle = state.http_call(HttpRequest {
-                url,
                 method,
+                url,
                 headers: &headers,
                 body: body.as_deref(),
             });
@@ -114,7 +112,7 @@ pub fn handle_message<H: SfCoreUnstable>(state: &mut H, message: &[u8]) -> Vec<u
                 request_body_stream: None,
                 handle,
             };
-            serde_json::to_vec(&out)
+            serde_json::to_string(&out)
         }
         Ok(MessageUnstable::HttpCallHead { handle }) => {
             let out = match state.http_call_head(handle) {
@@ -125,9 +123,13 @@ pub fn handle_message<H: SfCoreUnstable>(state: &mut H, message: &[u8]) -> Vec<u
                     status,
                     headers,
                     body_stream,
-                }) => OutHttpCallHead::Ok { status, headers },
+                }) => OutHttpCallHead::Ok {
+                    status,
+                    headers,
+                    body_stream,
+                },
             };
-            serde_json::to_vec(&out)
+            serde_json::to_string(&out)
         }
     }
     .unwrap()

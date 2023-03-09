@@ -43,6 +43,7 @@ pub struct OpenOptions {
     create: bool,
     create_new: bool,
 }
+#[allow(dead_code)]
 impl OpenOptions {
     pub fn new() -> Self {
         Self {

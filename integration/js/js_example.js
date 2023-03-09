@@ -1,9 +1,9 @@
 function sf_entry(usecase_name) {
   if (usecase_name === 'RetrieveCharacterInformation') {
-    const input = sf_std.unstable.getInput();
+    const input = std.unstable.getInput();
     const result = RetrieveCharacterInformation(input);
-    sf_std.unstable.setOutput(result);
-    return result.code;
+    std.unstable.setOutput(result);
+    return result;
   } else {
     throw new Error('Unknown usecase name');
   }
@@ -46,7 +46,7 @@ map RetrieveCharacterInformation {
 */
 
 function RetrieveCharacterInformation(input) {
-  sf_std.unstable.print(`typeof HttpRequest ${typeof HttpRequest}`);
+  std.unstable.print(`typeof HttpRequest ${typeof HttpRequest}, typeof std ${typeof std}, typeof sf ${typeof sf}`);
 
   const url = `https://swapi.dev/api/people/${input.id}`;
   const headers = {
@@ -54,12 +54,10 @@ function RetrieveCharacterInformation(input) {
     'accept': ['application/json', 'application/xml']
   };
 
-  const response = sf_std.unstable.HttpRequest.fire('GET', url, headers, null).response();
-  sf_std.unstable.print(`test ${response.status}`);
+  const response = std.unstable.HttpRequest.fire('GET', url, headers, null).response();
+  std.unstable.print(`test ${response.status}`);
 
-  // const response_body = response.body.json();
+  const body = response.bodyBytes();
 
-  return {
-    code: response.status
-  };
+  return body.length;
 }

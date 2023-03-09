@@ -70,9 +70,9 @@ impl IoStream {
         Self(handle)
     }
 
-    pub(in crate::sf_std) fn to_raw_handle(&self) -> usize {
-        self.0
-    }
+    // pub(in crate::sf_std) fn to_raw_handle(&self) -> usize {
+    //     self.0
+    // }
 }
 impl std::io::Read for IoStream {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
