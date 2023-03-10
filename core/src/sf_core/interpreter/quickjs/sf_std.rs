@@ -36,12 +36,15 @@ macro_rules! link_into {
         $({
             let state = $state.clone();
             let fun = $context.wrap_callback(move |context, this, args| {
+                let result = $fn_impl(state.borrow_mut().deref_mut(), context, this, args).map_err(anyhow::Error::from);
+
                 eprint!("core: {}(this: {:?}", $key, JsValueDebug(&this));
                 for arg in args {
                     eprint!(", {:?}", JsValueDebug(arg));
                 }
-                eprintln!(")");
-                $fn_impl(state.borrow_mut().deref_mut(), context, this, args).map_err(anyhow::Error::from)
+                eprintln!(") -> {:?}", result.as_ref().map(JsValueDebug));
+
+                result
             }).context(concat!("Failed to define ", $key, " callback"))?;
             $parent.set_property($key, fun).context(concat!("Failed to set .", $key))?;
         })+
@@ -72,7 +75,7 @@ struct JsValueDebug<'a>(&'a JsValue);
 impl std::fmt::Debug for JsValueDebug<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
-            x if x.is_str() => write!(f, "\"{}\"", x.as_str().unwrap()),
+            x if x.is_str() => write!(f, "{:?}", x.as_str().unwrap()),
             x if x.is_array_buffer() => write!(f, "<ArrayBuffer>"),
             x if x.is_number() => write!(f, "{}", x.as_f64().unwrap()),
             x if x.is_bool() => write!(f, "{}", x.as_bool().unwrap()),
@@ -81,17 +84,21 @@ impl std::fmt::Debug for JsValueDebug<'_> {
             x if x.is_big_int() => write!(f, "{:?}", x.as_big_int_unchecked().unwrap()),
             x if x.is_function() => write!(f, "<Function>"),
             x => {
-                if let Ok(mut properties) = x.properties() {
-                    let mut map = f.debug_map();
-                    while let (Ok(Some(key)), Ok(value)) =
-                        (properties.next_key(), properties.next_value())
-                    {
-                        map.entry(&JsValueDebug(&key), &JsValueDebug(&value));
+                // only show functions when formatted with `{:#?}`
+                let show_functions = f.alternate();
+
+                let mut properties = x.properties().unwrap();
+                let mut map = f.debug_map();
+                while let (Ok(Some(key)), Ok(value)) =
+                    (properties.next_key(), properties.next_value())
+                {
+                    if value.is_function() && !show_functions {
+                        continue;
                     }
-                    return map.finish();
-                } else {
-                    unreachable!()
+
+                    map.entry(&JsValueDebug(&key), &JsValueDebug(&value));
                 }
+                return map.finish();
             }
         }
     }

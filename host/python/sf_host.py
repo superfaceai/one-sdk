@@ -213,7 +213,6 @@ def link(app):
 		except:
 			# TODO: what error - not sure what other exceptions can be caught here and why
 			return _abi_err(Errno.INVAL)
-		print(f"host: Read {len(data)} bytes from stream {handle}")
 
 		memory = app.memory_data()
 		read_count = _write_bytes(memory, out_ptr, out_len, data)
@@ -242,8 +241,7 @@ def link(app):
 		except:
 			# TODO: what error - not sure what other exceptions can be caught here and why
 			return _abi_err(Errno.INVAL)
-		
-		print(f"host: Wrote {write_count} bytes to stream {handle}")
+
 		return _abi_ok(write_count)
 		
 	app.linker.define_func(
@@ -257,8 +255,6 @@ def link(app):
 		stream = app.streams.close(handle)
 		if stream is None:
 			return _abi_err(Errno.BADF)
-
-		print(f"host: Closed stream {handle}")
 
 		return _abi_ok(0)
 	app.linker.define_func(

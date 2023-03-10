@@ -4,7 +4,7 @@ use quickjs_wasm_rs::Context;
 
 use anyhow::Context as AnyhowContext;
 
-use crate::sf_std::host_to_core::unstable::perform::StructuredValue;
+use crate::sf_std::host_to_core::unstable::HostValue;
 
 use super::state::InterpreterState;
 
@@ -32,26 +32,20 @@ impl JsInterpreter {
     }
 }
 impl super::Interpreter for JsInterpreter {
-    fn run(
-        &mut self,
-        code: &[u8],
-        entry: &str,
-        input: StructuredValue,
-    ) -> anyhow::Result<StructuredValue> {
+    fn run(&mut self, code: &[u8], entry: &str, input: HostValue) -> anyhow::Result<HostValue> {
+        self.state.borrow_mut().set_input(input);
+
         let script = std::str::from_utf8(code).context("Code must be valid utf8 text")?;
         let entry = format!("sf_entry(\"{}\")", entry);
 
         self.context
             .eval_global("map.js", script)
             .context("Failed to evaluate map code")?;
-        let result = self
-            .context
+        self.context
             .eval_global("entry.js", &entry)
             .context("Failed to evaluate entry")?;
-        let result = result.as_f64().unwrap();
+        let result = self.state.borrow_mut().take_output().unwrap();
 
-        Ok(StructuredValue::Number(
-            serde_json::Number::from_f64(result).unwrap(),
-        ))
+        Ok(result)
     }
 }

@@ -48,7 +48,7 @@ map RetrieveCharacterInformation {
 function RetrieveCharacterInformation(input) {
   std.unstable.print(`typeof HttpRequest ${typeof HttpRequest}, typeof std ${typeof std}, typeof sf ${typeof sf}`);
 
-  const url = `https://swapi.dev/api/people/${input.id}`;
+  const url = `https://swapi.dev/api/people/${input.person}`;
   const headers = {
     'foo': ['bar'],
     'accept': ['application/json', 'application/xml']

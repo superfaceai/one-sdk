@@ -13,8 +13,8 @@ use crate::sf_std::abi::{err_from_wasi_errno, Size};
 // Instead we rely on our own read/write/close methods and only expose `Read` and `Write` for now. the `fs::File` API will still work
 // but only for files which have been preopened through WASI, otherwise we'll rely on out messages and streams.
 
-define_exchange! {
-    struct InFileOpen<'a> {
+define_exchange_core_to_host! {
+    struct FileOpenRequest<'a> {
         kind: "file-open",
         path: &'a str,
         // Flags same as in <https://doc.rust-lang.org/std/fs/struct.OpenOptions.html>.
@@ -24,7 +24,7 @@ define_exchange! {
         truncate: bool,
         create: bool,
         create_new: bool,
-    } -> enum OutFileOpen {
+    } -> enum FileOpenResponse {
         Ok {
             stream: IoStream
         },
@@ -87,8 +87,8 @@ impl OpenOptions {
     }
 
     pub fn open(&self, path: &str) -> Result<IoStream, io::Error> {
-        let response = InFileOpen {
-            kind: InFileOpen::KIND,
+        let response = FileOpenRequest {
+            kind: FileOpenRequest::KIND,
             path,
             read: self.read,
             write: self.write,
@@ -101,8 +101,8 @@ impl OpenOptions {
         .unwrap();
 
         match response {
-            OutFileOpen::Ok { stream } => Ok(stream),
-            OutFileOpen::Err { errno } => Err(err_from_wasi_errno(errno)),
+            FileOpenResponse::Ok { stream } => Ok(stream),
+            FileOpenResponse::Err { errno } => Err(err_from_wasi_errno(errno)),
         }
     }
 }

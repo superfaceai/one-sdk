@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
 use crate::sf_std::{abi::Size, HeadersMultiMap};
 
-define_exchange! {
-    struct InHttpCall<'a> {
+define_exchange_core_to_host! {
+    struct HttpCallRequest<'a> {
         kind: "http-call",
         method: &'a str,
         url: &'a str,
         headers: &'a HeadersMultiMap,
         body: Option<&'a [u8]>
-    } -> enum OutHttpCall {
+    } -> enum HttpCallResponse {
         Ok {
             #[serde(default)]
             request_body_stream: Option<IoStream>,
@@ -23,11 +23,11 @@ define_exchange! {
         }
     }
 }
-define_exchange! {
-    struct InHttpCallHead {
+define_exchange_core_to_host! {
+    struct HttpCallHeadRequest {
         kind: "http-call-head",
         handle: Size
-    } -> enum OutHttpCallHead {
+    } -> enum HttpCallHeadResponse {
         Ok {
             status: u16,
             headers: HeadersMultiMap,
@@ -50,8 +50,8 @@ impl HttpRequest {
         headers: &HeadersMultiMap,
         body: Option<&[u8]>,
     ) -> anyhow::Result<Self> {
-        let response = InHttpCall {
-            kind: InHttpCall::KIND,
+        let response = HttpCallRequest {
+            kind: HttpCallRequest::KIND,
             url,
             method,
             headers,
@@ -61,26 +61,28 @@ impl HttpRequest {
         .unwrap();
 
         match response {
-            OutHttpCall::Ok {
+            HttpCallResponse::Ok {
                 request_body_stream,
                 handle,
             } => {
                 assert!(request_body_stream.is_none());
                 Ok(Self { handle })
             }
-            OutHttpCall::Err { error } => anyhow::bail!("HttpCall error: {}", error),
+            HttpCallResponse::Err { error } => anyhow::bail!("HttpCall error: {}", error),
         }
     }
 
     // TODO: proper errors
     pub fn into_response(&mut self) -> anyhow::Result<HttpResponse> {
-        let exchange_response = InHttpCallHead::new(self.handle)
+        let exchange_response = HttpCallHeadRequest::new(self.handle)
             .send_json(&EXCHANGE_MESSAGE)
             .unwrap();
 
         match exchange_response {
-            OutHttpCallHead::Err { error } => anyhow::bail!("OutHttpCallHead error: {}", error),
-            OutHttpCallHead::Ok {
+            HttpCallHeadResponse::Err { error } => {
+                anyhow::bail!("OutHttpCallHead error: {}", error)
+            }
+            HttpCallHeadResponse::Ok {
                 status,
                 headers,
                 body_stream,

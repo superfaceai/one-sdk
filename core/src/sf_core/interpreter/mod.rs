@@ -1,15 +1,9 @@
-use crate::sf_std::host_to_core::unstable::perform::StructuredValue;
+use crate::sf_std::host_to_core::unstable::HostValue;
 
 pub mod quickjs;
 mod state;
-// pub mod wasmi;
 
 pub trait Interpreter {
     // TODO: define errors and don't use anyhow?
-    fn run(
-        &mut self,
-        code: &[u8],
-        entry: &str,
-        input: StructuredValue,
-    ) -> anyhow::Result<StructuredValue>;
+    fn run(&mut self, code: &[u8], entry: &str, input: HostValue) -> anyhow::Result<HostValue>;
 }

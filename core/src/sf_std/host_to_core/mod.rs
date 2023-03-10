@@ -2,7 +2,7 @@
 //!
 //! This can be understood as the standard library provided by Host to the Core.
 
-/// Macro which defines the message exchange.
+/// Defines message exchanged initiated from core to the host.
 ///
 /// Defines a struct with given fields and possibly lifetimes. Allows attributes (including doc comments) on
 /// the struct and its fields. Defines a response enum with newtype or struct variants and kebab-case kind.
@@ -33,7 +33,7 @@
 ///     }
 /// }
 /// ```
-macro_rules! define_exchange {
+macro_rules! define_exchange_core_to_host {
     (
         $( #[$in_attr: meta] )*
         struct $name: ident $(< $($lifetimes: lifetime),+ $(,)?>)? {

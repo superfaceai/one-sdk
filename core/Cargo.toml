@@ -10,7 +10,6 @@ crate-type = ["cdylib"]
 anyhow = "1"
 thiserror = "1"
 
-wasmi = "0.25"
 quickjs-wasm-rs = { version = "0.1", features = [] }
 
 serde = { version = "1", features = ["derive"] }

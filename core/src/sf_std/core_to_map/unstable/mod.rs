@@ -1,10 +1,14 @@
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 use crate::sf_std::{abi::Size, HeadersMultiMap};
 
 #[allow(dead_code)]
 pub const MODULE_NAME: &str = "sf_core_unstable";
+
+pub type MapValue = JsonValue;
 
 pub struct HttpRequest<'a> {
     pub method: &'a str,
@@ -39,56 +43,80 @@ pub trait SfCoreUnstable {
     // http
     fn http_call(&mut self, params: HttpRequest<'_>) -> usize;
     fn http_call_head(&mut self, handle: usize) -> Result<HttpResponse, HttpCallHeadError>;
+
+    // input and output
+    fn get_input(&mut self) -> Option<MapValue>;
+    fn set_output(&mut self, output: MapValue);
 }
 
 //////////////
 // MESSAGES //
 //////////////
-#[derive(Deserialize)]
-#[serde(tag = "kind")]
-#[serde(rename_all = "kebab-case")]
-enum MessageUnstable<'a> {
-    HttpCall {
-        method: &'a str,
-        url: &'a str,
-        // TODO: we could optimize this to borrow the strings instead (just like method and url), but it would add complexity
-        // for performance which might not be critical
-        headers: HeadersMultiMap,
-        body: Option<Vec<u8>>,
-    },
-    HttpCallHead {
-        handle: usize,
-    },
+
+define_exchange_map_to_core! {
+    enum RequestUnstable<'a> {
+        // http
+        HttpCall {
+            method: &'a str,
+            url: &'a str,
+            // TODO: we could optimize this to borrow the strings instead (just like method and url), but it would add complexity
+            // for performance which might not be critical
+            headers: HeadersMultiMap,
+            body: Option<Vec<u8>>,
+        } -> enum HttpCallResponse {
+            Ok {
+                request_body_stream: Option<()>, // TODO: streams
+                handle: Size,
+            },
+            // Err {
+            //     error: String,
+            // },
+        },
+        HttpCallHead {
+            handle: usize,
+        } -> enum HttpCallHeadResponse {
+            Ok {
+                status: u16,
+                headers: HeadersMultiMap,
+                body_stream: usize,
+            },
+            Err {
+                error: String,
+            },
+        },
+        // {
+        //     let handle = state.http_call(HttpRequest {
+        //         method,
+        //         url,
+        //         headers: &headers,
+        //         body: body.as_deref(),
+        //     });
+        //     let out = Out::Ok {
+        //         request_body_stream: None,
+        //         handle,
+        //     };
+        //     serde_json::to_string(&out)
+        // },
+        // input and output
+        GetInput -> enum GetInputResponse {
+            Ok {
+                input: JsonValue
+            },
+            Err {
+                error: String
+            }
+        },
+        SetOutput { output: JsonValue } -> enum SetOutputResponse {
+            Ok,
+            Err {
+                error: String
+            }
+        }
+    }
 }
 
-#[derive(Serialize)]
-#[serde(tag = "kind")]
-#[serde(rename_all = "kebab-case")]
-enum OutHttpCall {
-    Ok {
-        request_body_stream: Option<()>, // TODO: streams
-        handle: Size,
-    },
-    // Err {
-    //     error: String,
-    // },
-}
-
-#[derive(Serialize)]
-#[serde(tag = "kind")]
-#[serde(rename_all = "kebab-case")]
-enum OutHttpCallHead {
-    Ok {
-        status: u16,
-        headers: HeadersMultiMap,
-        body_stream: usize,
-    },
-    Err {
-        error: String,
-    },
-}
 pub fn handle_message<H: SfCoreUnstable>(state: &mut H, message: &[u8]) -> String {
-    match serde_json::from_slice::<MessageUnstable>(message) {
+    match serde_json::from_slice::<RequestUnstable>(message) {
         Err(err) => {
             let error = serde_json::json!({
                 "kind": "err",
@@ -96,7 +124,7 @@ pub fn handle_message<H: SfCoreUnstable>(state: &mut H, message: &[u8]) -> Strin
             });
             serde_json::to_string(&error)
         }
-        Ok(MessageUnstable::HttpCall {
+        Ok(RequestUnstable::HttpCall {
             method,
             url,
             headers,
@@ -108,27 +136,42 @@ pub fn handle_message<H: SfCoreUnstable>(state: &mut H, message: &[u8]) -> Strin
                 headers: &headers,
                 body: body.as_deref(),
             });
-            let out = OutHttpCall::Ok {
+            let out = HttpCallResponse::Ok {
                 request_body_stream: None,
                 handle,
             };
             serde_json::to_string(&out)
         }
-        Ok(MessageUnstable::HttpCallHead { handle }) => {
+        Ok(RequestUnstable::HttpCallHead { handle }) => {
             let out = match state.http_call_head(handle) {
-                Err(err) => OutHttpCallHead::Err {
+                Err(err) => HttpCallHeadResponse::Err {
                     error: format!("{}", err),
                 },
                 Ok(HttpResponse {
                     status,
                     headers,
                     body_stream,
-                }) => OutHttpCallHead::Ok {
+                }) => HttpCallHeadResponse::Ok {
                     status,
                     headers,
                     body_stream,
                 },
             };
+            serde_json::to_string(&out)
+        }
+        Ok(RequestUnstable::GetInput) => {
+            let out = match state.get_input() {
+                None => GetInputResponse::Err {
+                    error: "Input already retrieved".to_string(),
+                },
+                Some(input) => GetInputResponse::Ok { input },
+            };
+            serde_json::to_string(&out)
+        }
+        Ok(RequestUnstable::SetOutput { output }) => {
+            state.set_output(output);
+
+            let out = SetOutputResponse::Ok;
             serde_json::to_string(&out)
         }
     }
