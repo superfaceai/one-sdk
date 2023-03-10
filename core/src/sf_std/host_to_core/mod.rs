@@ -36,7 +36,7 @@
 macro_rules! define_exchange_core_to_host {
     (
         $( #[$in_attr: meta] )*
-        struct $name: ident $(< $($lifetimes: lifetime),+ $(,)?>)? {
+        struct $name: ident $(<$life: lifetime>)? {
             kind: $kind: literal
             $(
                 ,
@@ -56,14 +56,14 @@ macro_rules! define_exchange_core_to_host {
     ) => {
         $( #[$in_attr] )*
         #[derive(Debug, Serialize)]
-        struct $name $(< $($lifetimes),+ >)? {
+        struct $name $(<$life>)? {
             kind: &'static str,
             $(
                 $( #[$in_field_attr] )*
                 $field_name: $field_type
             ),*
         }
-        impl $(< $($lifetimes),+ >)? $name $(< $($lifetimes),+ >)? {
+        impl $(<$life>)? $name $(<$life>)? {
             pub const KIND: &'static str = $kind;
 
             #[allow(unused)]
@@ -76,7 +76,7 @@ macro_rules! define_exchange_core_to_host {
                 }
             }
         }
-        impl $(< $($lifetimes),+ >)? $crate::sf_std::host_to_core::MessageExchange for $name $(< $($lifetimes),+ >)? {
+        impl $(<$life>)? $crate::sf_std::host_to_core::MessageExchange for $name $(<$life>)? {
             type Response = $response_name;
         }
 

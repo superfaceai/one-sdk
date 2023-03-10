@@ -58,9 +58,11 @@ class HttpManager:
 		handle = self.next_id
 		self.next_id += 1
 
+		method = msg["method"]
 		url = msg["url"]
 		headers = msg["headers"]
-		print(f"host: Making GET request to {url} with headers {headers}")
+		query = msg["query"]
+		print(f"host: Making {method} request to {url} with headers {headers}, query {query}")
 
 		# TODO: have to join to use this library
 		# we can use raw(er) http.client later
@@ -68,8 +70,8 @@ class HttpManager:
 		for key, value in headers.items():
 			headers_joined[key] = ",".join(value)
 
-		response = requests.get(
-			url, headers = headers_joined, stream = True
+		response = requests.request(
+			method, url, headers = headers_joined, params = query, stream = True
 		)
 		self.requests[handle] = {
 			"response": response,
@@ -259,10 +261,10 @@ APP.load_wasi_module(sys.argv[1])
 
 with APP as app:
 	print("host: ==================================================")
-	print("host: result:", app.perform(MAP_NAME, MAP_USECASE, { "person": 1 }, { "foo": "bar" }, { "baz": 1 }))
+	print("host: result:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Yoda" }, { "foo": "bar" }, { "baz": 1 }))
 	print("host: ==================================================")
 	debug_stream = app.streams.register(SimpleNamespace(close = lambda: None))
-	print("host: result2:", app.perform(MAP_NAME, MAP_USECASE, { "person": 2, "debug_stream": { "$StructuredValue::Stream": debug_stream } }))
+	print("host: result2:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Luke Skywalker", "debug_stream": { "$StructuredValue::Stream": debug_stream } }))
 	print("host: ==================================================")
 
 	print("host: waiting 5 seconds to trigger recache...")

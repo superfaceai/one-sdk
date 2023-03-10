@@ -47,8 +47,14 @@ globalThis.std.private = {
 
         extend(buffer) {
             this.reserve(buffer.byteLength);
-            this.#buffer.set(buffer, this.#len);
+            this.#buffer.set(new Uint8Array(buffer), this.len);
             this.#len += buffer.byteLength;
+        }
+
+        decode() {
+            // TODO: again support for TypedArrays in Javy
+            const buffer = this.#buffer.buffer.slice(0, this.len);
+            return std.ffi.unstable.decode_utf8(buffer);
         }
 
         static readStreamToEnd(handle) {
@@ -87,9 +93,9 @@ globalThis.std.unstable = {
         std.ffi.unstable.abort();
     },
     
-    getInput() {
+    takeInput() {
         const response = std.private.message_exchange({
-            kind: 'get-input'
+            kind: 'take-input'
         });
 
         if (response.kind === 'ok') {
@@ -111,23 +117,23 @@ globalThis.std.unstable = {
             throw new Error(response.error);
         }
     },
-    HttpRequest: class HttpRequest {
-        static fire(method, url, headers, body) {
-            const response = std.private.message_exchange({
-                kind: "http-call",
-                method,
-                url,
-                headers,
-                body
-            });
+    fetch(url, options) {
+        const response = std.private.message_exchange({
+            kind: "http-call",
+            method: options.method ?? 'GET',
+            url,
+            headers: options.headers ?? {},
+            query: options.query ?? {},
+            body: options.body ?? undefined
+        });
 
-            if (response.kind === "ok") {
-                return new HttpRequest(response.handle);
-            } else {
-                throw new Error(response.error);
-            }
+        if (response.kind === "ok") {
+            return new std.unstable.HttpRequest(response.handle);
+        } else {
+            throw new Error(response.error);
         }
-
+    },
+    HttpRequest: class HttpRequest {
         #handle;
         constructor(handle) {
             this.#handle = handle;
@@ -150,7 +156,9 @@ globalThis.std.unstable = {
         #bodyStream;
         constructor(status, headers, bodyStream) {
             this.status = status;
-            this.headers = headers;
+            this.headers = Object.fromEntries(
+                Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value])
+            );
             this.#bodyStream = bodyStream;
         }
 
@@ -158,12 +166,12 @@ globalThis.std.unstable = {
             const buffer = std.private.Bytes.readStreamToEnd(this.#bodyStream);
             std.ffi.unstable.stream_close(this.#bodyStream);
 
-            return buffer.data;
+            return buffer;
         }
 
         bodyText() {
             // TODO: possibly infer encoding from headers?
-            return std.ffi.unstable.decode_utf8(this.bodyBytes());
+            return this.bodyBytes().decode();
         }
 
         bodyJson() {

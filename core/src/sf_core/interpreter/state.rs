@@ -3,8 +3,9 @@ use std::io::{Read, Write};
 use slab::Slab;
 
 use crate::sf_std::core_to_map::unstable::{
-    HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
-    HttpResponse as MapHttpResponse, MapValue, SfCoreUnstable as MapSfCoreUnstable,
+    HttpCallError, HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
+    HttpResponse as MapHttpResponse, MapValue, SetOutputError, SfCoreUnstable as MapSfCoreUnstable,
+    TakeInputError,
 };
 use crate::sf_std::host_to_core::unstable::{http::HttpRequest, HostValue, IoStream};
 
@@ -93,11 +94,17 @@ impl MapSfCoreUnstable for InterpreterState {
         }
     }
 
-    fn http_call(&mut self, params: MapHttpRequest<'_>) -> usize {
-        let request =
-            HttpRequest::fire(params.method, params.url, params.headers, params.body).unwrap();
+    fn http_call(&mut self, params: MapHttpRequest<'_>) -> Result<usize, HttpCallError> {
+        let request = HttpRequest::fire(
+            params.method,
+            params.url,
+            params.headers,
+            params.query,
+            params.body,
+        )
+        .map_err(|err| HttpCallError::Failed(err.to_string()))?;
 
-        self.http_requests.insert(request)
+        Ok(self.http_requests.insert(request))
     }
 
     fn http_call_head(&mut self, handle: usize) -> Result<MapHttpResponse, MapHttpCallHeadError> {
@@ -114,16 +121,22 @@ impl MapSfCoreUnstable for InterpreterState {
         }
     }
 
-    fn get_input(&mut self) -> Option<MapValue> {
+    fn take_input(&mut self) -> Result<MapValue, TakeInputError> {
         // TODO: here we should transform HostValue into MapValue - i.e. especially transform custom objects (streams)
         self.map_input
             .take()
             .map(|v| serde_json::to_value(v).unwrap())
+            .ok_or(TakeInputError::AlreadyTaken)
     }
 
-    fn set_output(&mut self, output: MapValue) {
+    fn set_output(&mut self, output: MapValue) -> Result<(), SetOutputError> {
         // TODO: here we should transform MapValue into HostValue
-        assert!(self.map_output.is_none());
+
+        if self.map_output.is_some() {
+            return Err(SetOutputError::AlreadySet);
+        }
         self.map_output = Some(serde_json::from_value(output).unwrap());
+
+        Ok(())
     }
 }

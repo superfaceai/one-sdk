@@ -1,9 +1,8 @@
 function sf_entry(usecase_name) {
   if (usecase_name === 'RetrieveCharacterInformation') {
-    const input = std.unstable.getInput();
+    const input = std.unstable.takeInput();
     const result = RetrieveCharacterInformation(input);
     std.unstable.setOutput(result);
-    return result;
   } else {
     throw new Error('Unknown usecase name');
   }
@@ -46,18 +45,42 @@ map RetrieveCharacterInformation {
 */
 
 function RetrieveCharacterInformation(input) {
-  std.unstable.print(`typeof HttpRequest ${typeof HttpRequest}, typeof std ${typeof std}, typeof sf ${typeof sf}`);
-
-  const url = `https://swapi.dev/api/people/${input.person}`;
+  const url = `https://swapi.dev/api/people/`;
   const headers = {
     'foo': ['bar'],
     'accept': ['application/json', 'application/xml']
   };
+  const query = {
+    'search': [input.characterName]
+  };
 
-  const response = std.unstable.HttpRequest.fire('GET', url, headers, null).response();
-  std.unstable.print(`test ${response.status}`);
+  const response = std.unstable.fetch(url, {
+    method: 'GET',
+    headers,
+    query
+  }).response();
+  std.unstable.print(`response: ${response.status}`);
 
-  const body = response.bodyBytes();
+  if (response.status !== 200 || response.headers['content-type']?.indexOf('application/json') === -1) {
+    throw new Error('Unexpected response');
+  }
 
-  return body.length;
+  const body = response.bodyJson();
+  if (body.count === 0) {
+    // TODO: probably should be an exception too, just of a different kind
+    return { kind: 'err', message: 'no character found' };
+  }
+
+  const entries = body.results.filter(result => result.name.toLowerCase() === input.characterName.toLowerCase());
+  if (entries.length === 0) {
+    // TODO: probably should be an exception too, just of a different kind
+    return { kind: 'err', message: 'Specified character name is incorrect, did you mean to enter one of following?', characters: body.results.map(result => result.name) };
+  }
+
+  const character = entries[0];
+  return {
+    height: character.height,
+    weight: character.mass,
+    yearOfBirth: character.birth_year
+  };
 }

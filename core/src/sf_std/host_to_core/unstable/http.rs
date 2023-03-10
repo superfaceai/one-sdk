@@ -3,7 +3,7 @@ use std::io::Read;
 use serde::{Deserialize, Serialize};
 
 use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
-use crate::sf_std::{abi::Size, HeadersMultiMap};
+use crate::sf_std::{abi::Size, HeadersMultiMap, MultiMap};
 
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
@@ -11,6 +11,7 @@ define_exchange_core_to_host! {
         method: &'a str,
         url: &'a str,
         headers: &'a HeadersMultiMap,
+        query: &'a MultiMap,
         body: Option<&'a [u8]>
     } -> enum HttpCallResponse {
         Ok {
@@ -31,7 +32,7 @@ define_exchange_core_to_host! {
         Ok {
             status: u16,
             headers: HeadersMultiMap,
-            body_stream: IoStream, // TODO: optional?
+            body_stream: IoStream, // TODO: optional? in case response doesn't have a body
         },
         Err {
             error: String
@@ -48,6 +49,7 @@ impl HttpRequest {
         method: &str,
         url: &str,
         headers: &HeadersMultiMap,
+        query: &MultiMap,
         body: Option<&[u8]>,
     ) -> anyhow::Result<Self> {
         let response = HttpCallRequest {
@@ -55,7 +57,8 @@ impl HttpRequest {
             url,
             method,
             headers,
-            body: body,
+            query,
+            body,
         }
         .send_json(&EXCHANGE_MESSAGE)
         .unwrap();

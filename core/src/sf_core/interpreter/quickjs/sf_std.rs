@@ -29,7 +29,7 @@ macro_rules! link_into {
     (
         $context: expr, $state: expr, $parent: expr, {
             $(
-                $key: literal: $fn_impl: expr
+                $( @strace($enable_strace: literal) )? $key: literal: $fn_impl: expr
             ),+ $(,)?
         }
     ) => {
@@ -38,11 +38,15 @@ macro_rules! link_into {
             let fun = $context.wrap_callback(move |context, this, args| {
                 let result = $fn_impl(state.borrow_mut().deref_mut(), context, this, args).map_err(anyhow::Error::from);
 
-                eprint!("core: {}(this: {:?}", $key, JsValueDebug(&this));
-                for arg in args {
-                    eprint!(", {:?}", JsValueDebug(arg));
-                }
-                eprintln!(") -> {:?}", result.as_ref().map(JsValueDebug));
+                $(
+                    if $enable_strace {
+                        eprint!("core: [strace] {}(this: {:?}", $key, JsValueDebug(&this));
+                        for arg in args {
+                            eprint!(", {:?}", JsValueDebug(arg));
+                        }
+                        eprintln!(") -> {:?}", result.as_ref().map(JsValueDebug));
+                    }
+                )?
 
                 result
             }).context(concat!("Failed to define ", $key, " callback"))?;
@@ -76,7 +80,28 @@ impl std::fmt::Debug for JsValueDebug<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
             x if x.is_str() => write!(f, "{:?}", x.as_str().unwrap()),
-            x if x.is_array_buffer() => write!(f, "<ArrayBuffer>"),
+            x if x.is_array_buffer() => {
+                const MAX_SHOW: usize = 6;
+
+                let bytes = x.as_bytes().unwrap();
+                let shown_bytes = if f.alternate() {
+                    bytes
+                } else {
+                    &bytes[..bytes.len().min(MAX_SHOW)]
+                };
+
+                write!(
+                    f,
+                    "<ArrayBuffer byteLength={} {:?}{}>",
+                    bytes.len(),
+                    shown_bytes,
+                    if shown_bytes.len() < bytes.len() {
+                        "..."
+                    } else {
+                        ""
+                    }
+                )
+            }
             x if x.is_number() => write!(f, "{}", x.as_f64().unwrap()),
             x if x.is_bool() => write!(f, "{}", x.as_bool().unwrap()),
             x if x.is_null() => write!(f, "null"),
@@ -127,14 +152,16 @@ pub mod unstable {
         link_into!(
             context, state, unstable,
             {
+                // debug
+                "printDebug": __export_print_debug,
                 // env
                 "print": __export_print,
                 "abort": __export_abort,
-                "decode_utf8": __export_decode_utf8,
+                @strace(true) "decode_utf8": __export_decode_utf8,
                 // messages
-                "message_exchange": __export_message_exchange,
+                @strace(true) "message_exchange": __export_message_exchange,
                 // streams
-                "stream_read": __export_stream_read,
+                @strace(true) "stream_read": __export_stream_read,
                 "stream_write": __export_stream_write,
                 "stream_close": __export_stream_close
             }
@@ -210,6 +237,21 @@ pub mod unstable {
         Ok(context.undefined_value().unwrap())
     }
 
+    fn __export_print_debug<H: SfCoreUnstable + 'static>(
+        _state: &mut H,
+        context: &Context,
+        _this: &JsValue,
+        args: &[JsValue],
+    ) -> Result<JsValue, JSError> {
+        eprint!("map printDebug:");
+        for arg in args {
+            eprint!(" {:?}", JsValueDebug(arg));
+        }
+        eprintln!();
+
+        Ok(context.undefined_value().unwrap())
+    }
+
     fn __export_abort<H: SfCoreUnstable + 'static>(
         _state: &mut H,
         _context: &Context,
@@ -221,10 +263,18 @@ pub mod unstable {
 
     fn __export_decode_utf8<H: SfCoreUnstable + 'static>(
         _state: &mut H,
-        _context: &Context,
+        context: &Context,
         _this: &JsValue,
-        _args: &[JsValue],
+        args: &[JsValue],
     ) -> Result<JsValue, JSError> {
-        panic!()
+        let bytes = ensure_arguments!("decode_utf8" args; 0: as_bytes);
+
+        match std::str::from_utf8(bytes) {
+            Err(err) => Err(JSError::Type(format!(
+                "Could not decode bytes at UTF-8: {}",
+                err
+            ))),
+            Ok(s) => Ok(context.value_from_str(s).unwrap()),
+        }
     }
 }
