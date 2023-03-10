@@ -62,7 +62,7 @@ pub trait SfCoreUnstable {
     fn http_call_head(&mut self, handle: usize) -> Result<HttpResponse, HttpCallHeadError>;
 
     // input and output
-    fn take_input(&mut self) -> Result<MapValue, TakeInputError>;
+    fn take_input(&mut self) -> Result<(MapValue, MapValue, MapValue), TakeInputError>;
     fn set_output(&mut self, output: MapValue) -> Result<(), SetOutputError>;
 }
 
@@ -122,11 +122,11 @@ define_exchange_map_to_core! {
         },
         // input and output
         TakeInput -> enum Response {
-            Ok { input: JsonValue },
+            Ok { input: JsonValue, parameters: JsonValue, security: JsonValue },
             Err { error: String }
         } => match state.take_input() {
             Err(err) => Response::Err { error: err.to_string() },
-            Ok(input) => Response::Ok { input },
+            Ok((input, parameters, security)) => Response::Ok { input, parameters, security },
         },
         SetOutput { output: JsonValue } -> enum Response {
             Ok,

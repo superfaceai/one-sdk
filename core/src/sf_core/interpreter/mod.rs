@@ -5,5 +5,12 @@ mod state;
 
 pub trait Interpreter {
     // TODO: define errors and don't use anyhow?
-    fn run(&mut self, code: &[u8], entry: &str, input: HostValue) -> anyhow::Result<HostValue>;
+    fn run(
+        &mut self,
+        code: &[u8],
+        entry: &str,
+        input: HostValue,
+        parameters: HostValue,
+        security: HostValue,
+    ) -> anyhow::Result<HostValue>;
 }

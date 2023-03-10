@@ -112,7 +112,7 @@ fn __export_print_debug<H: SfCoreUnstable + 'static>(
 ) -> Result<JsValue, JSError> {
     eprint!("map printDebug:");
     for arg in args {
-        eprint!(" {:?}", JsValueDebug(arg));
+        eprint!(" {:#?}", JsValueDebug(arg));
     }
     eprintln!();
 

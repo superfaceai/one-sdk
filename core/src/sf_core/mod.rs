@@ -99,7 +99,13 @@ impl SuperfaceCore {
         let mut interpreter = JsInterpreter::new().context("Failed to initialize interpreter")?;
 
         let map_result = interpreter
-            .run(wasm, &perform_input.map_usecase, perform_input.map_input)
+            .run(
+                wasm,
+                &perform_input.map_usecase,
+                perform_input.map_input,
+                perform_input.map_parameters,
+                perform_input.map_security,
+            )
             .context(format!(
                 "Failed to run map \"{}::{}\"",
                 perform_input.map_name, perform_input.map_usecase

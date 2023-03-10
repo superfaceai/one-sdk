@@ -100,7 +100,7 @@ globalThis.std.unstable = {
 
         if (response.kind === 'ok') {
             // TODO: revive while parsing JSON to support custom types (streams)
-            return response.input;
+            return { input: response.input, parameters: response.parameters, security: response.security };
         } else {
             throw new Error(response.error);
         }

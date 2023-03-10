@@ -32,11 +32,20 @@ impl JsInterpreter {
     }
 }
 impl super::Interpreter for JsInterpreter {
-    fn run(&mut self, code: &[u8], entry: &str, input: HostValue) -> anyhow::Result<HostValue> {
-        self.state.borrow_mut().set_input(input);
+    fn run(
+        &mut self,
+        code: &[u8],
+        entry: &str,
+        input: HostValue,
+        parameters: HostValue,
+        security: HostValue,
+    ) -> anyhow::Result<HostValue> {
+        self.state
+            .borrow_mut()
+            .set_input(input, parameters, security);
 
         let script = std::str::from_utf8(code).context("Code must be valid utf8 text")?;
-        let entry = format!("sf_entry(\"{}\")", entry);
+        let entry = format!("_start(\"{}\")", entry);
 
         self.context
             .eval_global("map.js", script)

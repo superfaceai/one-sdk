@@ -104,26 +104,21 @@ fn traverse_object(
 struct JsValueDebug<'a>(&'a JsValue);
 impl std::fmt::Debug for JsValueDebug<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        macro_rules! write_short {
-            ($max_shown: literal, $slice: expr) => {
-                if $slice.len() > $max_shown && !f.alternate() {
-                    write!(f, "{:?}...", &$slice[..$slice.len().min($max_shown)])
-                } else {
-                    write!(f, "{:?}", $slice)
-                }
-            };
-        }
-
         match self.0 {
             x if x.is_str() => {
                 let string = x.as_str().unwrap();
-                write_short!(10, string)
+                write!(f, "{}", string)
             }
             x if x.is_array_buffer() => {
+                const MAX_SHOWN: usize = 5;
+
                 let bytes = x.as_bytes().unwrap();
                 write!(f, "<ArrayBuffer byteLength={} ", bytes.len())?;
-                write_short!(5, bytes)?;
-                write!(f, ">")
+                if bytes.len() > MAX_SHOWN && !f.alternate() {
+                    write!(f, "{:?}...>", &bytes[..bytes.len().min(MAX_SHOWN)])
+                } else {
+                    write!(f, "{:?}>", bytes)
+                }
             }
             x if x.is_number() => write!(f, "{}", x.as_f64().unwrap()),
             x if x.is_bool() => write!(f, "{}", x.as_bool().unwrap()),

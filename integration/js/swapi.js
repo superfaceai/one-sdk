@@ -1,7 +1,9 @@
-function sf_entry(usecase_name) {
+function _start(usecase_name) {
   if (usecase_name === 'RetrieveCharacterInformation') {
-    const input = std.unstable.takeInput();
-    const result = RetrieveCharacterInformation(input);
+    const { input, parameters, security } = std.unstable.takeInput();
+    std.ffi.unstable.printDebug("Running RetrieveCharacterInformation with input:", input, "parameters:", parameters, "security:", security);
+    
+    const result = RetrieveCharacterInformation(input, parameters, security);
     std.unstable.setOutput(result);
   } else {
     throw new Error('Unknown usecase name');
@@ -44,7 +46,7 @@ map RetrieveCharacterInformation {
 }
 */
 
-function RetrieveCharacterInformation(input) {
+function RetrieveCharacterInformation(input, parameters, security) {
   const url = `https://swapi.dev/api/people/`;
   const headers = {
     'foo': ['bar'],

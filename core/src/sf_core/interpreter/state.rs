@@ -42,7 +42,7 @@ impl<T> HandleMap<T> {
 pub(super) struct InterpreterState {
     http_requests: HandleMap<HttpRequest>,
     streams: HandleMap<IoStream>,
-    map_input: Option<HostValue>,
+    map_input: Option<(HostValue, HostValue, HostValue)>,
     map_output: Option<HostValue>,
 }
 impl InterpreterState {
@@ -55,9 +55,9 @@ impl InterpreterState {
         }
     }
 
-    pub fn set_input(&mut self, input: HostValue) {
+    pub fn set_input(&mut self, input: HostValue, parameters: HostValue, security: HostValue) {
         assert!(self.map_input.is_none());
-        self.map_input = Some(input);
+        self.map_input = Some((input, parameters, security));
     }
 
     pub fn take_output(&mut self) -> Option<HostValue> {
@@ -121,11 +121,17 @@ impl MapSfCoreUnstable for InterpreterState {
         }
     }
 
-    fn take_input(&mut self) -> Result<MapValue, TakeInputError> {
+    fn take_input(&mut self) -> Result<(MapValue, MapValue, MapValue), TakeInputError> {
         // TODO: here we should transform HostValue into MapValue - i.e. especially transform custom objects (streams)
         self.map_input
             .take()
-            .map(|v| serde_json::to_value(v).unwrap())
+            .map(|(i, p, s)| {
+                (
+                    serde_json::to_value(i).unwrap(),
+                    serde_json::to_value(p).unwrap(),
+                    serde_json::to_value(s).unwrap(),
+                )
+            })
             .ok_or(TakeInputError::AlreadyTaken)
     }
 
