@@ -77,7 +77,6 @@ impl SuperfaceCore {
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        // let mut interpreter = WasmInterpreter::new().context("Failed to initialize interpreter")?;
         let mut interpreter = JsInterpreter::new().context("Failed to initialize interpreter")?;
 
         let map_result = interpreter

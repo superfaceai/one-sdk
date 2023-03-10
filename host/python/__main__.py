@@ -64,8 +64,7 @@ class HttpManager:
 		query = msg["query"]
 		print(f"host: Making {method} request to {url} with headers {headers}, query {query}")
 
-		# TODO: have to join to use this library
-		# we can use raw(er) http.client later
+		# TODO: have to join headers to use this library - we can use raw(er) http.client later
 		headers_joined = dict()
 		for key, value in headers.items():
 			headers_joined[key] = ",".join(value)
@@ -151,8 +150,6 @@ class App:
 		self.wasi = WasiConfig()
 		self.wasi.inherit_stdout()
 		self.wasi.inherit_stderr()
-		# self.wasi.argv = argv
-		# self.wasi.preopen_dir("integration/wasm/", "integration/wasm/")
 		self.store.set_wasi(self.wasi)
 
 		# module managers

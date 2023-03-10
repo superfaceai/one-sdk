@@ -99,7 +99,7 @@ globalThis.std.unstable = {
         });
 
         if (response.kind === 'ok') {
-            // TODO: revive
+            // TODO: revive while parsing JSON to support custom types (streams)
             return response.input;
         } else {
             throw new Error(response.error);

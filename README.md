@@ -32,12 +32,3 @@ Cargo wasi extension (`cargo install cargo-wasi`) can be used to make it easier 
 See https://bytecodealliance.github.io/cargo-wasi/steps.html.
 
 ## Considerations
-
-### AssemblyScript JSON library
-
-* https://github.com/near/assemblyscript-json
-	- Seems most popular
-* https://github.com/gagdiez/serial-as/tree/main/json
-	- Adds decorators on top of `assemblyscript-json`
-* https://github.com/JairusSW/as-json
-	- Directly has decorators, way less popuplar than `assemblyscript-json`

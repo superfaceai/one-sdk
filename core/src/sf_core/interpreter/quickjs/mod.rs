@@ -16,7 +16,7 @@ pub struct JsInterpreter {
     state: Rc<RefCell<InterpreterState>>,
 }
 impl JsInterpreter {
-    const STD_CODE: &str = include_str!("./std.js");
+    const STD_CODE: &str = include_str!("./sf_std/std.js");
 
     pub fn new() -> anyhow::Result<Self> {
         let mut context = Context::default();

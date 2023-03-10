@@ -77,8 +77,6 @@ define_exchange_map_to_core! {
         HttpCall {
             method: &'a str,
             url: &'a str,
-            // TODO: we could optimize this to borrow the strings instead (just like method and url), but it would add complexity
-            // for performance which might not be critical
             headers: HeadersMultiMap,
             query: MultiMap,
             body: Option<Vec<u8>>,
