@@ -8,6 +8,7 @@ use anyhow::Context;
 
 use crate::sf_std::host_to_core::unstable::{
     fs::OpenOptions,
+    http::HttpRequest,
     perform::{perform_input, perform_output, PerformOutput},
 };
 
@@ -41,22 +42,40 @@ impl SuperfaceCore {
             _ => (),
         }
 
-        // let file_name = format!("integration/wasm/{}.wasm", map_name);
-        let file_name = format!("integration/js/{}.js", map_name);
+        let mut map = Vec::new();
+        match map_name.strip_prefix("file://") {
+            Some(path) => {
+                let mut file = OpenOptions::new()
+                    .read(true)
+                    .open(&path)
+                    .context("Failed to open input file")?;
 
-        let mut bytes = Vec::new();
-        let mut file = OpenOptions::new()
-            .read(true)
-            .open(&file_name)
-            .context("Failed to open input file")?;
-        file.read_to_end(&mut bytes)
-            .context("Failed to read input file")?;
+                file.read_to_end(&mut map)
+                    .context("Failed to read input file")?;
+            }
+            None => {
+                // TODO: better url join
+                let url_base =
+                    std::env::var("SF_REGISTRY_URL").unwrap_or("http://localhost:8321".to_string());
+                let url = format!("{}/{}.js", url_base, map_name);
+
+                let mut response =
+                    HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
+                        .context("Failed to retrieve map over HTTP")?
+                        .into_response()
+                        .context("Failed to retrieve response")?;
+                response
+                    .body()
+                    .read_to_end(&mut map)
+                    .context("Failed to read response body")?;
+            }
+        };
 
         self.map_cache.insert(
             map_name.to_string(),
             MapCacheEntry {
                 store_time: Instant::now(),
-                map: bytes,
+                map,
             },
         );
         Ok(())

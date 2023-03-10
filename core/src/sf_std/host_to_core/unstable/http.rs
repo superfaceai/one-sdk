@@ -45,7 +45,7 @@ pub struct HttpRequest {
 }
 impl HttpRequest {
     // TODO: proper errors
-    pub fn fire(
+    pub fn fetch(
         method: &str,
         url: &str,
         headers: &HeadersMultiMap,

@@ -150,6 +150,7 @@ class App:
 		self.wasi = WasiConfig()
 		self.wasi.inherit_stdout()
 		self.wasi.inherit_stderr()
+		self.wasi.inherit_env()
 		self.store.set_wasi(self.wasi)
 
 		# module managers

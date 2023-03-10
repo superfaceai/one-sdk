@@ -95,7 +95,7 @@ impl MapSfCoreUnstable for InterpreterState {
     }
 
     fn http_call(&mut self, params: MapHttpRequest<'_>) -> Result<usize, HttpCallError> {
-        let request = HttpRequest::fire(
+        let request = HttpRequest::fetch(
             params.method,
             params.url,
             params.headers,

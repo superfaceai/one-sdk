@@ -40,16 +40,17 @@ pub extern "C" fn __export_superface_core_setup() {
 pub extern "C" fn __export_superface_core_teardown() {
     println!("core: superface_core_teardown called");
 
-    let mut lock = GLOBAL_STATE.lock().unwrap(); // TODO: this will usually fail if perform panicked - decide what to do
-    if lock.is_none() {
-        panic!("Not setup or already torn down");
+    match GLOBAL_STATE.try_lock() {
+        Err(_) => panic!("Global state lock already locked: perform most likely panicked"),
+        Ok(lock) if lock.is_none() => panic!("Not setup or already torn down"),
+        Ok(mut lock) => {
+            let state = lock.take();
+            std::mem::drop(state); // just to be explicit, would be dropped implicitly anyway
+
+            // call dtors last
+            unsafe { __wasm_call_dtors() };
+        }
     }
-
-    let state = lock.take();
-    std::mem::drop(state); // just to be explicit, would be dropped implicitly anyway
-
-    // call dtors last
-    unsafe { __wasm_call_dtors() };
 }
 
 #[no_mangle]
