@@ -43,7 +43,7 @@ pub(super) struct InterpreterState {
     http_requests: HandleMap<HttpRequest>,
     streams: HandleMap<IoStream>,
     map_input: Option<(HostValue, HostValue, HostValue)>,
-    map_output: Option<HostValue>,
+    map_output: Option<Result<HostValue, HostValue>>,
 }
 impl InterpreterState {
     pub fn new() -> Self {
@@ -60,7 +60,7 @@ impl InterpreterState {
         self.map_input = Some((input, parameters, security));
     }
 
-    pub fn take_output(&mut self) -> Option<HostValue> {
+    pub fn take_output(&mut self) -> Option<Result<HostValue, HostValue>> {
         self.map_output.take()
     }
 }
@@ -135,13 +135,24 @@ impl MapSfCoreUnstable for InterpreterState {
             .ok_or(TakeInputError::AlreadyTaken)
     }
 
-    fn set_output(&mut self, output: MapValue) -> Result<(), SetOutputError> {
+    fn set_output_success(&mut self, output: MapValue) -> Result<(), SetOutputError> {
         // TODO: here we should transform MapValue into HostValue
 
         if self.map_output.is_some() {
             return Err(SetOutputError::AlreadySet);
         }
-        self.map_output = Some(serde_json::from_value(output).unwrap());
+        self.map_output = Some(Ok(serde_json::from_value(output).unwrap()));
+
+        Ok(())
+    }
+
+    fn set_output_failure(&mut self, output: MapValue) -> Result<(), SetOutputError> {
+        // TODO: here we should transform MapValue into HostValue
+
+        if self.map_output.is_some() {
+            return Err(SetOutputError::AlreadySet);
+        }
+        self.map_output = Some(Err(serde_json::from_value(output).unwrap()));
 
         Ok(())
     }

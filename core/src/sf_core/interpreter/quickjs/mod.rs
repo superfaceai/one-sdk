@@ -39,7 +39,7 @@ impl super::Interpreter for JsInterpreter {
         input: HostValue,
         parameters: HostValue,
         security: HostValue,
-    ) -> anyhow::Result<HostValue> {
+    ) -> anyhow::Result<Result<HostValue, HostValue>> {
         self.state
             .borrow_mut()
             .set_input(input, parameters, security);

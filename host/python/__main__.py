@@ -267,5 +267,5 @@ with APP as app:
 
 	print("host: waiting 5 seconds to trigger recache...")
 	time.sleep(5)
-	print("host: result3:", app.perform(MAP_NAME, MAP_USECASE, 3))
+	print("host: result3:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Skywalker" }))
 	print("host: ==================================================")

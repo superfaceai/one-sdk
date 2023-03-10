@@ -3,8 +3,16 @@ function _start(usecase_name) {
     const { input, parameters, security } = std.unstable.takeInput();
     std.ffi.unstable.printDebug("Running RetrieveCharacterInformation with input:", input, "parameters:", parameters, "security:", security);
     
-    const result = RetrieveCharacterInformation(input, parameters, security);
-    std.unstable.setOutput(result);
+    try {
+      const result = RetrieveCharacterInformation(input, parameters, security);
+      std.unstable.setOutputSuccess(result);
+    } catch (e) {
+      if (e instanceof std.unstable.MapError) {
+        std.unstable.setOutputFailure(e.output);
+      } else {
+        throw e;
+      }
+    }
   } else {
     throw new Error('Unknown usecase name');
   }
@@ -69,14 +77,12 @@ function RetrieveCharacterInformation(input, parameters, security) {
 
   const body = response.bodyJson();
   if (body.count === 0) {
-    // TODO: probably should be an exception too, just of a different kind
-    return { kind: 'err', message: 'no character found' };
+    throw new std.unstable.MapError({ message: 'no character found' });
   }
 
   const entries = body.results.filter(result => result.name.toLowerCase() === input.characterName.toLowerCase());
   if (entries.length === 0) {
-    // TODO: probably should be an exception too, just of a different kind
-    return { kind: 'err', message: 'Specified character name is incorrect, did you mean to enter one of following?', characters: body.results.map(result => result.name) };
+    throw new std.unstable.MapError({ message: 'Specified character name is incorrect, did you mean to enter one of following?', characters: body.results.map(result => result.name) });
   }
 
   const character = entries[0];

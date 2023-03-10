@@ -105,9 +105,21 @@ globalThis.std.unstable = {
             throw new Error(response.error);
         }
     },
-    setOutput(output) {
+    setOutputSuccess(output) {
         const response = std.private.message_exchange({
-            kind: 'set-output',
+            kind: 'set-output-success',
+            output
+        });
+
+        if (response.kind === 'ok') {
+            return;
+        } else {
+            throw new Error(response.error);
+        }
+    },
+    setOutputFailure(output) {
+        const response = std.private.message_exchange({
+            kind: 'set-output-failure',
             output
         });
 
@@ -176,6 +188,11 @@ globalThis.std.unstable = {
 
         bodyJson() {
             return JSON.parse(this.bodyText());
+        }
+    },
+    MapError: class MapError {
+        constructor(output) {
+            this.output = output;
         }
     }
 };

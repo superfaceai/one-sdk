@@ -12,5 +12,5 @@ pub trait Interpreter {
         input: HostValue,
         parameters: HostValue,
         security: HostValue,
-    ) -> anyhow::Result<HostValue>;
+    ) -> anyhow::Result<Result<HostValue, HostValue>>;
 }

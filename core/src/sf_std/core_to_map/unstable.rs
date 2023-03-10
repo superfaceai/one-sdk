@@ -63,7 +63,8 @@ pub trait SfCoreUnstable {
 
     // input and output
     fn take_input(&mut self) -> Result<(MapValue, MapValue, MapValue), TakeInputError>;
-    fn set_output(&mut self, output: MapValue) -> Result<(), SetOutputError>;
+    fn set_output_success(&mut self, output: MapValue) -> Result<(), SetOutputError>;
+    fn set_output_failure(&mut self, output: MapValue) -> Result<(), SetOutputError>;
 }
 
 //////////////
@@ -128,12 +129,21 @@ define_exchange_map_to_core! {
             Err(err) => Response::Err { error: err.to_string() },
             Ok((input, parameters, security)) => Response::Ok { input, parameters, security },
         },
-        SetOutput { output: JsonValue } -> enum Response {
+        SetOutputSuccess { output: JsonValue } -> enum Response {
             Ok,
             Err {
                 error: String
             }
-        } => match state.set_output(output) {
+        } => match state.set_output_success(output) {
+            Ok(()) => Response::Ok,
+            Err(err) => Response::Err { error: err.to_string() }
+        },
+        SetOutputFailure { output: JsonValue } -> enum Response {
+            Ok,
+            Err {
+                error: String
+            }
+        } => match state.set_output_failure(output) {
             Ok(()) => Response::Ok,
             Err(err) =>Response::Err { error: err.to_string() }
         }

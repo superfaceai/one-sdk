@@ -19,7 +19,7 @@ define_exchange_core_to_host! {
 define_exchange_core_to_host! {
     struct PerformOutputRequest<'a> {
         kind: "perform-output",
-        map_result: &'a HostValue
+        map_result: &'a Result<HostValue, HostValue>
     } -> enum PerformOutputResponse {
         Ok
     }
@@ -55,7 +55,7 @@ pub fn perform_input() -> PerformInput {
 }
 
 pub struct PerformOutput {
-    pub map_result: HostValue,
+    pub map_result: Result<HostValue, HostValue>,
 }
 pub fn perform_output(output: PerformOutput) {
     let response = PerformOutputRequest::new(&output.map_result)
@@ -123,7 +123,7 @@ mod test {
     fn test_message_in_perform_output() {
         let actual = serde_json::to_value(PerformOutputRequest {
             kind: PerformOutputRequest::KIND,
-            map_result: &HostValue::String("hello".into()),
+            map_result: &Ok(HostValue::String("hello".into())),
         })
         .unwrap();
 
@@ -131,7 +131,7 @@ mod test {
             serde_json::to_value(actual).unwrap(),
             json!({
                 "kind": "perform-output",
-                "map_result": "hello"
+                "map_result": {"Ok": "hello"}
             })
         )
     }
