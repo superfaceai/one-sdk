@@ -1,11 +1,32 @@
 // TODO: module support is exposed in git Javy project - we could depend on git directly and rework this as a module
 globalThis.std = globalThis.std ?? {};
 globalThis.std.private = {
-    message_exchange(message) {
+    messageExchange(message) {
         const response = std.ffi.unstable.message_exchange(
             JSON.stringify(message)
         );
         return JSON.parse(response);
+    },
+    ensureMultimap(map, lowercaseKeys = false) {
+        const result = {};
+
+        if (typeof map !== 'object' || map === null) {
+            return result;
+        }
+
+        for (let [key, value] of Object.entries(map)) {
+            if (lowercaseKeys) {
+                key = key.toLowerCase();
+            }
+
+            if (!Array.isArray(value)) {
+                value = [value];
+            }
+
+            result[key] = value;
+        }
+
+        return result;
     },
     Bytes: class Bytes {
         #buffer;
@@ -94,7 +115,7 @@ globalThis.std.unstable = {
     },
     
     takeInput() {
-        const response = std.private.message_exchange({
+        const response = std.private.messageExchange({
             kind: 'take-input'
         });
 
@@ -106,7 +127,7 @@ globalThis.std.unstable = {
         }
     },
     setOutputSuccess(output) {
-        const response = std.private.message_exchange({
+        const response = std.private.messageExchange({
             kind: 'set-output-success',
             output
         });
@@ -118,7 +139,7 @@ globalThis.std.unstable = {
         }
     },
     setOutputFailure(output) {
-        const response = std.private.message_exchange({
+        const response = std.private.messageExchange({
             kind: 'set-output-failure',
             output
         });
@@ -129,13 +150,26 @@ globalThis.std.unstable = {
             throw new Error(response.error);
         }
     },
+    resolveRequestUrl(url, options) {
+        const { parameters, security, serviceId } = options;
+
+        if (url === '') {
+            return parameters.provider.services[serviceId].baseUrl;
+        }
+        const isRelative = /^\/([^/]|$)/.test(url);
+        if (isRelative) {
+            url = parameters.provider.services[serviceId].baseUrl.replace(/\/+$/, '') + url;
+        }
+
+        return url;
+    },
     fetch(url, options) {
-        const response = std.private.message_exchange({
+        const response = std.private.messageExchange({
             kind: "http-call",
             method: options.method ?? 'GET',
             url,
-            headers: options.headers ?? {},
-            query: options.query ?? {},
+            headers: std.private.ensureMultimap(options.headers ?? {}, true),
+            query: std.private.ensureMultimap(options.query ?? {}),
             body: options.body ?? undefined
         });
 
@@ -152,7 +186,7 @@ globalThis.std.unstable = {
         }
 
         response() {
-            const response = std.private.message_exchange({
+            const response = std.private.messageExchange({
                 kind: "http-call-head",
                 handle: this.#handle
             });
@@ -188,6 +222,24 @@ globalThis.std.unstable = {
 
         bodyJson() {
             return JSON.parse(this.bodyText());
+        }
+
+        bodyAuto() {
+            const BINARY_CONTENT_REGEXP = /application\/octet-stream|video\/.*|audio\/.*|image\/.*/;
+
+            if (this.status === 204) {
+                return undefined;
+            }
+
+            if (this.headers['content-type']?.some(ct => ct.indexOf('application/json') >= 0) ?? false) {
+                return this.bodyJson();
+            }
+
+            if (this.headers['content-type']?.some(ct => ct.test(BINARY_CONTENT_REGEXP)) ?? false) {
+                return this.bodyBytes();
+            }
+            
+            return this.bodyText();
         }
     },
     MapError: class MapError {

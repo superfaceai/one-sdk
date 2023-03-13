@@ -257,15 +257,24 @@ APP = App()
 sf_host.link(APP)
 APP.load_wasi_module(sys.argv[1])
 
+PARAMETERS = {
+	"provider": {
+		"services": {
+			"default": {
+				"baseUrl": "https://swapi.dev/api"
+			}
+		}
+	}
+}
 with APP as app:
 	print("host: ==================================================")
-	print("host: result:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Yoda" }, { "foo": "bar" }, { "baz": 1 }))
+	print("host: result:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Yoda" }, PARAMETERS, { "baz": 1 }))
 	print("host: ==================================================")
 	debug_stream = app.streams.register(SimpleNamespace(close = lambda: None))
-	print("host: result2:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Luke Skywalker", "debug_stream": { "$StructuredValue::Stream": debug_stream } }))
+	print("host: result2:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Luke Skywalker", "debug_stream": { "$StructuredValue::Stream": debug_stream } }, PARAMETERS))
 	print("host: ==================================================")
 
 	print("host: waiting 5 seconds to trigger recache...")
 	time.sleep(5)
-	print("host: result3:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Skywalker" }))
+	print("host: result3:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Skywalker" }, PARAMETERS))
 	print("host: ==================================================")
