@@ -71,6 +71,7 @@ macro_rules! ensure_arguments {
     (#arg_type(str) $val: expr) => { $val.as_str().ok() };
     (#arg_type(mut_bytes) $val: expr) => { $val.as_bytes_mut().ok() };
     (#arg_type(bytes) $val: expr) => { $val.as_bytes().ok() };
+    (#arg_type(value) $val: expr) => { Some($val) };
 }
 
 pub mod unstable;

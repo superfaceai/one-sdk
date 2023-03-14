@@ -36,10 +36,10 @@ function _start(usecaseName) {
 
 function RetrieveCharacterInformation(input, parameters, security) {
   const __outcome = { result: undefined, error: undefined };
-  let __variables = {};
+  let vars = {};
   FN_BODY: {
     {
-      const url = std.unstable.resolveRequestUrl('/people/', {
+      const url = std.unstable.resolveRequestUrl(`/people/`, {
         parameters,
         security,
         serviceId: 'default',
@@ -54,7 +54,7 @@ function RetrieveCharacterInformation(input, parameters, security) {
         {},
         {
           search: (() => {
-            with (__variables) {
+            with (vars) {
               return input.characterName;
             }
           })(),
@@ -62,16 +62,19 @@ function RetrieveCharacterInformation(input, parameters, security) {
       );
       const response = std.unstable.fetch(url, requestOptions).response();
       HTTP_RESPONSE: {
+        /* response 200 "application/json" "*" */
         if (
           response.status === 200 &&
           response.headers['content-type']?.some(
             ct => ct.indexOf('application/json') >= 0
           )
         ) {
+          const statusCode = response.status;
+          const headers = response.headers;
           const body = response.bodyAuto();
           if (
             (() => {
-              with (__variables) {
+              with (vars) {
                 return body.count === 0;
               }
             })()
@@ -80,11 +83,11 @@ function RetrieveCharacterInformation(input, parameters, security) {
               {},
               { message: 'No character found' }
             );
-            break FN_BODY;
+            /* return */ break FN_BODY;
           }
-          __variables = Object.assign(__variables, {
+          vars = Object.assign(vars, {
             entries: (() => {
-              with (__variables) {
+              with (vars) {
                 return body.results.filter(
                   result =>
                     result.name.toLowerCase() ===
@@ -95,7 +98,7 @@ function RetrieveCharacterInformation(input, parameters, security) {
           });
           if (
             (() => {
-              with (__variables) {
+              with (vars) {
                 return entries.length === 0;
               }
             })()
@@ -108,17 +111,17 @@ function RetrieveCharacterInformation(input, parameters, security) {
               },
               {
                 characters: (() => {
-                  with (__variables) {
+                  with (vars) {
                     return body.results.map(result => result.name);
                   }
                 })(),
               }
             );
-            break FN_BODY;
+            /* return */ break FN_BODY;
           }
-          __variables = Object.assign(__variables, {
+          vars = Object.assign(vars, {
             character: (() => {
-              with (__variables) {
+              with (vars) {
                 return entries[0];
               }
             })(),
@@ -127,27 +130,27 @@ function RetrieveCharacterInformation(input, parameters, security) {
             {},
             {
               height: (() => {
-                with (__variables) {
+                with (vars) {
                   return character.height;
                 }
               })(),
             },
             {
               weight: (() => {
-                with (__variables) {
+                with (vars) {
                   return character.mass;
                 }
               })(),
             },
             {
               yearOfBirth: (() => {
-                with (__variables) {
+                with (vars) {
                   return character.birth_year;
                 }
               })(),
             }
           );
-          break HTTP_RESPONSE;
+          /* end handler */ break HTTP_RESPONSE;
         }
         throw new Error('Unexpected response');
       }

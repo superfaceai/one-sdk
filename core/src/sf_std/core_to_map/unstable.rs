@@ -11,15 +11,23 @@ pub const MODULE_NAME: &str = "sf_core_unstable";
 pub type MapValue = JsonValue;
 
 pub struct HttpRequest<'a> {
+    /// HTTP method - will be used as-is.
     pub method: &'a str,
     pub url: &'a str,
     pub headers: &'a HeadersMultiMap,
+    /// Query parameters.
+    ///
+    /// Multiple values with the same key will be repeated in the query string, no joining will be performed.
     pub query: &'a MultiMap,
+    /// Body as bytes.
     pub body: Option<&'a [u8]>,
 }
 pub struct HttpResponse {
+    /// Status code of the response.
     pub status: u16,
+    /// Headers, as returned from the server without any client-side joining.
     pub headers: HeadersMultiMap,
+    /// Body stream of content-encoding decoded data.
     pub body_stream: usize,
 }
 #[derive(Debug, Error)]

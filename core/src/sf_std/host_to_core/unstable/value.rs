@@ -8,7 +8,7 @@ use super::IoStream;
 ///
 /// In addition to variants in [serde_json::Value] we also define our custom types, such as streams.
 ///
-/// Our custom types are always objects with one field: `{ "$StructuredValue::<type>": <type_serialized> }`
+/// Our custom types are always objects with one field: `{ "$HostValue::<type>": <type_serialized> }`
 #[derive(Debug, PartialEq, Eq)]
 pub enum HostValue {
     // custom
@@ -24,7 +24,7 @@ pub enum HostValue {
     Object(BTreeMap<String, HostValue>),
 }
 impl HostValue {
-    const CUSTOM_TYPE_STREAM: &'static str = "$StructuredValue::Stream";
+    const CUSTOM_TYPE_STREAM: &'static str = "$HostValue::Stream";
 }
 impl Serialize for HostValue {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

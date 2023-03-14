@@ -8,10 +8,18 @@ use crate::sf_std::{abi::Size, HeadersMultiMap, MultiMap};
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
         kind: "http-call",
+        /// HTTP method - will be used as-is.
         method: &'a str,
         url: &'a str,
+        /// Headers.
+        ///
+        /// Multiple values for one key will not be joined.
         headers: &'a HeadersMultiMap,
+        /// Query parameters.
+        ///
+        /// Multiple values for one key will not be joined.
         query: &'a MultiMap,
+        /// Body bytes to be sent.
         body: Option<&'a [u8]>
     } -> enum HttpCallResponse {
         Ok {
@@ -27,6 +35,7 @@ define_exchange_core_to_host! {
 define_exchange_core_to_host! {
     struct HttpCallHeadRequest {
         kind: "http-call-head",
+        /// Handle previously returned by `http-call`.
         handle: Size
     } -> enum HttpCallHeadResponse {
         Ok {

@@ -137,9 +137,9 @@ mod test {
             "object": {
                 "none2": null,
                 "boolean": true,
-                "stream2": { "$StructuredValue::Stream": 123 }
+                "stream2": { "$HostValue::Stream": 123 }
             },
-            "stream": { "$StructuredValue::Stream": 45 }
+            "stream": { "$HostValue::Stream": 45 }
         });
 
         let actual: HostValue = serde_json::from_value(actual_json.clone()).unwrap();

@@ -7,10 +7,24 @@ define_exchange_core_to_host! {
         kind: "perform-input"
     } -> enum PerformInputResponse {
         Ok {
+            /// Remote name of the map or `file://<path>`.
             map_name: String,
+            /// Usecase defined in the map.
             map_usecase: String,
+            /// Input passed into the map.
             map_input: HostValue,
+            /// Parameters passed into the map.
+            ///
+            /// Must be an object with at least these properties:
+            /// ```ts
+            /// type Parameters = {
+            ///     provider: {
+            ///         services: Record<string, { baseUrl: string }>
+            ///     }
+            /// }
+            /// ```
             map_parameters: HostValue,
+            /// Security values passed into the map.
             map_security: HostValue
         }
     }
@@ -19,6 +33,9 @@ define_exchange_core_to_host! {
 define_exchange_core_to_host! {
     struct PerformOutputRequest<'a> {
         kind: "perform-output",
+        /// Result or error of the map.
+        ///
+        /// Only errors defined in the profile are returned here.
         map_result: &'a Result<HostValue, HostValue>
     } -> enum PerformOutputResponse {
         Ok

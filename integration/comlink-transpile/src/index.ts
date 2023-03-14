@@ -26,6 +26,11 @@ import {
 } from '@superfaceai/ast';
 
 class ComlinkTranspiler implements MapAstVisitor<string> {
+  private static VAR_VARIABLES = 'vars';
+  private static VAR_OUTCOME = '__outcome';
+  private static LABEL_FNBODY = 'FN_BODY';
+  private static LABEL_HTTP = 'HTTP_RESPONSE';
+  
   constructor() {}
 
   private static buildObject(key: string[], value: string): string {
@@ -95,7 +100,7 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
     const args = call.arguments.map((arg) => this.visit(arg)).join(',');
 
     let result = [
-      `const outcome = ${call.operationName}(Object.assign({}, ${args}));`,
+      `const outcome = ${call.operationName}(Object.assign({}, ${args}), parameters, security);`,
       body
     ].join('\n');
 
@@ -125,7 +130,7 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
   visitJessieExpressionNode(node: JessieExpressionNode): string {
     // TODO: can we do this without `with`?    
     return `(()=>{
-      with (__variables) { return ${node.source ?? node.expression}; }
+      with (${ComlinkTranspiler.VAR_VARIABLES}) { return ${node.source ?? node.expression}; }
     })()`;
   }
 
@@ -143,7 +148,7 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
 
   visitSetStatementNode(set: SetStatementNode): string {
     return set.assignments.map(
-      (ass) => `__variables = Object.assign(__variables, ${this.visit(ass)});`
+      (ass) => `${ComlinkTranspiler.VAR_VARIABLES} = Object.assign(${ComlinkTranspiler.VAR_VARIABLES}, ${this.visit(ass)});`
     ).join('\n');
   }
 
@@ -161,9 +166,11 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
     hand: HttpResponseHandlerNode
   ): string {
     let result = [
+      'const statusCode = response.status;',
+      'const headers = response.headers;',
       'const body = response.bodyAuto();',
       ...hand.statements.map((st) => this.visit(st)),
-      'break HTTP_RESPONSE;'
+      `/* end handler */ break ${ComlinkTranspiler.LABEL_HTTP};`
     ].join('\n');
     
     const conditions = [];
@@ -180,13 +187,47 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
     if (conditions.length > 0) {
       result = `if (${conditions.join(' && ')}) ${ComlinkTranspiler.buildStatementBlock(result)}`;
     }
+    result = `/* response ${hand.statusCode ?? '*'} "${hand.contentType ?? '*'}" "${hand.contentLanguage ?? '*'}" */\n${result}`;
 
     return result;
   }
 
+  private static urlParamsToStringTemplate(url: string): string {
+    // rwerite url params:
+    // keys starting with `input`, `args` or `parameters` are kept as-is
+    // otherwise they are prefixed with `vars.`
+    
+    const regex = RegExp('{([^}]*)}', 'g');
+
+    let result = '';
+    let lastIndex = 0;
+    for (const match of url.matchAll(regex)) {
+      const start = match.index;
+      // Why can this be undefined?
+      if (start === undefined) {
+        throw new Error(
+          'Invalid regex match state - missing start index'
+        );
+      }
+
+      const end = start + match[0].length;
+      const key = match[1].trim().split('.');
+      if (['args', 'input', 'parameters'].indexOf(key[0]) < 0) {
+        key.unshift(ComlinkTranspiler.VAR_VARIABLES);
+      }
+
+      result += url.slice(lastIndex, start);
+      result += '${' + key.join('.') + '}';
+      lastIndex = end;
+    }
+    result += url.slice(lastIndex);
+
+    return result;
+  }
   visitHttpCallStatementNode(http: HttpCallStatementNode): string {
+    const urlTemplate = ComlinkTranspiler.urlParamsToStringTemplate(http.url);
     const statements = [
-      `const url = std.unstable.resolveRequestUrl('${http.url}', { parameters, security, serviceId: '${http.serviceId ?? 'default'}' });`, // TODO: url params, serviceId
+      `const url = std.unstable.resolveRequestUrl(\`${urlTemplate}\`, { parameters, security, serviceId: '${http.serviceId ?? 'default'}' });`, // TODO: url params
       `const requestOptions = { method: '${http.method}', headers: {}, query: {}, body: undefined };`
     ];
     if (http.request !== undefined) {
@@ -215,7 +256,7 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
       `throw new Error('Unexpected response');`
     ];
     statements.push(
-      `HTTP_RESPONSE: ${ComlinkTranspiler.buildStatementBlock(responseHandlers.join('\n'))}`,
+      `${ComlinkTranspiler.LABEL_HTTP}: ${ComlinkTranspiler.buildStatementBlock(responseHandlers.join('\n'))}`,
     );
     
     return `${ComlinkTranspiler.buildStatementBlock(statements.join('\n'))}`;
@@ -252,11 +293,11 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
 
   visitMapDefinitionNode(map: MapDefinitionNode): string {
     const body = [
-      'const __outcome = { result: undefined, error: undefined };',
-      'let __variables = {};',
+      `const ${ComlinkTranspiler.VAR_OUTCOME} = { result: undefined, error: undefined };`,
+      `let ${ComlinkTranspiler.VAR_VARIABLES} = {};`,
       // label so we can use break - see visitOutcomeStatementNode
-      `FN_BODY: ${ComlinkTranspiler.buildStatementBlock(map.statements.map((st) => this.visit(st)).join('\n'))}`,
-      'if (__outcome.error !== undefined) { throw new std.unstable.MapError(__outcome.error); } else { return __outcome.data; }'
+      `${ComlinkTranspiler.LABEL_FNBODY}: ${ComlinkTranspiler.buildStatementBlock(map.statements.map((st) => this.visit(st)).join('\n'))}`,
+      `if (${ComlinkTranspiler.VAR_OUTCOME}.error !== undefined) { throw new std.unstable.MapError(${ComlinkTranspiler.VAR_OUTCOME}.error); } else { return ${ComlinkTranspiler.VAR_OUTCOME}.data; }`
     ].join('\n');
     return `function ${map.name}(input, parameters, security) ${ComlinkTranspiler.buildStatementBlock(body)}`;
   }
@@ -265,25 +306,25 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
     operation: OperationDefinitionNode
   ): string {
     const body = [
-      'const __outcome = { data: undefined, error: undefined };',
-      'let __variables = {};',
+      `const ${ComlinkTranspiler.VAR_OUTCOME} = { data: undefined, error: undefined };`,
+      `let ${ComlinkTranspiler.VAR_VARIABLES} = {};`,
       // label so we can use break - see visitOutcomeStatementNode
-      `FN_BODY: ${ComlinkTranspiler.buildStatementBlock(operation.statements.map((st) => this.visit(st)).join('\n'))}`,
-      'return __outcome;' // TODO: or strip data if error is defined?
+      `${ComlinkTranspiler.LABEL_FNBODY}: ${ComlinkTranspiler.buildStatementBlock(operation.statements.map((st) => this.visit(st)).join('\n'))}`,
+      `return ${ComlinkTranspiler.VAR_OUTCOME};` // TODO: or strip data if error is defined?
     ].join('\n');
-    return `function ${operation.name}(args) ${ComlinkTranspiler.buildStatementBlock(body)}`;
+    return `function ${operation.name}(args, parameters, security) ${ComlinkTranspiler.buildStatementBlock(body)}`;
   }
 
   visitOutcomeStatementNode(outcome: OutcomeStatementNode): string {    
     let result;
     if (outcome.isError) {
-      result = `__outcome.error = ${this.visit(outcome.value)}`;
+      result = `${ComlinkTranspiler.VAR_OUTCOME}.error = ${this.visit(outcome.value)}`;
     } else {
-      result = `__outcome.data = ${this.visit(outcome.value)}`;
+      result = `${ComlinkTranspiler.VAR_OUTCOME}.data = ${this.visit(outcome.value)}`;
     };
 
     if (outcome.terminateFlow) {
-      result = `${result}\nbreak FN_BODY;`;
+      result = `${result}\n/* return */ break ${ComlinkTranspiler.LABEL_FNBODY};`;
     }
 
     if (outcome.condition !== undefined) {

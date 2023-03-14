@@ -25,7 +25,9 @@ pub fn link<H: SfCoreUnstable + 'static>(
             // env
             "print": __export_print,
             "abort": __export_abort,
-            @strace(true) "decode_utf8": __export_decode_utf8,
+            @strace(true) "decode_str_utf8": __export_decode_str_utf8,
+            "encode_str_utf8": __export_encode_str_utf8,
+            @strace(true) "encode_map_urlencode": __export_encode_map_urlencode,
             // messages
             @strace(true) "message_exchange": __export_message_exchange,
             // streams
@@ -128,13 +130,13 @@ fn __export_abort<H: SfCoreUnstable + 'static>(
     panic!()
 }
 
-fn __export_decode_utf8<H: SfCoreUnstable + 'static>(
+fn __export_decode_str_utf8<H: SfCoreUnstable + 'static>(
     _state: &mut H,
     context: &Context,
     _this: &JsValue,
     args: &[JsValue],
 ) -> Result<JsValue, JSError> {
-    let bytes = ensure_arguments!("decode_utf8" args; 0: bytes);
+    let bytes = ensure_arguments!("decode_str_utf8" args; 0: bytes);
 
     match std::str::from_utf8(bytes) {
         Err(err) => Err(JSError::Type(format!(
@@ -143,4 +145,52 @@ fn __export_decode_utf8<H: SfCoreUnstable + 'static>(
         ))),
         Ok(s) => Ok(context.value_from_str(s).unwrap()),
     }
+}
+
+fn __export_encode_str_utf8<H: SfCoreUnstable + 'static>(
+    _state: &mut H,
+    context: &Context,
+    _this: &JsValue,
+    args: &[JsValue],
+) -> Result<JsValue, JSError> {
+    let string = ensure_arguments!("encode_str_utf8" args; 0: str);
+
+    Ok(context.array_buffer_value(string.as_bytes()).unwrap())
+}
+
+fn __export_encode_map_urlencode<H: SfCoreUnstable + 'static>(
+    _state: &mut H,
+    context: &Context,
+    _this: &JsValue,
+    args: &[JsValue],
+) -> Result<JsValue, JSError> {
+    let value = ensure_arguments!("encode_map_urlencode" args; 0: value);
+
+    let mut pairs = Vec::<(String, String)>::new();
+    let mut properties = value.properties().unwrap();
+    while let (Ok(Some(key)), Ok(value)) = (properties.next_key(), properties.next_value()) {
+        if !value.is_array() {
+            return Err(JSError::Type("Values must be string arrays".to_string()));
+        }
+
+        let length = value
+            .get_property("length")
+            .unwrap()
+            .try_as_integer()
+            .unwrap() as u32;
+        for i in 0..length {
+            let v = value.get_indexed_property(i).unwrap();
+            if !v.is_str() {
+                return Err(JSError::Type("Values must be string arrays".to_string()));
+            }
+
+            pairs.push((
+                key.as_str().unwrap().to_string(),
+                v.as_str().unwrap().to_string(),
+            ));
+        }
+    }
+    let result = serde_urlencoded::to_string(&pairs).unwrap();
+
+    Ok(context.value_from_str(&result).unwrap())
 }

@@ -210,7 +210,7 @@ def link(app):
 		except ValueError:
 			# ValueError means the stream was closed, for which posix usually returns BADF
 			return _abi_err(Errno.BADF)
-		except:
+		except Exception as e:
 			# TODO: what error - not sure what other exceptions can be caught here and why
 			return _abi_err(Errno.INVAL)
 

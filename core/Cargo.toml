@@ -14,5 +14,6 @@ quickjs-wasm-rs = { version = "0.1", features = [] }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1"}
+serde_urlencoded = { version = "0.7" }
 
 slab = "0.4"
