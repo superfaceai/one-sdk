@@ -1,14 +1,13 @@
 import sys
 
 from app import App
-import sf_host
+from sf_host import log
 
 CORE_WASM = sys.argv[1]
 MAP_NAME = sys.argv[2]
 MAP_USECASE = sys.argv[3]
 APP = App()
-
-sf_host.link(APP)
+APP.link_sf_host()
 APP.load_wasi_module(CORE_WASM)
 
 if "swapi" in MAP_NAME and MAP_USECASE == "RetrieveCharacterInformation":
@@ -22,17 +21,17 @@ if "swapi" in MAP_NAME and MAP_USECASE == "RetrieveCharacterInformation":
 		}
 	}
 	with APP as app:
-		print("host: ==================================================")
-		print("host: result:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Yoda" }, PARAMETERS, { "baz": 1 }))
-		print("host: ==================================================")
+		log("host: ==================================================")
+		log("host: result:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Yoda" }, PARAMETERS, { "baz": 1 }))
+		log("host: ==================================================")
 		debug_stream = app.streams.register(SimpleNamespace(close = lambda: None))
-		print("host: result2:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Luke Skywalker", "debug_stream": { "$HostValue::Stream": debug_stream } }, PARAMETERS))
-		print("host: ==================================================")
+		log("host: result2:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Luke Skywalker", "debug_stream": { "$HostValue::Stream": debug_stream } }, PARAMETERS))
+		log("host: ==================================================")
 
-		print("host: waiting 5 seconds to trigger recache...")
+		log("host: waiting 5 seconds to trigger recache...")
 		time.sleep(5)
-		print("host: result3:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Skywalker" }, PARAMETERS))
-		print("host: ==================================================")
+		log("host: result3:", app.perform(MAP_NAME, MAP_USECASE, { "characterName": "Skywalker" }, PARAMETERS))
+		log("host: ==================================================")
 elif "overpass-de" in MAP_NAME and MAP_USECASE == "NearbyPoi":
 	PARAMETERS = {
 		"provider": {
@@ -52,7 +51,7 @@ elif "overpass-de" in MAP_NAME and MAP_USECASE == "NearbyPoi":
 		"categories": ["CAFE"]
 	}
 	with APP as app:
-		print("host: result:", app.perform(MAP_NAME, MAP_USECASE, INPUT, PARAMETERS))
+		log("host: result:", app.perform(MAP_NAME, MAP_USECASE, INPUT, PARAMETERS))
 elif "github" in MAP_NAME and MAP_USECASE == "UserRepos":
 	PARAMETERS = {
 		"provider": {
@@ -67,6 +66,6 @@ elif "github" in MAP_NAME and MAP_USECASE == "UserRepos":
 		"user": "oclif"
 	}
 	with APP as app:
-		print("host: result:", app.perform(MAP_NAME, MAP_USECASE, INPUT, PARAMETERS))
+		log("host: result:", app.perform(MAP_NAME, MAP_USECASE, INPUT, PARAMETERS))
 else:
 	raise RuntimeError("Unknown map/usecase, add input here")

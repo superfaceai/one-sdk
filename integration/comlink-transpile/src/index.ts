@@ -1,5 +1,3 @@
-import fs from 'fs';
-
 import * as prettier from 'prettier';
 
 import { parseMap, Source } from '@superfaceai/parser';
@@ -25,7 +23,7 @@ import {
   SetStatementNode,
 } from '@superfaceai/ast';
 
-class ComlinkTranspiler implements MapAstVisitor<string> {
+export class ComlinkTranspiler implements MapAstVisitor<string> {
   private static VAR_VARIABLES = 'vars';
   private static VAR_OUTCOME = '__outcome';
   private static LABEL_FNBODY = 'FN_BODY';
@@ -111,12 +109,13 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
       result = `${this.visit(call.iteration)} ${ComlinkTranspiler.buildStatementBlock(result)}`;
     }
 
-    return result;
+    return ComlinkTranspiler.buildStatementBlock(result);
   }
 
   visitPrimitiveLiteralNode(ape: PrimitiveLiteralNode): string {
     if (typeof ape.value === 'string') {
-      return `'${ape.value}'`;
+      // use json to escape the string correctly
+      return JSON.stringify(ape.value);
     } else {
       return ape.value.toString();
     }
@@ -128,9 +127,11 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
   }
 
   visitJessieExpressionNode(node: JessieExpressionNode): string {
-    // TODO: can we do this without `with`?    
+    // TODO: can we do this without `with`?
+    // replace trailing commas and semicolons
+    const expression = (node.source ?? node.expression).replace(/[,;]+$/, '');
     return `(()=>{
-      with (${ComlinkTranspiler.VAR_VARIABLES}) { return ${node.source ?? node.expression}; }
+      with (${ComlinkTranspiler.VAR_VARIABLES}) { return ${expression}; }
     })()`;
   }
 
@@ -336,7 +337,12 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
 
   visitInlineCallNode(call: InlineCallNode): string {
     const body = 'if (outcome.error !== undefined) { throw new Error(`Unexpected inline call failure: ${outcome.error}`); } else { acc.push(outcome.data); }';
-    return `(() => { const acc = []; ${this.visitCallHead(call, body)}; return acc; })()`;
+    let returnAction = 'return acc[0]';
+    if (call.iteration !== undefined) {
+      returnAction = 'return acc'
+    }
+
+    return `(() => { const acc = []; ${this.visitCallHead(call, body)}; ${returnAction}; })()`;
   }
 
   visitMapDocumentNode(document: MapDocumentNode): string {
@@ -378,48 +384,7 @@ class ComlinkTranspiler implements MapAstVisitor<string> {
   }
 }
 
-function nope(): never {
-  console.error(
-    'Usage: comtrans --stdin|FILE'
-  );
-  process.exit(1);
-}
-function readStdin(): string {
-  const value = fs.readFileSync(0).toString();
-
-  if (value.trim() == '') {
-    console.error('Invalid stdin input');
-
-    return nope();
-  }
-
-  return value;
-}
-function readFile(path: string): string {
-  if (path === undefined || path.trim() === '') {
-    console.error('Invalid file input');
-
-    return nope();
-  }
-
-  return fs.readFileSync(path).toString();
-}
-function readInput(): string {
-  const arg = process.argv[2];
-  switch (arg) {
-    case undefined:
-      return nope();
-
-    case '--stdin':
-    case '-':
-      return readStdin();
-
-    default:
-      return readFile(arg);
-  }
-}
-function main(): number {
-  const input = readInput();
+export function transpile(input: string): string {
   const map = parseMap(new Source(input));
   
   const transpiled = new ComlinkTranspiler().visit(map);
@@ -436,8 +401,6 @@ function main(): number {
     arrowParens: 'avoid',
     endOfLine: 'lf'
   });
-  console.log(formatted);
 
-  return 0;
+  return formatted;
 }
-process.exit(main());

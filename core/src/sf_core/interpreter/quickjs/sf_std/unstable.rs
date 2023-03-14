@@ -1,9 +1,14 @@
 use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
+use base64::Engine;
 use quickjs_wasm_rs::{Context, JSError, Value as JsValue};
 
-use crate::sf_std::core_to_map::unstable::{self, SfCoreUnstable};
+use crate::sf_std::{
+    self,
+    core_to_map::unstable::{self, SfCoreUnstable},
+    MultiMap,
+};
 
 use super::JsValueDebug;
 
@@ -25,13 +30,15 @@ pub fn link<H: SfCoreUnstable + 'static>(
             // env
             "print": __export_print,
             "abort": __export_abort,
-            @strace(true) "decode_str_utf8": __export_decode_str_utf8,
-            "encode_str_utf8": __export_encode_str_utf8,
-            @strace(true) "encode_map_urlencode": __export_encode_map_urlencode,
+            "bytes_to_utf8": __export_bytes_to_utf8,
+            "utf8_to_bytes": __export_utf8_to_bytes,
+            "bytes_to_base64": __export_bytes_to_base64,
+            "base64_to_bytes": __export_base64_to_bytes,
+            "map_to_urlencode": __export_map_to_urlencode,
             // messages
             @strace(true) "message_exchange": __export_message_exchange,
             // streams
-            @strace(true) "stream_read": __export_stream_read,
+            "stream_read": __export_stream_read,
             "stream_write": __export_stream_write,
             "stream_close": __export_stream_close
         }
@@ -130,13 +137,13 @@ fn __export_abort<H: SfCoreUnstable + 'static>(
     panic!()
 }
 
-fn __export_decode_str_utf8<H: SfCoreUnstable + 'static>(
+fn __export_bytes_to_utf8<H: SfCoreUnstable + 'static>(
     _state: &mut H,
     context: &Context,
     _this: &JsValue,
     args: &[JsValue],
 ) -> Result<JsValue, JSError> {
-    let bytes = ensure_arguments!("decode_str_utf8" args; 0: bytes);
+    let bytes = ensure_arguments!("bytes_to_utf8" args; 0: bytes);
 
     match std::str::from_utf8(bytes) {
         Err(err) => Err(JSError::Type(format!(
@@ -147,27 +154,57 @@ fn __export_decode_str_utf8<H: SfCoreUnstable + 'static>(
     }
 }
 
-fn __export_encode_str_utf8<H: SfCoreUnstable + 'static>(
+fn __export_utf8_to_bytes<H: SfCoreUnstable + 'static>(
     _state: &mut H,
     context: &Context,
     _this: &JsValue,
     args: &[JsValue],
 ) -> Result<JsValue, JSError> {
-    let string = ensure_arguments!("encode_str_utf8" args; 0: str);
+    let string = ensure_arguments!("utf8_to_bytes" args; 0: str);
 
     Ok(context.array_buffer_value(string.as_bytes()).unwrap())
 }
 
-fn __export_encode_map_urlencode<H: SfCoreUnstable + 'static>(
+fn __export_bytes_to_base64<H: SfCoreUnstable + 'static>(
     _state: &mut H,
     context: &Context,
     _this: &JsValue,
     args: &[JsValue],
 ) -> Result<JsValue, JSError> {
-    let value = ensure_arguments!("encode_map_urlencode" args; 0: value);
+    let bytes = ensure_arguments!("bytes_to_base64" args; 0: bytes);
 
-    let mut pairs = Vec::<(String, String)>::new();
+    let result = base64::engine::general_purpose::STANDARD.encode(bytes);
+
+    Ok(context.value_from_str(&result).unwrap())
+}
+
+fn __export_base64_to_bytes<H: SfCoreUnstable + 'static>(
+    _state: &mut H,
+    context: &Context,
+    _this: &JsValue,
+    args: &[JsValue],
+) -> Result<JsValue, JSError> {
+    let bytes = ensure_arguments!("base64_to_bytes" args; 0: str);
+
+    match base64::engine::general_purpose::STANDARD.decode(bytes) {
+        Err(err) => Err(JSError::Type(format!(
+            "Could not decode string as base64: {}",
+            err
+        ))),
+        Ok(bytes) => Ok(context.array_buffer_value(&bytes).unwrap()),
+    }
+}
+
+fn __export_map_to_urlencode<H: SfCoreUnstable + 'static>(
+    _state: &mut H,
+    context: &Context,
+    _this: &JsValue,
+    args: &[JsValue],
+) -> Result<JsValue, JSError> {
+    let value = ensure_arguments!("map_to_urlencode" args; 0: value);
     let mut properties = value.properties().unwrap();
+
+    let mut multimap = MultiMap::new();
     while let (Ok(Some(key)), Ok(value)) = (properties.next_key(), properties.next_value()) {
         if !value.is_array() {
             return Err(JSError::Type("Values must be string arrays".to_string()));
@@ -184,13 +221,12 @@ fn __export_encode_map_urlencode<H: SfCoreUnstable + 'static>(
                 return Err(JSError::Type("Values must be string arrays".to_string()));
             }
 
-            pairs.push((
-                key.as_str().unwrap().to_string(),
-                v.as_str().unwrap().to_string(),
-            ));
+            let key = key.as_str().unwrap().to_string();
+            let value = v.as_str().unwrap().to_string();
+            multimap.entry(key).or_default().push(value);
         }
     }
-    let result = serde_urlencoded::to_string(&pairs).unwrap();
+    let result = sf_std::encode_query(&multimap);
 
     Ok(context.value_from_str(&result).unwrap())
 }

@@ -18,14 +18,19 @@ pub struct JsInterpreter {
 impl JsInterpreter {
     const STD_CODE: &str = include_str!("./sf_std/std.js");
 
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new(replacement_std: Option<&str>) -> anyhow::Result<Self> {
         let mut context = Context::default();
         let state = Rc::new(RefCell::new(InterpreterState::new()));
 
         sf_std::unstable::link(&mut context, state.clone())
             .context("Failed to export sf_unstable")?;
+
+        let std = match replacement_std {
+            None => Self::STD_CODE,
+            Some(r) => r,
+        };
         context
-            .eval_global("std.js", Self::STD_CODE)
+            .eval_global("std.js", std)
             .context("Failed to evaluate std.js")?;
 
         Ok(Self { context, state })

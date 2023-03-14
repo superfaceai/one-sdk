@@ -107,8 +107,15 @@ impl std::fmt::Debug for JsValueDebug<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
             x if x.is_str() => {
+                const MAX_SHOWN: usize = 30 - 2;
+
                 let string = x.as_str().unwrap();
-                write!(f, "{}", string)
+
+                if string.len() > MAX_SHOWN && !f.alternate() {
+                    write!(f, "{}..", &string[..MAX_SHOWN])
+                } else {
+                    write!(f, "{}", string)
+                }
             }
             x if x.is_array_buffer() => {
                 const MAX_SHOWN: usize = 5;

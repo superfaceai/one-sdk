@@ -2,11 +2,30 @@
 globalThis.std = globalThis.std ?? {};
 // std private state, not exported
 globalThis.std.private = {
-  messageExchange(message) {
+  jsonReplacerMapValue(key, value) {
+    // TODO: this is how node Buffer gets serialized - do we want that?
+    // to keep in line with our core convention, this should be some kind of `$MapValue::Buffer` and only transformed to the NodeJS buffer for the sake of tests
+    if (std.unstable.Buffer.isBuffer(value)) {
+      return { type: 'Buffer', data: value.inner.toArray() };
+    }
+
+    return value;
+  },
+  jsonReviverMapValue(key, value) {
+    if (typeof value === 'object' && value !== null) {
+      if (value['type'] === 'Buffer' && Array.isArray(value['data'])) {
+        return std.unstable.Buffer.from(value['data']);
+      }
+    }
+    
+    // TODO: revive streams
+    return value;
+  },
+  messageExchange(message, replacer = undefined, reviver = undefined) {
     const response = std.ffi.unstable.message_exchange(
-      JSON.stringify(message)
+      JSON.stringify(message, replacer)
     );
-    return JSON.parse(response);
+    return JSON.parse(response, reviver);
   },
   ensureMultimap(map, lowercaseKeys = false) {
     const result = {};
@@ -24,7 +43,7 @@ globalThis.std.private = {
         value = [value];
       }
 
-      result[key] = value.map((v) => v.toString());
+      result[key] = value.filter((v) => v !== undefined && v !== null).map((v) => v.toString());
     }
 
     return result;
@@ -40,6 +59,14 @@ globalThis.std.private = {
 
     static withCapacity(capacity) {
       return new std.private.Bytes(new Uint8Array(capacity ?? 0), 0);
+    }
+
+    static fromArray(array) {
+      return new std.private.Bytes(new Uint8Array(array), array.length);
+    }
+
+    toArray() {
+      return Array.from(this.data);
     }
 
     get len() {
@@ -79,15 +106,30 @@ globalThis.std.private = {
     }
 
     // TODO: support other encodings, currently this is always utf-8
-    decode() {
+    decode(encoding = 'utf8') {
       // TODO: again support for TypedArrays in Javy
       const buffer = this.#buffer.buffer.slice(0, this.len);
-      return std.ffi.unstable.decode_str_utf8(buffer);
+
+      if (encoding === 'utf8') {
+        return std.ffi.unstable.bytes_to_utf8(buffer);
+      } else if (encoding === 'base64') {
+        return std.ffi.unstable.bytes_to_base64(buffer);
+      }
+      
+      throw new Error(`encoding "${encoding}" not implemented`);
     }
 
     // TODO: support other encodings, currently this is always utf-8
-    static encode(string) {
-      const buffer = std.ffi.unstable.encode_str_utf8(string);
+    static encode(string, encoding = 'utf8') {
+      let buffer;
+      if (encoding === 'utf8') {
+        buffer = std.ffi.unstable.utf8_to_bytes(string);
+      } else if (encoding === 'base64') {
+        buffer = std.ffi.unstable.base64_to_bytes(string);
+      } else {
+        throw new Error(`encoding "${encoding}" not implemented`);
+      }
+
       return new std.private.Bytes(new Uint8Array(buffer), buffer.byteLength);
     }
 
@@ -98,7 +140,7 @@ globalThis.std.private = {
       //
       // If Javy supported TypedArrays (they are supported in quickjs, just not exposed in Javy), we could directly pass a subarray
       // to the `stream_read` call and we'd only need one buffer.
-      const readBuffer = new ArrayBuffer(128);
+      const readBuffer = new ArrayBuffer(8192);
 
       while (true) {
         const count = std.ffi.unstable.stream_read(handle, readBuffer);
@@ -134,10 +176,9 @@ globalThis.std.unstable = {
   takeInput() {
     const response = std.private.messageExchange({
       kind: 'take-input'
-    });
+    }, undefined, std.private.jsonReviverMapValue);
 
     if (response.kind === 'ok') {
-      // TODO: revive while parsing JSON to support custom types (streams)
       return { input: response.input, parameters: response.parameters, security: response.security };
     } else {
       throw new Error(response.error);
@@ -146,8 +187,8 @@ globalThis.std.unstable = {
   setOutputSuccess(output) {
     const response = std.private.messageExchange({
       kind: 'set-output-success',
-      output
-    });
+      output: output ?? null
+    }, std.private.jsonReplacerMapValue, undefined);
 
     if (response.kind === 'ok') {
       return;
@@ -159,7 +200,7 @@ globalThis.std.unstable = {
     const response = std.private.messageExchange({
       kind: 'set-output-failure',
       output
-    });
+    }, std.private.jsonReplacerMapValue, undefined);
 
     if (response.kind === 'ok') {
       return;
@@ -185,11 +226,7 @@ globalThis.std.unstable = {
 
     let body = options.body;
     if (body !== undefined && body !== null) {
-      const contentType = headers['content-type']?.[0];
-
-      if (contentType === undefined) {
-        throw new Error(`Content type header missing`);
-      }
+      const contentType = headers['content-type']?.[0] ?? 'application/json';
 
       if (contentType.startsWith(std.private.CONTENT_TYPE_JSON)) {
         body = std.private.Bytes.encode(
@@ -197,10 +234,11 @@ globalThis.std.unstable = {
         );
       } else if (contentType.startsWith(std.private.CONTENT_TYPE_URLENCODED)) {
         body = std.private.Bytes.encode(
-          std.ffi.unstable.encode_map_urlencode(std.private.ensureMultimap(body))
+          std.ffi.unstable.map_to_urlencode(std.private.ensureMultimap(body))
         );
       } else if (std.private.CONTENT_TYPE_REGEX_BINARY.test(contentType)) {
-        body = new std.private.Bytes(body, body.byteLength);
+        std.ffi.unstable.printDebug(">>> body", body, Buffer.isBuffer(body));
+        body = std.unstable.Buffer.from(body).inner;
       } else {
         throw new Error(`Content type not supported: ${contentType}`);
       }
@@ -262,12 +300,22 @@ globalThis.std.unstable = {
     }
 
     bodyText() {
+      const bytes = this.bodyBytes();
+      if (bytes.len === 0) {
+        return '';
+      }
+
       // TODO: possibly infer encoding from headers?
-      return this.bodyBytes().decode();
+      return bytes.decode();
     }
 
     bodyJson() {
-      return JSON.parse(this.bodyText());
+      const text = this.bodyText();
+      if (text === undefined || text === '') {
+        return undefined;
+      }
+
+      return JSON.parse(text);
     }
 
     bodyAuto() {
@@ -290,5 +338,48 @@ globalThis.std.unstable = {
     constructor(output) {
       this.output = output;
     }
+  },
+  Buffer: class Buffer {
+    static from(value, encoding = 'utf8') {
+      if (typeof value === 'string') {
+        return new Buffer(std.private.Bytes.encode(value, encoding));
+      }
+
+      if (Buffer.isBuffer(value)) {
+        return value;
+      }
+
+      if (Array.isArray(value)) {
+        return new Buffer(std.private.Bytes.fromArray(value));
+      }
+
+      throw new Error('not implemented');
+    }
+
+    static isBuffer(value) {
+      if (value === undefined || value === null) {
+        return false;
+      }
+
+      if (value instanceof std.unstable.Buffer) {
+        return true;
+      }
+
+      return false;
+    }
+
+    #inner;
+    constructor(inner) {
+      this.#inner = inner;
+    }
+
+    get inner() {
+      return this.#inner;
+    }
+
+    toString(encoding = 'utf8') {
+      return this.#inner.decode(encoding);
+    }
   }
 };
+globalThis.Buffer = std.unstable.Buffer;

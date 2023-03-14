@@ -1,12 +1,16 @@
+import sys
 import json
 import functools
 from enum import IntEnum
 
 from wasmtime import FuncType, ValType
 
+def log(*args, **kwargs):
+	print(*args, **kwargs, file = sys.stderr)
+
 def _strace_inner(fn, name, *args):
 	result = fn(*args)
-	print(f"host: [strace] {name}{args} = {result}")
+	log(f"host: [strace] {name}{args} = {result}")
 	return result
 def strace(fn, name):
 	"""Use on a function to wrap with a debug print when called."""
@@ -144,9 +148,9 @@ def link(app):
 		message = json.loads(message_json)
 
 		# handle message using callback and UTF-8 JSON encode response
-		print("host: Received message:", message)
+		# log("host: Received message:", message)
 		response = app.handle_message(message)
-		print("host: Response message:", response)
+		# log("host: Response message:", response)
 		response_json = json.dumps(response).encode("utf-8")
 
 		handle = 0

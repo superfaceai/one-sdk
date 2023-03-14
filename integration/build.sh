@@ -1,6 +1,7 @@
 #!/bin/sh
 
 base=$(dirname "$0")
+force=${1:-0}
 
 build() {
 	local source="$1"
@@ -9,7 +10,7 @@ build() {
 	local mod_source=$(stat -f '%m' "$source")
 	local mod_dest=$(stat -f '%m' "$dest")
 
-	if [ $mod_source -le $mod_dest ]; then
+	if [ "$force" -eq 0 ] && [ $mod_source -le $mod_dest ]; then
 		exit 0
 	fi
 

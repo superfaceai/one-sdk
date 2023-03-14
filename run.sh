@@ -13,3 +13,7 @@ set -e
 # python3 host/python/__main__.py core/core.wasm file://integration/js/swapi.suma.js RetrieveCharacterInformation
 # python3 host/python/__main__.py core/core.wasm file://integration/js/overpass-de.suma.js NearbyPoi
 python3 host/python/__main__.py core/core.wasm file://integration/js/github.suma.js UserRepos
+
+
+# node dist/main_superjson.js ~/Documents/Superface/station/superface/super.json ~/Documents/Superface/poc-webassembly/integration/js
+# SF_CORE_ROOT=~/Documents/Superface/poc-webassembly yarn run test

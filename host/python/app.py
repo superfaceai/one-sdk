@@ -6,6 +6,8 @@ from wasmtime import Engine, Store, Module, Linker, WasiConfig, FuncType, ValTyp
 
 from types import SimpleNamespace
 
+import sf_host
+
 class StreamManager:
 	def __init__(self):
 		self.next_id = 1
@@ -86,11 +88,10 @@ class HttpManager:
 		method = msg["method"]
 		url = msg["url"]
 		headers = msg["headers"]
-		query = msg["query"]
 		body = msg["body"]
 		if body is not None:
 			body = bytes(body)
-		print(f"host: Making {method} request to {url} with headers={headers}, query={query}, len(body)={len(body) if body is not None else 0}")
+		sf_host.log(f"host: Making {method} request to {url} with headers={headers}, len(body)={len(body) if body is not None else 0}")
 
 		# TODO: have to join headers to use this library - we can use raw(er) http.client later
 		headers_joined = dict()
@@ -98,7 +99,7 @@ class HttpManager:
 			headers_joined[key] = ",".join(value)
 
 		response = requests.request(
-			method, url, headers = headers_joined, params = query, data = body, stream = True
+			method, url, headers = headers_joined, data = body, stream = True
 		)
 		self.requests[handle] = {
 			"response": response,
@@ -164,7 +165,11 @@ class FsManager:
 		return True
 
 class App:
-	def __init__(self):
+	def __init__(
+		self,
+		stdin = None, stdout = "inherit", stderr = "inherit",
+		http_manager = HttpManager
+	):
 		self.engine = Engine()
 		self.linker = Linker(self.engine)
 		self.store = Store(self.engine)
@@ -179,18 +184,33 @@ class App:
 		self.linker.define_wasi()
 
 		self.wasi = WasiConfig()
-		self.wasi.inherit_stdout()
-		self.wasi.inherit_stderr()
 		self.wasi.inherit_env()
+		# stdin
+		if stdin == "inherit":
+			self.wasi.inherit_stdin()
+		elif stdin is not None:
+			self.wasi.stdin_file = stdin
+		# stdout
+		if stdout == "inherit":
+			self.wasi.inherit_stdout()
+		elif stdout is not None:
+			self.wasi.stdout_file = stdout
+		# stderr
+		if stderr == "inherit":
+			self.wasi.inherit_stderr()
+		elif stderr is not None:
+			self.wasi.stderr_file = stderr
 		self.store.set_wasi(self.wasi)
-
 		# module managers
 		self.streams = StreamManager()
-		self.http = HttpManager(self.streams)
+		self.http = http_manager(self.streams)
 		self.fs = FsManager(self.streams)
 
 		# perform state
 		self.perform_state = None
+
+	def link_sf_host(self):
+		sf_host.link(self)
 
 	def load_wasi_module(self, path):
 		module = Module.from_file(self.engine, path)
@@ -266,16 +286,16 @@ class App:
 
 		if not self.streams._debug_ensure_no_leaks():
 			leaks.append("streams")
-			print("streams:", self.streams)
+			sf_host.log("streams:", self.streams)
 		if not self.http._debug_ensure_no_leaks():
 			leaks.append("http")
-			print("http:", self.http)
+			sf_host.log("http:", self.http)
 		if not self.fs._debug_ensure_no_leaks():
 			leaks.append("fs")
-			print("fs:", self.fs)
+			sf_host.log("fs:", self.fs)
 		if self.perform_state is not None:
 			leaks.append("perform")
-			print(f"perform: {self.perform_state}")
+			sf_host.log(f"perform: {self.perform_state}")
 		
 		if len(leaks) > 0:
 			raise RuntimeError("Leaks were found in: " + ", ".join(leaks))

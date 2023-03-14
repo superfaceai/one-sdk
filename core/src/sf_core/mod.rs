@@ -48,10 +48,10 @@ impl SuperfaceCore {
                 let mut file = OpenOptions::new()
                     .read(true)
                     .open(&path)
-                    .context("Failed to open input file")?;
+                    .context("Failed to open map file")?;
 
                 file.read_to_end(&mut map)
-                    .context("Failed to read input file")?;
+                    .context("Failed to read map file")?;
             }
             None => {
                 // TODO: better url join
@@ -96,7 +96,26 @@ impl SuperfaceCore {
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = JsInterpreter::new().context("Failed to initialize interpreter")?;
+        let mut interpreter = {
+            let replacement_std = match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
+                None => None,
+                Some(path) => {
+                    let mut file = OpenOptions::new()
+                        .read(true)
+                        .open(&path)
+                        .context("Failed to open map stdlib file")?;
+
+                    let mut string = String::new();
+                    file.read_to_string(&mut string)
+                        .context("Failed to open map stdlib file")?;
+
+                    Some(string)
+                }
+            };
+
+            JsInterpreter::new(replacement_std.as_deref())
+                .context("Failed to initialize interpreter")?
+        };
 
         let map_result = interpreter
             .run(

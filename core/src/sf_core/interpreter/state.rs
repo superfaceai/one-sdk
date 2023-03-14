@@ -70,7 +70,7 @@ impl MapSfCoreUnstable for InterpreterState {
     }
 
     fn print(&mut self, message: &str) {
-        println!("map: {}", message);
+        eprintln!("map: {}", message);
     }
 
     fn stream_read(&mut self, handle: usize, buf: &mut [u8]) -> std::io::Result<usize> {

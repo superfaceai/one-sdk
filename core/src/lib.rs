@@ -21,7 +21,7 @@ extern "C" {
 pub extern "C" fn __export_superface_core_setup() {
     // call ctors first
     unsafe { __wasm_call_ctors() };
-    println!("core: superface_core_setup called");
+    eprintln!("core: superface_core_setup called");
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
     if lock.is_some() {
@@ -38,7 +38,7 @@ pub extern "C" fn __export_superface_core_setup() {
 ///
 /// This function must be called exactly once after calling core setup.
 pub extern "C" fn __export_superface_core_teardown() {
-    println!("core: superface_core_teardown called");
+    eprintln!("core: superface_core_teardown called");
 
     match GLOBAL_STATE.try_lock() {
         Err(_) => panic!("Global state lock already locked: perform most likely panicked"),
@@ -69,6 +69,6 @@ pub extern "C" fn __export_superface_core_perform() {
         // if there is an error here that means the core couldn't send a message
         // to the host
         // TODO: should be call teardown and abort or let the host call teardown?
-        println!("core: perform error: {:#}", err);
+        eprintln!("core: perform error: {:#}", err);
     }
 }

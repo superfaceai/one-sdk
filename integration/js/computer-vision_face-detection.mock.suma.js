@@ -1,0 +1,176 @@
+// TODO: MapHeaderNode
+
+function _start(usecaseName) {
+  let mapFn = undefined;
+
+  switch (usecaseName) {
+    case 'FaceDetection':
+      mapFn = FaceDetection;
+      break;
+
+    default:
+      throw new Error('Unknown usecase name');
+  }
+
+  const { input, parameters, security } = std.unstable.takeInput();
+  std.ffi.unstable.printDebug(
+    'Running with input:',
+    input,
+    'parameters:',
+    parameters,
+    'security:',
+    security
+  );
+
+  try {
+    const result = mapFn(input, parameters, security);
+    std.unstable.setOutputSuccess(result);
+  } catch (e) {
+    if (e instanceof std.unstable.MapError) {
+      std.unstable.setOutputFailure(e.output);
+    } else {
+      throw e;
+    }
+  }
+}
+
+function FaceDetection(input, parameters, security) {
+  const __outcome = { result: undefined, error: undefined };
+  let vars = {};
+  FN_BODY: {
+    __outcome.data = (() => {
+      with (vars) {
+        return [
+          {
+            faces: [
+              {
+                emotions: {
+                  anger: `veryUnlikely`,
+                  happiness: `veryUnlikely`,
+                  sadness: `veryUnlikely`,
+                  surprise: `veryUnlikely`,
+                },
+                faceRectangle: {
+                  bottomLeft: {
+                    x: 176,
+                    y: 34,
+                  },
+                  bottomRight: {
+                    x: 428,
+                    y: 34,
+                  },
+                  topLeft: {
+                    x: 176,
+                    y: 327,
+                  },
+                  topRight: {
+                    x: 428,
+                    y: 327,
+                  },
+                },
+                landmarks: [
+                  {
+                    kind: `leftPupil`,
+                    x: 229.75856,
+                    y: 174.96147,
+                  },
+                  {
+                    kind: `rightPupil`,
+                    x: 289.5152,
+                    y: 169.29749,
+                  },
+                  {
+                    kind: `eyebrowLeftOuter`,
+                    x: 211.37524,
+                    y: 158.85571,
+                  },
+                  {
+                    kind: `eyebrowLeftInner`,
+                    x: 232.82782,
+                    y: 154.77731,
+                  },
+                  {
+                    kind: `eyebrowRightOuter`,
+                    x: 313.55548,
+                    y: 145.77417,
+                  },
+                  {
+                    kind: `noseTip`,
+                    x: 234.91925,
+                    y: 216.38809,
+                  },
+                  {
+                    kind: `mouthLeft`,
+                    x: 244.84465,
+                    y: 257.07285,
+                  },
+                  {
+                    kind: `mouthRight`,
+                    x: 287.81973,
+                    y: 253.6265,
+                  },
+                  {
+                    kind: `noseRootRight`,
+                    x: 268.56677,
+                    y: 223.62668,
+                  },
+                  {
+                    kind: `noseRootLeft`,
+                    x: 240.72118,
+                    y: 226.80193,
+                  },
+                  {
+                    kind: `eyeLeftTop`,
+                    x: 226.20166,
+                    y: 169.5451,
+                  },
+                  {
+                    kind: `eyeLeftInner`,
+                    x: 240.20996,
+                    y: 174.60138,
+                  },
+                  {
+                    kind: `eyeLeftBottom`,
+                    x: 228.97414,
+                    y: 180.8672,
+                  },
+                  {
+                    kind: `eyeLeftOuter`,
+                    x: 221.64114,
+                    y: 176.38219,
+                  },
+                  {
+                    kind: `eyeRightTop`,
+                    x: 289.28845,
+                    y: 160.4581,
+                  },
+                  {
+                    kind: `eyeRightOuter`,
+                    x: 307.3009,
+                    y: 169.60486,
+                  },
+                  {
+                    kind: `eyeRightBottom`,
+                    x: 291.20908,
+                    y: 176.04889,
+                  },
+                  {
+                    kind: `eyeRightInner`,
+                    x: 275.35458,
+                    y: 172.26141,
+                  },
+                ],
+              },
+            ],
+          },
+        ];
+      }
+    })();
+    /* return */ break FN_BODY;
+  }
+  if (__outcome.error !== undefined) {
+    throw new std.unstable.MapError(__outcome.error);
+  } else {
+    return __outcome.data;
+  }
+}

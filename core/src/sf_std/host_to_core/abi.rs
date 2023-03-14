@@ -17,7 +17,7 @@ pub struct MessageFn {
     retrieve_fn: unsafe extern "C" fn(Size, Ptr, Size) -> ResultRepr,
 }
 impl MessageFn {
-    const DEFAULT_RESPONSE_BUFFER_SIZE: usize = 1024;
+    const DEFAULT_RESPONSE_BUFFER_SIZE: usize = 1024; // or 8k?
 
     /// ## Safety
     ///
