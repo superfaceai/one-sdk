@@ -170,7 +170,7 @@ function GetUploadState(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/${vars.uploadId}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',
@@ -454,7 +454,7 @@ function UploadMedia(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/${vars.apiVersion}/${vars.businessAccountId}/media`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

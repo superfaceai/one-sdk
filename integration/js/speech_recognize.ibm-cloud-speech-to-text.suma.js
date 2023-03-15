@@ -158,7 +158,7 @@ function RecognizeWav(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/instances/${parameters.INSTANCE_ID}/v1/recognize`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

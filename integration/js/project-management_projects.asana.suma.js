@@ -42,7 +42,7 @@ function ListProjects(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/projects`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

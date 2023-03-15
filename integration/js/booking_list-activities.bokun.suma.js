@@ -43,7 +43,7 @@ function ListActivities(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/api/graphql`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

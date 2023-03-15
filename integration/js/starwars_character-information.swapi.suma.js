@@ -42,7 +42,7 @@ function RetrieveCharacterInformation(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/people/`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

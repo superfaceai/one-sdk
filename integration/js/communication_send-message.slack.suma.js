@@ -42,7 +42,7 @@ function SendMessage(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/chat.postMessage`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

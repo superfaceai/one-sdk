@@ -214,7 +214,7 @@ function FetchPullRequests(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/repos/${args.owner}/${args.repo}/pulls`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

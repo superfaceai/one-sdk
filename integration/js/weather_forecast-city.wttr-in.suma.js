@@ -201,7 +201,7 @@ function fetchWeather(args, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/${args.city}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

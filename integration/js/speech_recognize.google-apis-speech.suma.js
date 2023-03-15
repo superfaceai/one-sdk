@@ -77,7 +77,7 @@ function Recognize(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/speech:recognize`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

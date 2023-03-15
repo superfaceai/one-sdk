@@ -42,7 +42,7 @@ function AddContactsToList(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v3/marketing/contacts`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'PUT',

@@ -42,7 +42,7 @@ function GetProfilesForPublishing(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v2/organizationAcls`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

@@ -151,7 +151,7 @@ function GetProfilePosts(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/${vars.apiVersion}/${vars.profileId}/feed`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -569,7 +569,7 @@ function GetPageAccessToken(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/${vars.apiVersion}/${args.pageId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

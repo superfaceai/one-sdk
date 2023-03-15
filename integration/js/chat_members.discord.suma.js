@@ -63,7 +63,7 @@ function GetMembers(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/guilds/${input.workspace}/members`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

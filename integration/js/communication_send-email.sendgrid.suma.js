@@ -94,7 +94,7 @@ function SendEmail(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v3/mail/send`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

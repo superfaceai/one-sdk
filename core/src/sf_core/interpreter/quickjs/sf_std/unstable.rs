@@ -184,9 +184,9 @@ fn __export_base64_to_bytes<H: SfCoreUnstable + 'static>(
     _this: &JsValue,
     args: &[JsValue],
 ) -> Result<JsValue, JSError> {
-    let bytes = ensure_arguments!("base64_to_bytes" args; 0: str);
+    let string = ensure_arguments!("base64_to_bytes" args; 0: str);
 
-    match base64::engine::general_purpose::STANDARD.decode(bytes) {
+    match base64::engine::general_purpose::STANDARD.decode(string) {
         Err(err) => Err(JSError::Type(format!(
             "Could not decode string as base64: {}",
             err

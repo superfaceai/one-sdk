@@ -62,7 +62,7 @@ function Create(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v3/marketing/contacts`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'PUT',
@@ -256,7 +256,7 @@ function Update(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v3/marketing/contacts`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'PUT',
@@ -455,7 +455,7 @@ function Search(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/marketing/contacts/search`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

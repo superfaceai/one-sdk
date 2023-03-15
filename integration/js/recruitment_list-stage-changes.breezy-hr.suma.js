@@ -576,7 +576,7 @@ function ListStageChanges(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${args.companyId}/position/${args.jobId}/candidate/${args.candidateId}/stream`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -770,7 +770,7 @@ function CheckCandidateExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${args.companyId}/position/${args.jobId}/candidate/${args.candidateId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -948,7 +948,7 @@ function CheckJobExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${args.companyId}/position/${args.jobId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -1126,7 +1126,7 @@ function CheckCompanyExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${args.companyId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

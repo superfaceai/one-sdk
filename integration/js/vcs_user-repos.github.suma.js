@@ -192,7 +192,7 @@ function FetchRepos(args, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/users/${args.user}/repos`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

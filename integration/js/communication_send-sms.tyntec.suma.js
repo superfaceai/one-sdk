@@ -45,7 +45,7 @@ function SendMessage(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/chat-api/v2/messages`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',
@@ -138,7 +138,7 @@ function RetrieveMessageStatus(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/chat-api/v2/messages/${vars.messageId}/history`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

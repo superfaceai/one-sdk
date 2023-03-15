@@ -8,13 +8,17 @@ from wasmtime import FuncType, ValType
 def log(*args, **kwargs):
 	print(*args, **kwargs, file = sys.stderr)
 
+ENABLE_STRACE = False
 def _strace_inner(fn, name, *args):
 	result = fn(*args)
 	log(f"host: [strace] {name}{args} = {result}")
 	return result
 def strace(fn, name):
 	"""Use on a function to wrap with a debug print when called."""
-	return functools.partial(_strace_inner, fn, name)
+	if ENABLE_STRACE:
+		return functools.partial(_strace_inner, fn, name)
+	else:
+		return fn
 
 def _read_bytes(memory, ptr, len):
 	"""Read exactly `len` bytes from `ptr`."""

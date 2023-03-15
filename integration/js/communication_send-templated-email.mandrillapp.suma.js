@@ -41,7 +41,7 @@ function SendTemplatedEmail(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/api/1.0/messages/send-template`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

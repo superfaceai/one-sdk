@@ -56,7 +56,7 @@ function GetCurrentWeatherInCity(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/${vars.inputCity}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

@@ -41,7 +41,7 @@ function AnalyzePlainTextSentiment(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/documents:analyzeSentiment`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

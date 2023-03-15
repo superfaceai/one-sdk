@@ -42,7 +42,7 @@ function IpGeolocation(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/ipgeo`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

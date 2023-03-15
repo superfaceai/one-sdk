@@ -83,7 +83,7 @@ function TextToSpeechSynthesis(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/text:synthesize`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

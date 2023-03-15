@@ -160,7 +160,7 @@ function GetCV(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/spi/v3/candidates/${args.candidateId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -377,7 +377,7 @@ function CheckSubdomainExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/spi/v3/accounts/${args.subdomain}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

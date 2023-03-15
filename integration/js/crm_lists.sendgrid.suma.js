@@ -42,7 +42,7 @@ function GetLists(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v3/marketing/lists`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

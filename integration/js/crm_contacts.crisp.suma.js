@@ -88,7 +88,7 @@ function Create(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/website/${parameters.WEBSITE_ID}/people/profile`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',
@@ -283,7 +283,7 @@ function Update(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/website/${parameters.WEBSITE_ID}/people/profile/${vars.profileId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'PATCH',
@@ -454,7 +454,7 @@ function Search(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/website/${parameters.WEBSITE_ID}/people/profiles`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -586,7 +586,7 @@ function GetCustomProperties(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/website/${parameters.WEBSITE_ID}/people/data/${args.profileId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -682,7 +682,7 @@ function PatchCustomProperties(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/website/${parameters.WEBSITE_ID}/people/data/${args.profileId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'PATCH',

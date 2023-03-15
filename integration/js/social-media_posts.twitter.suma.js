@@ -41,7 +41,7 @@ function GetProfilePosts(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/2/users/${input.profileId}/tweets`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

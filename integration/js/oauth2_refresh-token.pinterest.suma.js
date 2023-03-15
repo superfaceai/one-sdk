@@ -63,7 +63,7 @@ function GetAccessTokenFromRefreshToken(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v5/oauth/token`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

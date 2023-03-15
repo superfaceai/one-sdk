@@ -42,7 +42,7 @@ function GetMessages(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/conversations.history`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

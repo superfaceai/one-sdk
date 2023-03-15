@@ -41,7 +41,7 @@ function GetThreads(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/guilds/${input.workspace}/threads/active`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

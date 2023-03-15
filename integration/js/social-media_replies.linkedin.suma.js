@@ -56,7 +56,7 @@ function GetPostReplies(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v2/socialActions/${input.parentId}/comments?count=${vars.count}&start=${vars.start}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

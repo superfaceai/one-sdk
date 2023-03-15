@@ -62,7 +62,7 @@ function Recognize(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/speech/recognition/conversation/cognitiveservices/v1`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

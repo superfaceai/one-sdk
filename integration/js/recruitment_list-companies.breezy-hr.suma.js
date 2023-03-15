@@ -42,7 +42,7 @@ function ListCompanies(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v3/companies`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

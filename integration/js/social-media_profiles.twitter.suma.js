@@ -45,7 +45,7 @@ function GetProfiles(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/2/users`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',
@@ -223,7 +223,7 @@ function GetProfilesByUsername(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/2/users/by`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

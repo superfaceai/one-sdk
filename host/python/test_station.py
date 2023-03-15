@@ -115,6 +115,10 @@ class TestHttpManager(HttpManager):
 			if recording["method"].upper() == method.upper() and url == rec_url:
 				return recording
 		
+		log(f"host: Considered recordings for {method.upper()} {url}:")
+		for recording in self.recordings:
+			log("host:", recording["method"].upper() + " " + recording["scope"].rsplit(":", 1)[0] + recording["path"])
+		
 		return None
 
 @dataclass
@@ -130,7 +134,7 @@ class TestEntry:
 def prepare_test_entry(
 	superjson_path, integrations_root,
 	profile, provider, usecase,
-	recording_hash,
+	recording_type_prefix, recording_hash,
 	map_input
 ):
 	def _path(*args):
@@ -152,24 +156,36 @@ def prepare_test_entry(
 	map_name = _path(integrations_root, f"{map_name}.{provider}.suma.js")
 	map_name = f"file://{map_name}"
 
+	provider_json = _load_json(provider_path)
 	parameters = {
-		"provider": {
-			"services": {}
+		"__provider": {
+			"services": dict((s["id"], { "baseUrl": s["baseUrl"] }) for s in provider_json["services"]),
+			"defaultService": provider_json["defaultService"]
 		}
 	}
-	provider_json = _load_json(provider_path)
-	for service in provider_json["services"]:
-		parameters["provider"]["services"][service["id"]] = { "baseUrl": service["baseUrl"] }
+	for parameter in provider_json.get("parameters", {}):
+		key = parameter["name"]
+		value = superjson["providers"][provider].get("parameters", {}).get(key, None)
+		if value is None:
+			value = parameter.get("default", None)
+		parameters[key] = value
 
 	security = None # TODO
 
 	recordings_json = _load_json(recordings_path)
 
 	recordings = []
+	recordings_key = f"{profile}/{provider}/{usecase}"
+	if recording_type_prefix != "":
+		recordings_key = f"{recording_type_prefix}-{recordings_key}"
 	try:
-		recordings = recordings_json[f"{profile}/{provider}/{usecase}"][recording_hash]
+		recordings = recordings_json[recordings_key][recording_hash]
 	except KeyError:
-		pass
+		available = []
+		for key in recordings_json:
+			for hsh in recordings_json[key]:
+				available.append(f"{key}.{hsh}")
+		log(f"host: Could not find recording for {recordings_key}.{recording_hash}, available {available} at {recordings_path}")
 
 	return TestEntry(
 		map_name,
@@ -185,10 +201,11 @@ if __name__ == "__main__":
 	core_blob_path = os.path.join(core_root, "core/core.wasm")
 	integrations_root = os.path.join(core_root, "integration/js")
 
-	profile, provider, usecase, recording_hash = sys.argv[1].split(".")
+	# todo: send this as json
+	recording_type_prefix, profile, provider, usecase, recording_hash = sys.argv[1].split(".")
 	map_input = json.load(sys.stdin)
 
-	entry = prepare_test_entry("superface/super.json", integrations_root, profile, provider, usecase, recording_hash, map_input)
+	entry = prepare_test_entry("superface/super.json", integrations_root, profile, provider, usecase, recording_type_prefix, recording_hash, map_input)
 	
 	app = App(stdout = None, http_manager = lambda s: TestHttpManager(s, entry.recordings))
 	app.link_sf_host()

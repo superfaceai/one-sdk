@@ -12,12 +12,13 @@ APP.load_wasi_module(CORE_WASM)
 
 if "swapi" in MAP_NAME and MAP_USECASE == "RetrieveCharacterInformation":
 	PARAMETERS = {
-		"provider": {
+		"__provider": {
 			"services": {
 				"default": {
 					"baseUrl": "https://swapi.dev/api"
 				}
-			}
+			},
+			"defaultService": "default"
 		}
 	}
 	with APP as app:
@@ -34,12 +35,13 @@ if "swapi" in MAP_NAME and MAP_USECASE == "RetrieveCharacterInformation":
 		log("host: ==================================================")
 elif "overpass-de" in MAP_NAME and MAP_USECASE == "NearbyPoi":
 	PARAMETERS = {
-		"provider": {
+		"__provider": {
 			"services": {
 				"default": {
 					"baseUrl": "https://overpass-api.de"
 				}
-			}
+			},
+			"defaultService": "default"
 		}
 	}
 	INPUT = {
@@ -54,12 +56,13 @@ elif "overpass-de" in MAP_NAME and MAP_USECASE == "NearbyPoi":
 		log("host: result:", app.perform(MAP_NAME, MAP_USECASE, INPUT, PARAMETERS))
 elif "github" in MAP_NAME and MAP_USECASE == "UserRepos":
 	PARAMETERS = {
-		"provider": {
+		"__provider": {
 			"services": {
 				"default": {
 					"baseUrl": "https://api.github.com"
 				}
-			}
+			},
+			"defaultService": "default"
 		}
 	}
 	INPUT = {

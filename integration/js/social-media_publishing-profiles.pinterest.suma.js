@@ -49,7 +49,7 @@ function GetProfilesForPublishing(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v5/boards`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

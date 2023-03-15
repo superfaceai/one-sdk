@@ -497,7 +497,7 @@ function UpdateCandidate(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/spi/v3/candidates/${args.candidate.candidateId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'PATCH',
@@ -853,7 +853,7 @@ function CheckSubdomainExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/spi/v3/accounts/${args.subdomain}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

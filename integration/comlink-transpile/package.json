@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "comtrans": "ts-node src/main.ts"
+    "comtrans": "ts-node src/main.ts",
+    "comtrans-superjson": "ts-node src/main_superjson.ts"
   }
 }

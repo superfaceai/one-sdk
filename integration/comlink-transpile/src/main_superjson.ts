@@ -5,7 +5,7 @@ import { transpile } from './index';
 
 function nope(): never {
   console.error(
-    'Usage: comtrans SUPER_JSON OUT_PATH'
+    'Usage: comtrans-superjson SUPER_JSON OUT_PATH'
   );
   process.exit(1);
 }

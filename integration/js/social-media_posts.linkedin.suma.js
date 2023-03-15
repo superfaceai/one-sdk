@@ -86,7 +86,7 @@ function GetProfilePosts(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/rest/posts${vars.queryParams}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -545,7 +545,7 @@ function ResolveMedia(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/${vars.pathName}${vars.queryParams}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

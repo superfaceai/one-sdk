@@ -41,7 +41,7 @@ function UpdateProduct(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/products/${input.productId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

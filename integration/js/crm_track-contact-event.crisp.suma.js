@@ -41,7 +41,7 @@ function TrackContactEvent(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/website/${parameters.WEBSITE_ID}/people/events/${input.contactId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

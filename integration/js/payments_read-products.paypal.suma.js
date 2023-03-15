@@ -42,7 +42,7 @@ function ListProducts(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/catalogs/products`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

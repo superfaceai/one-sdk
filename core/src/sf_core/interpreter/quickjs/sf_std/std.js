@@ -209,14 +209,15 @@ globalThis.std.unstable = {
     }
   },
   resolveRequestUrl(url, options) {
-    const { parameters, security, serviceId } = options;
+    const { parameters, security } = options;
+    let serviceId = options.serviceId ?? parameters.__provider.defaultService;
 
     if (url === '') {
-      return parameters.provider.services[serviceId].baseUrl;
+      return parameters.__provider.services[serviceId].baseUrl;
     }
     const isRelative = /^\/([^/]|$)/.test(url);
     if (isRelative) {
-      url = parameters.provider.services[serviceId].baseUrl.replace(/\/+$/, '') + url;
+      url = parameters.__provider.services[serviceId].baseUrl.replace(/\/+$/, '') + url;
     }
 
     return url;

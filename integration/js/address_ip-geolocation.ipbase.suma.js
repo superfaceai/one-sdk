@@ -50,7 +50,7 @@ function IpGeolocation(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v2/info`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

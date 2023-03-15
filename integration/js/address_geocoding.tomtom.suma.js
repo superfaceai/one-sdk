@@ -56,7 +56,7 @@ function Geocode(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/search/2/geocode/${vars.payload}.json`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -211,7 +211,7 @@ function ReverseGeocode(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/search/2/reverseGeocode/${vars.payload}.json`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

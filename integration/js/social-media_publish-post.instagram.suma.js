@@ -260,7 +260,7 @@ function PublishPost(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/${vars.apiVersion}/${vars.businessAccountId}/media_publish`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',
@@ -369,7 +369,7 @@ function PublishPost(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/${vars.apiVersion}/${vars.postId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -626,7 +626,7 @@ function UploadMedia(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/${vars.apiVersion}/${vars.businessAccountId}/media`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

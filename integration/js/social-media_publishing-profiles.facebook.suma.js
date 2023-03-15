@@ -42,7 +42,7 @@ function GetProfilesForPublishing(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/${vars.apiVersion}/me/accounts`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

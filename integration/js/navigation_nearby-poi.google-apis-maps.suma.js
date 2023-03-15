@@ -48,7 +48,7 @@ function NearbyPoi(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/maps/api/place/nearbysearch/json`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

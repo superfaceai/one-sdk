@@ -69,7 +69,7 @@ function SingleFileContent(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/repos/${vars.owner}/${vars.repo}/contents/${vars.path}?ref=${vars.ref}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

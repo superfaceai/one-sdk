@@ -51,7 +51,7 @@ function ListTemplates(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/templates`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',
@@ -108,7 +108,7 @@ function GetTemplateContent(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/templates/${vars.inputId}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',
@@ -173,7 +173,7 @@ function CreateTemplate(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/templates`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',
@@ -269,7 +269,7 @@ function UpdateTemplate(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/templates/${vars.inputId}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'PUT',

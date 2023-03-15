@@ -108,7 +108,7 @@ function FetchShipment(args, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/track/shipments`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

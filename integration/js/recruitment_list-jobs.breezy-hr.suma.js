@@ -456,7 +456,7 @@ function ListJobs(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${args.companyId}/positions`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -643,7 +643,7 @@ function CheckCompanyExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${args.companyId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

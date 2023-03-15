@@ -63,7 +63,7 @@ function FindByHashtag(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/2/tweets/search/recent`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',
@@ -270,7 +270,7 @@ function FindByMention(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/2/users/${input.profileId}/mentions`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

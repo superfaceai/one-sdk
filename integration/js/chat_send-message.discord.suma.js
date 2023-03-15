@@ -41,7 +41,7 @@ function SendMessage(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/channels/${input.destination}/messages`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

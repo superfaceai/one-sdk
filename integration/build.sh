@@ -2,6 +2,7 @@
 
 base=$(dirname "$0")
 force=${1:-0}
+station=$(realpath "$1")
 
 build() {
 	local source="$1"
@@ -19,7 +20,8 @@ build() {
 }
 
 cd "$base/comlink-transpile"
-build ./fixtures/swapi.suma ../js/swapi.suma.js
-build ./fixtures/overpass-de.suma ../js/overpass-de.suma.js
-build ./fixtures/github.suma ../js/github.suma.js
+# build ./fixtures/swapi.suma ../js/swapi.suma.js
+# build ./fixtures/overpass-de.suma ../js/overpass-de.suma.js
+# build ./fixtures/github.suma ../js/github.suma.js
+yarn run -s comtrans-superjson "$station/superface/super.json" ../js
 cd - >/dev/null

@@ -122,7 +122,7 @@ function ListCandidates(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${parameters.COMPANY_ID}/position/${input.jobId}/candidates`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -620,7 +620,7 @@ function CheckJobExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${args.companyId}/position/${args.jobId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -798,7 +798,7 @@ function CheckCompanyExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/company/${args.companyId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

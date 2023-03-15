@@ -186,7 +186,7 @@ function FetchPullRequests(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v4/projects/${args.id}/merge_requests`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

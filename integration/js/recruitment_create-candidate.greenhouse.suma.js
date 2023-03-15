@@ -82,7 +82,7 @@ function CreateCandidate(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/candidates`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

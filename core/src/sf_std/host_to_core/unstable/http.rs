@@ -57,11 +57,9 @@ impl HttpRequest {
         query: &MultiMap,
         body: Option<&[u8]>,
     ) -> anyhow::Result<Self> {
-        let url = if query.len() > 0 {
-            let query = sf_std::encode_query(query);
-            format!("{}?{}", url, query)
-        } else {
-            url.to_string()
+        let url = match sf_std::encode_query(query) {
+            empty if empty.len() == 0 => url.to_string(),
+            query => format!("{}?{}", url, query)
         };
 
         let response = HttpCallRequest {

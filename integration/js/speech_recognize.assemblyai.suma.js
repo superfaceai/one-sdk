@@ -80,7 +80,7 @@ function Recognize(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v2/stream`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

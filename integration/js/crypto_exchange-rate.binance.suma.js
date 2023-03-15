@@ -155,7 +155,7 @@ function sendExchangeRateRequest(args, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/api/v3/ticker/price`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

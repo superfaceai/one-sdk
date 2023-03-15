@@ -62,7 +62,7 @@ function PullRequest(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/2.0/repositories/${vars.owner}/${vars.repo}/pullrequests/${vars.identifier}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

@@ -160,7 +160,7 @@ function PublishPost(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/rest/posts`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',
@@ -343,7 +343,7 @@ function UploadImage(args, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/rest/images`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

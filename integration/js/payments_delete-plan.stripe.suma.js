@@ -42,7 +42,7 @@ function DeletePlan(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/plans/${input.planId}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'DELETE',

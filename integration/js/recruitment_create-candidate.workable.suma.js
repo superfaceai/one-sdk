@@ -632,7 +632,7 @@ function CreateCandidate(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/spi/v3/jobs/${args.candidate.jobId}/candidates`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',
@@ -958,7 +958,7 @@ function CheckSubdomainExists(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/spi/v3/accounts/${args.subdomain}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -1137,7 +1137,7 @@ function CheckJobExists(args, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/spi/v3/jobs/${args.jobId}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

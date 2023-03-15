@@ -41,7 +41,7 @@ function GetCV(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/candidates/${input.candidateId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

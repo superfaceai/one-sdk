@@ -45,7 +45,7 @@ function CompleteText(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/completions`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',
@@ -375,7 +375,7 @@ function EditText(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/edits`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

@@ -42,7 +42,7 @@ function SendTemplatedEmail(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/email/withTemplate`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

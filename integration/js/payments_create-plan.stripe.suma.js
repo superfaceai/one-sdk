@@ -42,7 +42,7 @@ function CreatePlan(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/prices`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

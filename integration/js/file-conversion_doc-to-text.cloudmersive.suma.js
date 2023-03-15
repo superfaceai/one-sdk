@@ -56,7 +56,7 @@ function ConvertDocumentToText(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/convert/autodetect/to/txt`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

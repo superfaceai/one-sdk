@@ -45,7 +45,7 @@ function SendMessage(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/omnimessage`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',
@@ -142,7 +142,7 @@ function RetrieveMessageStatus(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/omnimessage/${input.messageId}/status`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

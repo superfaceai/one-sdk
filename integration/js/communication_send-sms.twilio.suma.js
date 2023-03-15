@@ -44,7 +44,7 @@ function SendMessage(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/2010-04-01/Accounts/${parameters.accountSid}/Messages.json`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',
@@ -120,7 +120,7 @@ function RetrieveMessageStatus(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/2010-04-01/Accounts/${parameters.accountSid}/Messages/${input.messageId}.json`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

@@ -42,7 +42,7 @@ function TranslateText(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v2/translate`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

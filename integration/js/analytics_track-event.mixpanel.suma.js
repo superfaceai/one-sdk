@@ -42,7 +42,7 @@ function TrackEvent(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/track`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

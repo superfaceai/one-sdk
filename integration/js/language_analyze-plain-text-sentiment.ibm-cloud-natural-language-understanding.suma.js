@@ -55,7 +55,7 @@ function AnalyzePlainTextSentiment(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/instances/${parameters.INSTANCE_ID}/v1/analyze?version=2021-08-01`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

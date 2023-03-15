@@ -7,6 +7,7 @@ import { IGenerator } from '@superfaceai/testing/dist/generate-hash';
 import { mapError, parseTestInstance } from '@superfaceai/testing/dist/superface-test.utils';
 
 import { MappedError } from '@superfaceai/one-sdk/dist/core/interpreter/map-interpreter.errors';
+import { RecordingType } from './nock/recording.interfaces';
 
 // re-export interfaces, we need to match real testing
 export { SuperfaceTestConfig, NockConfig, SuperfaceTestRun, RecordingProcessOptions, TestingReturn, AlertFunction, RecordingDefinitions } from '@superfaceai/testing';
@@ -24,7 +25,7 @@ export class SuperfaceTest {
 
   async run(
     testCase: SuperfaceTestRun,
-    _options?: RecordingProcessOptions
+    options?: RecordingProcessOptions
   ): Promise<TestingReturn> {
     const profile = testCase.profile ?? this.configuration?.profile;
     const provider = testCase.provider ?? this.configuration?.provider;
@@ -38,7 +39,11 @@ export class SuperfaceTest {
     }
 
     const input = testCase.input;
-    const recordingKey = `${profile}.${provider}.${usecase}.${this.generator.hash(testCase)}`;
+    let recordingTypePrefix = '';
+    if (options?.recordingType !== undefined && options.recordingType !== RecordingType.MAIN) {
+      recordingTypePrefix = options?.recordingType;
+    }
+    const recordingKey = `${recordingTypePrefix}.${profile}.${provider}.${usecase}.${this.generator.hash(testCase)}`;
     const coreRunner = joinPath(process.env['SF_CORE_ROOT']!!, 'host/python/test_station.py');
 
     const result: Record<string, unknown> = await new Promise((resolve, reject) => {

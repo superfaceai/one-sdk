@@ -100,7 +100,7 @@ function FetchShipment(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/tracks/${args.carrier}/${args.trackingNumber}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

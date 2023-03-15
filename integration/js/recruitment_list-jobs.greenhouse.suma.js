@@ -85,7 +85,7 @@ function ListJobs(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/jobs`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

@@ -170,7 +170,7 @@ export class ComlinkTranspiler implements MapAstVisitor<string> {
       'const statusCode = response.status;',
       'const headers = response.headers;',
       'const body = response.bodyAuto();',
-      ...hand.statements.map((st) => this.visit(st)),
+      ...hand.statements.map((st) => this.visit(st)), // TODO: mapped HTTP error
       `/* end handler */ break ${ComlinkTranspiler.LABEL_HTTP};`
     ].join('\n');
     
@@ -227,8 +227,9 @@ export class ComlinkTranspiler implements MapAstVisitor<string> {
   }
   visitHttpCallStatementNode(http: HttpCallStatementNode): string {
     const urlTemplate = ComlinkTranspiler.urlParamsToStringTemplate(http.url);
+    const service = http.serviceId !== undefined ? `'${http.serviceId}'` : 'undefined';
     const statements = [
-      `const url = std.unstable.resolveRequestUrl(\`${urlTemplate}\`, { parameters, security, serviceId: '${http.serviceId ?? 'default'}' });`, // TODO: url params
+      `const url = std.unstable.resolveRequestUrl(\`${urlTemplate}\`, { parameters, security, serviceId: ${service} });`,
       `const requestOptions = { method: '${http.method}', headers: {}, query: {}, body: undefined };`
     ];
     if (http.request !== undefined) {

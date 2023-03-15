@@ -69,7 +69,7 @@ function GetChannels(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/conversations.list`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

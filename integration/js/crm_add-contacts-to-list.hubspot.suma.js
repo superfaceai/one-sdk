@@ -41,7 +41,7 @@ function AddContactsToList(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/contacts/v1/lists/${input.listId}/add`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',

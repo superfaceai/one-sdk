@@ -51,7 +51,7 @@ function ListTemplates(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v3/templates`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',
@@ -110,7 +110,7 @@ function GetTemplateContent(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/templates/${vars.inputId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -469,7 +469,7 @@ function FetchTemplateCall(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/templates/${args.templateId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -511,7 +511,7 @@ function CreateTemplateCall(args, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v3/templates`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',
@@ -563,7 +563,7 @@ function CreateTemplateVersionCall(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/templates/${args.templateId}/versions`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'POST',
@@ -636,7 +636,7 @@ function UpdateTemplateCall(args, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v3/templates/${args.templateId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'PATCH',

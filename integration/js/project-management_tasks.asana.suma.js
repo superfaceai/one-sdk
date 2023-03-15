@@ -54,7 +54,7 @@ function CreateTask(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/tasks`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',
@@ -198,7 +198,7 @@ function ListTasks(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/projects/${input.id}/tasks`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -307,7 +307,7 @@ function ReadTask(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/tasks/${input.id}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',
@@ -435,7 +435,7 @@ function UpdateTask(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/tasks/${input.id}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'PUT',
@@ -580,7 +580,7 @@ function DeleteTask(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/tasks/${input.id}`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'DELETE',

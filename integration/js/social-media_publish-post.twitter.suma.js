@@ -65,7 +65,7 @@ function PublishPost(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/2/tweets`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',

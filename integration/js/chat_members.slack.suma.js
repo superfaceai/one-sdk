@@ -42,7 +42,7 @@ function GetMembers(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/users.list`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

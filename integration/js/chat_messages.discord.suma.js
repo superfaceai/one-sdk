@@ -116,7 +116,7 @@ function GetMessages(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/channels/${vars.destination}/messages`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',

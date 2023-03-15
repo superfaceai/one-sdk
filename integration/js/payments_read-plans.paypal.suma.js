@@ -44,7 +44,7 @@ function GetPlan(input, parameters, security) {
     {
       const url = std.unstable.resolveRequestUrl(
         `/v1/billing/plans/${input.planId}`,
-        { parameters, security, serviceId: 'default' }
+        { parameters, security, serviceId: undefined }
       );
       const requestOptions = {
         method: 'GET',
@@ -215,7 +215,7 @@ function ListPlans(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/v1/billing/plans`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'GET',

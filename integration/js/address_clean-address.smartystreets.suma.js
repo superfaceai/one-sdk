@@ -49,7 +49,7 @@ function CleanAddress(input, parameters, security) {
       const url = std.unstable.resolveRequestUrl(`/street-address`, {
         parameters,
         security,
-        serviceId: 'default',
+        serviceId: undefined,
       });
       const requestOptions = {
         method: 'POST',
