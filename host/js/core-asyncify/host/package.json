@@ -1,0 +1,9 @@
+{
+  "name": "host",
+  "version": "1.0.0",
+  "main": "host.mjs",
+  "license": "MIT",
+  "dependencies": {
+    "asyncify-wasm": "^1.2.1"
+  }
+}

@@ -337,7 +337,7 @@ function ConvertResponse(args, parameters, security) {
               latitude: args.node.lat,
               longitude: args.node.lon,
             },
-            name: args.node.name || args.node.id.toString(),
+            name: nodeTags.name || args.node.id.toString(),
             categories: categories,
           };
         }
