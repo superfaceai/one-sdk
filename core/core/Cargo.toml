@@ -1,0 +1,16 @@
+[package]
+name = "superface_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+test = false # TODO: won't compile because of missing imports, currently there are no tests in this crate though
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+
+sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
+map_std = { path = "../core_to_map_std", package = "core_to_map_std" }
+interpreter_js = { path = "../interpreter_js" }

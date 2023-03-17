@@ -1,0 +1,7 @@
+[workspace]
+members = [
+	"core",
+	"host_to_core_std",
+	"core_to_map_std",
+	"interpreter_js"
+]
