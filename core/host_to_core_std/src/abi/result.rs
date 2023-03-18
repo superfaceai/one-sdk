@@ -2,52 +2,58 @@
 //!
 //! See <https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#-errno-variant>.
 
-use super::bits;
+use super::bits::{AbiPair, AbiPairRepr, Size};
 
 /// ABI result representation.
 ///
 /// The actual type used in FFI to represent result enum.
-pub type ResultRepr = bits::PairRepr;
+pub type AbiResultRepr = AbiPairRepr;
 
 /// Enum representing a `Result<Size>` in ABI.
 ///
-/// This is represented as a pair of `(value, tag)` - tag is smaller than the value on 64-bit platforms.
+/// This is represented as a pair of `(value, tag)`.
+/// On 32bit platforms that is 1bit, on 64bit platforms tab is 16 bits.
 pub enum AbiResult {
-	Ok(bits::Size),
-	Err(bits::Size),
+    Ok(Size),
+    Err(Size),
 }
 impl AbiResult {
-	const TAG_OK: bits::Size = 0;
-	const TAG_ERR: bits::Size = 1;
+    #[cfg(target_pointer_width = "32")]
+    const LOWER_BITS: usize = 31;
+    #[cfg(target_pointer_width = "64")]
+    const LOWER_BITS: usize = 48;
 
-	pub fn into_io_result(self) -> std::io::Result<bits::Size> {
-		match self {
-			Self::Ok(value) => Ok(value),
-			Self::Err(err) => Err(err_from_wasi_errno(err)),
-		}
-	}
-}
-impl From<ResultRepr> for AbiResult {
-	fn from(value: ResultRepr) -> Self {
-		let bits::AbiPair(value, tag) = bits::AbiPair::from(value);
+    const TAG_OK: Size = 0;
+    const TAG_ERR: Size = 1;
 
-		match tag {
-			Self::TAG_OK => Self::Ok(value),
-			Self::TAG_ERR => Self::Err(value),
-			_ => panic!("Invalid tag {} for AbiResult", tag),
-		}
-	}
+    pub fn into_io_result(self) -> std::io::Result<Size> {
+        match self {
+            Self::Ok(value) => Ok(value),
+            Self::Err(err) => Err(err_from_wasi_errno(err)),
+        }
+    }
 }
-impl From<AbiResult> for ResultRepr {
-	fn from(value: AbiResult) -> Self {
-		match value {
-			AbiResult::Ok(value) => bits::AbiPair(value, AbiResult::TAG_OK),
-			AbiResult::Err(value) => bits::AbiPair(value, AbiResult::TAG_ERR),
-		}
-		.into()
-	}
+impl From<AbiResultRepr> for AbiResult {
+    fn from(value: AbiResultRepr) -> Self {
+        let AbiPair(value, tag) = AbiPair::<{ Self::LOWER_BITS }>::from(value);
+
+        match tag {
+            Self::TAG_OK => Self::Ok(value),
+            Self::TAG_ERR => Self::Err(value),
+            _ => panic!("Invalid tag {} for AbiResult", tag),
+        }
+    }
+}
+impl From<AbiResult> for AbiResultRepr {
+    fn from(value: AbiResult) -> Self {
+        match value {
+            AbiResult::Ok(value) => AbiPair::<{ AbiResult::LOWER_BITS }>(value, AbiResult::TAG_OK),
+            AbiResult::Err(value) => AbiPair(value, AbiResult::TAG_ERR),
+        }
+        .into()
+    }
 }
 
-pub fn err_from_wasi_errno(errno: bits::Size) -> std::io::Error {
-	std::io::Error::from_raw_os_error(errno as i32)
+pub fn err_from_wasi_errno(errno: Size) -> std::io::Error {
+    std::io::Error::from_raw_os_error(errno as i32)
 }

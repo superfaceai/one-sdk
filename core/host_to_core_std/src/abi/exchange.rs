@@ -2,10 +2,10 @@
 
 use std::io;
 
-use thiserror::Error;
 use serde::{de::DeserializeOwned, Serialize};
+use thiserror::Error;
 
-use super::{AbiPair, AbiResult, PairRepr, Ptr, ResultRepr, Size};
+use super::{AbiResult, AbiResultRepr, Ptr, Size};
 
 #[derive(Debug, Error)]
 pub enum JsonMessageError {
@@ -18,12 +18,12 @@ pub enum JsonMessageError {
 pub struct MessageFn {
     /// Send message and get response or handle to stored response.
     ///
-    /// `fn(msg_ptr, msg_len, out_ptr, out_len) -> (size, handle)`
-    exchange_fn: unsafe extern "C" fn(Ptr, Size, Ptr, Size) -> PairRepr,
+    /// `fn(msg_ptr, msg_len, out_ptr, out_len, ret_handle) -> size
+    exchange_fn: unsafe extern "C" fn(Ptr<u8>, Size, Ptr<u8>, Size, Ptr<Size>) -> Size,
     /// Retrieve stored response message.
     ///
     /// `fn(handle, out_ptr, out_len) -> Result<size, errno>`
-    retrieve_fn: unsafe extern "C" fn(Size, Ptr, Size) -> ResultRepr,
+    retrieve_fn: unsafe extern "C" fn(Size, Ptr<u8>, Size) -> AbiResultRepr,
 }
 impl MessageFn {
     const DEFAULT_RESPONSE_BUFFER_SIZE: usize = 1024; // or 8k?
@@ -32,8 +32,8 @@ impl MessageFn {
     ///
     /// Calling any of `exchange_fn`, `retrieve_fn` according to their ABI must not cause undefined behavior.
     pub const unsafe fn new(
-        exchange_fn: unsafe extern "C" fn(Ptr, Size, Ptr, Size) -> PairRepr,
-        retrieve_fn: unsafe extern "C" fn(Size, Ptr, Size) -> ResultRepr,
+        exchange_fn: unsafe extern "C" fn(Ptr<u8>, Size, Ptr<u8>, Size, Ptr<Size>) -> Size,
+        retrieve_fn: unsafe extern "C" fn(Size, Ptr<u8>, Size) -> AbiResultRepr,
     ) -> Self {
         Self {
             exchange_fn,
@@ -45,17 +45,27 @@ impl MessageFn {
     pub fn invoke(&self, message: &[u8]) -> Vec<u8> {
         let mut response_buffer = Vec::<u8>::with_capacity(Self::DEFAULT_RESPONSE_BUFFER_SIZE);
 
-        let AbiPair(result_size, result_handle) = {
-            let msg_ptr = message.as_ptr() as Ptr;
+        let (result_size, result_handle) = {
+            let mut ret_handle: Size = 0;
+            let msg_ptr = message.as_ptr().into();
             let msg_len = message.len() as Size;
 
-            let out_ptr = response_buffer.as_mut_ptr() as Ptr;
+            let out_ptr = response_buffer.as_mut_ptr().into();
             let out_len = response_buffer.capacity() as Size;
 
             // SAFETY: caller of constructor promises it is safe
-            unsafe { (self.exchange_fn)(msg_ptr, msg_len, out_ptr, out_len) }
-        }
-        .into();
+            let size = unsafe {
+                (self.exchange_fn)(
+                    msg_ptr,
+                    msg_len,
+                    out_ptr,
+                    out_len,
+                    Ptr::from(&mut ret_handle as *mut _),
+                )
+            };
+
+            (size, ret_handle)
+        };
 
         if result_size > response_buffer.capacity() {
             // response buffer was too small, we must retrieve the message with a second function call
@@ -63,7 +73,7 @@ impl MessageFn {
             response_buffer.reserve(result_size); // extend to at least result_size
 
             let result: AbiResult = {
-                let out_ptr = response_buffer.as_mut_ptr() as usize;
+                let out_ptr = response_buffer.as_mut_ptr().into();
                 let out_len = response_buffer.capacity() as usize;
 
                 // SAFETY: caller of constructor promises it is safe
@@ -91,10 +101,19 @@ impl MessageFn {
         &self,
         message: &M,
     ) -> Result<R, JsonMessageError> {
+        let __span = tracing::span!(tracing::Level::TRACE, "message_exchange");
+
         let json_message =
             serde_json::to_string(message).map_err(JsonMessageError::SerializeError)?;
 
+        tracing::trace!("request: {}", json_message);
+
         let response = self.invoke(json_message.as_bytes());
+
+        tracing::trace!(
+            "response: {}",
+            std::str::from_utf8(response.as_slice()).unwrap()
+        );
 
         let response = serde_json::from_slice(response.as_slice())
             .map_err(JsonMessageError::DeserializeError)?;
@@ -107,24 +126,24 @@ pub struct StreamFn {
     /// Read up to `out_len` bytes from stream at `handle`, return number of read bytes.
     ///
     /// `fn(handle, out_ptr, out_len) -> Result<read, errno>`
-    read_fn: unsafe extern "C" fn(Size, Ptr, Size) -> ResultRepr,
+    read_fn: unsafe extern "C" fn(Size, Ptr<u8>, Size) -> AbiResultRepr,
     /// Write up to `in_len` bytes to stream at `handle`, return number of written bytes.
     ///
     /// `fn(handle, in_ptr, in_len) -> Result<written, errno>`
-    write_fn: unsafe extern "C" fn(Size, Ptr, Size) -> ResultRepr,
+    write_fn: unsafe extern "C" fn(Size, Ptr<u8>, Size) -> AbiResultRepr,
     /// Close stream at `handle`, signalling it will not be read from or written to again.
     ///
     /// `fn(handle) -> Result<(), errno>`
-    close_fn: unsafe extern "C" fn(Size) -> ResultRepr,
+    close_fn: unsafe extern "C" fn(Size) -> AbiResultRepr,
 }
 impl StreamFn {
     /// ## Safety
     ///
     /// Calling any of `read_fn`, `write_fn` and `close_fn` according to their ABI must not cause undefined behavior.
     pub const unsafe fn new(
-        read_fn: unsafe extern "C" fn(Size, Ptr, Size) -> ResultRepr,
-        write_fn: unsafe extern "C" fn(Size, Ptr, Size) -> ResultRepr,
-        close_fn: unsafe extern "C" fn(Size) -> ResultRepr,
+        read_fn: unsafe extern "C" fn(Size, Ptr<u8>, Size) -> AbiResultRepr,
+        write_fn: unsafe extern "C" fn(Size, Ptr<u8>, Size) -> AbiResultRepr,
+        close_fn: unsafe extern "C" fn(Size) -> AbiResultRepr,
     ) -> Self {
         Self {
             read_fn,
@@ -134,7 +153,7 @@ impl StreamFn {
     }
 
     pub fn read(&self, handle: Size, buf: &mut [u8]) -> io::Result<Size> {
-        let out_ptr = buf.as_mut_ptr() as Ptr;
+        let out_ptr = buf.as_mut_ptr().into();
         let out_len = buf.len() as Size;
 
         // SAFETY: caller of constructor promises it is safe
@@ -144,7 +163,7 @@ impl StreamFn {
     }
 
     pub fn write(&self, handle: Size, buf: &[u8]) -> io::Result<Size> {
-        let in_ptr = buf.as_ptr() as Ptr;
+        let in_ptr = buf.as_ptr().into();
         let in_len = buf.len() as Size;
 
         // SAFETY: caller of constructor promises it is safe
@@ -168,7 +187,7 @@ mod test {
     use serde::{Deserialize, Serialize};
 
     use super::{
-        MessageFn, StreamFn, {AbiPair, AbiResult, PairRepr, Ptr, ResultRepr, Size},
+        MessageFn, StreamFn, {AbiResult, AbiResultRepr, Ptr, Size},
     };
 
     #[derive(Serialize, Deserialize)]
@@ -184,12 +203,13 @@ mod test {
     static STORED_MESSAGES: Mutex<(Size, Vec<(Size, String)>)> = Mutex::new((1, Vec::new()));
 
     extern "C" fn test_message_exchange_fn(
-        msg_ptr: Ptr,
+        msg_ptr: Ptr<u8>,
         msg_len: Size,
-        out_ptr: Ptr,
+        mut out_ptr: Ptr<u8>,
         out_len: Size,
-    ) -> PairRepr {
-        let msg_bytes = unsafe { std::slice::from_raw_parts(msg_ptr as *const u8, msg_len) };
+        mut ret_handle: Ptr<Size>,
+    ) -> Size {
+        let msg_bytes = unsafe { std::slice::from_raw_parts(msg_ptr.ptr(), msg_len) };
         let msg: TestMsg = serde_json::from_slice(msg_bytes).unwrap();
 
         let result = serde_json::to_string(&msg).unwrap();
@@ -208,7 +228,7 @@ mod test {
             }
         } else {
             // output the message, no handle needed
-            let out_ptr = out_ptr as *mut u8;
+            let out_ptr = out_ptr.mut_ptr();
             for (i, byte) in result.as_bytes().iter().enumerate() {
                 unsafe { out_ptr.add(i).write(*byte) };
             }
@@ -216,14 +236,17 @@ mod test {
             0
         };
 
-        AbiPair(result_len, handle).into()
+        unsafe {
+            ret_handle.mut_ptr().write(handle);
+        }
+        result_len
     }
 
     extern "C" fn test_message_retrieve_fn(
         handle: Size,
-        out_ptr: Ptr,
+        mut out_ptr: Ptr<u8>,
         out_len: Size,
-    ) -> ResultRepr {
+    ) -> AbiResultRepr {
         let mut lock = STORED_MESSAGES.lock().unwrap();
 
         let index = lock
@@ -237,7 +260,7 @@ mod test {
             Some(index) => {
                 let msg = { lock.1.swap_remove(index) }.1;
 
-                let out_ptr = out_ptr as *mut u8;
+                let out_ptr = out_ptr.mut_ptr();
                 for (i, byte) in msg.as_bytes().iter().enumerate().take(out_len as usize) {
                     unsafe { out_ptr.add(i).write(*byte) };
                 }
@@ -288,12 +311,16 @@ mod test {
         assert_eq!(response.f2, long_string);
     }
 
-    extern "C" fn test_stream_read(handle: Size, out_ptr: Ptr, out_len: Size) -> ResultRepr {
+    extern "C" fn test_stream_read(
+        handle: Size,
+        mut out_ptr: Ptr<u8>,
+        out_len: Size,
+    ) -> AbiResultRepr {
         if handle == 123 {
             let data: [u8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
             let to_write = out_len.min(data.len());
 
-            let out_ptr = out_ptr as *mut u8;
+            let out_ptr = out_ptr.mut_ptr();
             for (i, byte) in data.into_iter().take(to_write).enumerate() {
                 unsafe { out_ptr.add(i).write(byte) };
             }
@@ -303,12 +330,12 @@ mod test {
 
         return AbiResult::Err(handle).into();
     }
-    extern "C" fn test_stream_write(handle: Size, in_ptr: Ptr, in_len: Size) -> ResultRepr {
+    extern "C" fn test_stream_write(handle: Size, in_ptr: Ptr<u8>, in_len: Size) -> AbiResultRepr {
         if handle == 124 {
             let mut buffer = [0u8; 10];
             let to_read = in_len.min(buffer.len());
 
-            let in_ptr = in_ptr as *const u8;
+            let in_ptr = in_ptr.ptr();
             for i in 0..to_read {
                 buffer[i] = unsafe { in_ptr.add(i).read() };
             }
@@ -318,7 +345,7 @@ mod test {
 
         return AbiResult::Err(handle).into();
     }
-    extern "C" fn test_stream_close(handle: Size) -> ResultRepr {
+    extern "C" fn test_stream_close(handle: Size) -> AbiResultRepr {
         if handle == 124 {
             return AbiResult::Ok(0).into();
         }

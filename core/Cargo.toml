@@ -5,3 +5,13 @@ members = [
 	"core_to_map_std",
 	"interpreter_js"
 ]
+
+[workspace.dependencies]
+thiserror = { version = "1" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1"}
+serde_urlencoded = { version = "0.7" }
+base64 = { version = "0.21" }
+
+tracing = { version = "0.1" }

@@ -100,7 +100,7 @@ use std::collections::HashMap;
 use serde::{de::DeserializeOwned, Serialize};
 
 pub mod abi;
-use abi::{MessageFn, JsonMessageError};
+use abi::{JsonMessageError, MessageFn};
 
 pub mod unstable;
 
@@ -112,7 +112,6 @@ trait MessageExchange: Sized + Serialize {
         fun.invoke_json(self)
     }
 }
-
 
 pub type MultiMap = HashMap<String, Vec<String>>;
 // TODO: consider making the key always lowercase

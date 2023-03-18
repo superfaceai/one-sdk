@@ -208,7 +208,6 @@ if __name__ == "__main__":
 	entry = prepare_test_entry("superface/super.json", integrations_root, profile, provider, usecase, recording_type_prefix, recording_hash, map_input)
 	
 	app = App(stdout = None, http_manager = lambda s: TestHttpManager(s, entry.recordings))
-	app.link_sf_host()
 	app.load_wasi_module(core_blob_path)
 
 	result = None

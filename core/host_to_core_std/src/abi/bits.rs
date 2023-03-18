@@ -6,7 +6,29 @@
 //! These definitions also allow us to compile tests on 64-bit platforms without breaking.
 
 /// ABI pointer-sized type.
-pub type Ptr = usize;
+// pub type Ptr = usize;
+#[repr(transparent)]
+pub struct Ptr<T>(usize, std::marker::PhantomData<*mut T>);
+impl<T> Ptr<T> {
+    pub fn ptr(&self) -> *const T {
+        self.0 as *const T
+    }
+
+    pub fn mut_ptr(&mut self) -> *mut T {
+        self.0 as *mut T
+    }
+}
+impl<T> From<*const T> for Ptr<T> {
+    fn from(value: *const T) -> Self {
+        Self(value as usize, std::marker::PhantomData)
+    }
+}
+impl<T> From<*mut T> for Ptr<T> {
+    fn from(value: *mut T) -> Self {
+        Self(value as usize, std::marker::PhantomData)
+    }
+}
+
 /// ABI `size_t`-sized type.
 ///
 /// See <https://en.cppreference.com/w/c/types/size_t>.
@@ -14,40 +36,45 @@ pub type Size = usize;
 /// ABI pair representation.
 ///
 /// The actual type used in FFI to represent a pair.
-pub type PairRepr = u64;
+pub type AbiPairRepr = Size;
 
 /// Struct representing a pair of `(Size, Size)` in ABI.
 ///
-/// On 32-bit platforms we rely on using `i64` to store two `i32`s. However since `u128` is not
-/// FFI-safe, we cannot do the same thing on 64bit platforms (x86_64, wasm64, aarch64), so we split
-/// 64 bits to 48/16. This is __usually__ right since sizes are not expected to be greater than 48 bits in practice, and
-/// we do not transfer pointers using these pairs.
-pub struct AbiPair(pub Size, pub Size);
-impl AbiPair {
-	#[cfg(target_pointer_width = "32")]
-	const LOWER_BITS: usize = 32;
-	#[cfg(target_pointer_width = "64")]
-	const LOWER_BITS: usize = 48;
-	const LOWER_MASK: PairRepr = ((1 as PairRepr) << Self::LOWER_BITS) - 1;
-}
-impl From<PairRepr> for AbiPair {
-	fn from(value: PairRepr) -> Self {
-		let lower = (value & Self::LOWER_MASK) as Size;
-		let upper = (value >> Self::LOWER_BITS) as Size;
+/// Generic parameters `LOWER_BITS` can be used to choose how many bits to allocate for
+/// the lower portion of the pair.
+///
+/// For example, on 32bit targets it makes sense to allocate only 1 bit
+/// for the upper portion and achieve 31/1 split. On 64bit targets we can use 48/16 split, since sizes
+/// are usually not bigger than 2^48.
+///
+/// This encoding is not suitable for transferring pointers.
+pub struct AbiPair<const LOWER_BITS: usize>(pub Size, pub Size);
+impl<const LOWER_BITS: usize> AbiPair<LOWER_BITS> {
+    // #[cfg(target_pointer_width = "32")]
+    // const LOWER_BITS: usize = 31;
+    // #[cfg(target_pointer_width = "64")]
+    // const LOWER_BITS: usize = 48;
 
-		Self(lower, upper)
-	}
+    const LOWER_MASK: AbiPairRepr = ((1 as AbiPairRepr) << LOWER_BITS) - 1;
 }
-impl From<AbiPair> for PairRepr {
-	fn from(pair: AbiPair) -> Self {
-		let lower = pair.0 as PairRepr;
-		let upper = (pair.1 as PairRepr) << AbiPair::LOWER_BITS;
+impl<const LOWER_BITS: usize> From<AbiPairRepr> for AbiPair<LOWER_BITS> {
+    fn from(value: AbiPairRepr) -> Self {
+        let lower = (value & Self::LOWER_MASK) as Size;
+        let upper = (value >> LOWER_BITS) as Size;
 
-		lower | upper
-	}
+        Self(lower, upper)
+    }
 }
-impl std::fmt::Debug for AbiPair {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "AbiPair(lower: {}, upper: {})", self.0, self.1)
-	}
+impl<const LOWER_BITS: usize> From<AbiPair<LOWER_BITS>> for AbiPairRepr {
+    fn from(pair: AbiPair<LOWER_BITS>) -> Self {
+        let lower = pair.0 as AbiPairRepr;
+        let upper = (pair.1 as AbiPairRepr) << LOWER_BITS;
+
+        lower | upper
+    }
+}
+impl<const LOWER_BITS: usize> std::fmt::Debug for AbiPair<LOWER_BITS> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AbiPair(lower: {}, upper: {})", self.0, self.1)
+    }
 }

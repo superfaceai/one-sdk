@@ -7,7 +7,6 @@ CORE_WASM = sys.argv[1]
 MAP_NAME = sys.argv[2]
 MAP_USECASE = sys.argv[3]
 APP = App()
-APP.link_sf_host()
 APP.load_wasi_module(CORE_WASM)
 
 if "swapi" in MAP_NAME and MAP_USECASE == "RetrieveCharacterInformation":

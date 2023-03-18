@@ -21,12 +21,12 @@
 //! Streams are byte sequences of unknown length. They use POSIX-style `read` and `write` functions to transfer data with ABI
 //! taken from WASI `fd_read` and `fd_write`. See <https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#fd_read>.
 
-mod exchange;
 mod bits;
+mod exchange;
 mod result;
 
 pub use self::{
-    bits::{AbiPair, PairRepr, Ptr, Size},
-    result::{err_from_wasi_errno, AbiResult, ResultRepr},
-    exchange::{MessageFn, JsonMessageError, StreamFn}
+    bits::{AbiPair, AbiPairRepr, Ptr, Size},
+    exchange::{JsonMessageError, MessageFn, StreamFn},
+    result::{err_from_wasi_errno, AbiResult, AbiResultRepr},
 };

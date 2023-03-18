@@ -21,7 +21,8 @@ RUN mkdir -p /opt/superface/ && cp 'target/wasm32-wasi/release/superface_core.wa
 
 WORKDIR /opt/superface
 RUN wasm-opt -O2 ./core.wasm --output ./core.wasm
-RUN wasm-opt -O2 --asyncify --pass-arg asyncify-imports@sf_host_unstable.message_exchange,sf_host_unstable.stream_read,sf_host_unstable.stream_write ./core.wasm --output ./core-async.wasm
+# --pass-arg asyncify-imports@sf_host_unstable.message_exchange,sf_host_unstable.stream_read,sf_host_unstable.stream_write
+RUN wasm-opt -O2 --asyncify ./core.wasm --output ./core-async.wasm
 
 FROM scratch AS exporter
 COPY --from=builder /opt/superface/core.wasm /opt/superface/core-async.wasm /

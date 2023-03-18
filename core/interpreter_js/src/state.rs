@@ -4,8 +4,7 @@ use slab::Slab;
 
 use map_std::unstable::{
     HttpCallError, HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
-    HttpResponse as MapHttpResponse, MapValue, SetOutputError, MapStdUnstable,
-    TakeInputError,
+    HttpResponse as MapHttpResponse, MapStdUnstable, MapValue, SetOutputError, TakeInputError,
 };
 use sf_std::unstable::{http::HttpRequest, HostValue, IoStream};
 
@@ -70,7 +69,7 @@ impl MapStdUnstable for InterpreterState {
     }
 
     fn print(&mut self, message: &str) {
-        eprintln!("map: {}", message);
+        tracing::info!("map: {}", message);
     }
 
     fn stream_read(&mut self, handle: usize, buf: &mut [u8]) -> std::io::Result<usize> {

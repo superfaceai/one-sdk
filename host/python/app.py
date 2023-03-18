@@ -209,7 +209,6 @@ class App:
 		# perform state
 		self.perform_state = None
 
-	def link_sf_host(self):
 		sf_host.link(self)
 
 	def load_wasi_module(self, path):

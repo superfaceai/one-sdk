@@ -4,8 +4,8 @@ use anyhow::Context as AnyhowContext;
 use base64::Engine;
 use quickjs_wasm_rs::{Context, JSError, Value as JsValue};
 
-use sf_std::MultiMap;
 use map_std::unstable::MapStdUnstable;
+use sf_std::MultiMap;
 
 use super::JsValueDebug;
 
@@ -33,7 +33,7 @@ pub fn link<H: MapStdUnstable + 'static>(
             "base64_to_bytes": __export_base64_to_bytes,
             "map_to_urlencode": __export_map_to_urlencode,
             // messages
-            @strace(true) "message_exchange": __export_message_exchange,
+            "message_exchange": __export_message_exchange,
             // streams
             "stream_read": __export_stream_read,
             "stream_write": __export_stream_write,
@@ -116,11 +116,13 @@ fn __export_print_debug<H: MapStdUnstable + 'static>(
     _this: &JsValue,
     args: &[JsValue],
 ) -> Result<JsValue, JSError> {
-    eprint!("map printDebug:");
+    use std::fmt::Write;
+
+    let mut buffer = String::new();
     for arg in args {
-        eprint!(" {:#?}", JsValueDebug(arg));
+        write!(&mut buffer, " {:#?}", JsValueDebug(arg)).unwrap();
     }
-    eprintln!();
+    tracing::debug!("map:{}", buffer);
 
     Ok(context.undefined_value().unwrap())
 }

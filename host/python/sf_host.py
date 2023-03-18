@@ -1,5 +1,6 @@
 import sys
 import json
+import struct
 import functools
 from enum import IntEnum
 
@@ -109,20 +110,20 @@ class Errno(IntEnum):
 	XDEV = 75
 	NOTCAPABLE = 76
 
-def _join_u64(lower, upper):
-	lower = lower & 0xFFFFFFFF
-	upper = (upper & 0xFFFFFFFF) << 32
+def _join_abi_result(lower, upper):
+	lower = lower & 0x7FFFFFFF
+	upper = (upper & 0x1) << 31
 
 	return lower | upper
 def _split_u64(value):
-	lower = value & 0xFFFFFFFF
-	upper = (value >> 32) & 0xFFFFFFFF
+	lower = value & 0x7FFFFFFF
+	upper = (value >> 31) & 0x1
 
 	return (lower, upper)
 def _abi_ok(value):
-	return _join_u64(value, 0)
+	return _join_abi_result(value, 0)
 def _abi_err(value):
-	return _join_u64(int(value), 1)
+	return _join_abi_result(int(value), 1)
 
 class MessageStoage:
 	def __init__(self):
@@ -145,7 +146,7 @@ class MessageStoage:
 def link(app):
 	message_store = MessageStoage()
 
-	def __export_message_exchange(msg_ptr, msg_len, out_ptr, out_len):
+	def __export_message_exchange(msg_ptr, msg_len, out_ptr, out_len, ret_handle):
 		# read UTF-8 JSON message from memory
 		memory = app.memory_data()
 		message_json = _read_bytes(memory, msg_ptr, msg_len).decode("utf-8")
@@ -168,11 +169,12 @@ def link(app):
 			_write_bytes(memory, out_ptr, out_len, response_json)
 		
 		# return (size, handle)
-		return _join_u64(response_size, handle)
+		_write_bytes(memory, ret_handle, 4, struct.pack("<I", handle))
+		return response_size
 	app.linker.define_func(
 		"sf_host_unstable", "message_exchange",
-		# exchange(msg_ptr, msg_len, out_ptr, out_len) -> (Size, Size)
-		FuncType([ValType.i32(), ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i64()]),
+		# exchange(msg_ptr, msg_len, out_ptr, out_len, ret_handle) -> Size
+		FuncType([ValType.i32(), ValType.i32(), ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i32()]),
 		strace(__export_message_exchange, "sf_host_unstable::message_exchange")
 	)
 
@@ -202,7 +204,7 @@ def link(app):
 	app.linker.define_func(
 		"sf_host_unstable", "message_exchange_retrieve",
 		# retrieve(handle, out_ptr, out_len) -> Result<Size, Errno>
-		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i64()]),
+		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i32()]),
 		strace(__export_message_exchange_retrieve, "sf_host_unstable::message_exchange_retrieve")
 	)
 
@@ -229,7 +231,7 @@ def link(app):
 	app.linker.define_func(
 		"sf_host_unstable", "stream_read",
 		# read(handle, out_ptr, out_len) -> Result<Size, Errno>
-		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i64()]),
+		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i32()]),
 		strace(__export_stream_read, "sf_host_unstable::stream_read")
 	)
 
@@ -255,7 +257,7 @@ def link(app):
 	app.linker.define_func(
 		"sf_host_unstable", "stream_write",
 		# write(handle, in_ptr, in_len) -> Result<Size, Errno>
-		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i64()]),
+		FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [ValType.i32()]),
 		strace(__export_stream_write, "sf_host_unstable::stream_write")
 	)
 
@@ -268,6 +270,6 @@ def link(app):
 	app.linker.define_func(
 		"sf_host_unstable", "stream_close",
 		# close(handle) -> Result<Size, Errno>
-		FuncType([ValType.i32()], [ValType.i64()]),
+		FuncType([ValType.i32()], [ValType.i32()]),
 		strace(__export_stream_close, "sf_host_unstable::stream_close")
 	)

@@ -1,11 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
-use thiserror::Error;
 use quickjs_wasm_rs::Context;
+use thiserror::Error;
 
-use sf_std::unstable::HostValue;
 use map_std::{MapInterpreter, MapInterpreterRunError};
+use sf_std::unstable::HostValue;
 
 mod state;
 use state::InterpreterState;
@@ -15,7 +15,7 @@ mod map_std_export;
 #[derive(Debug, Error)]
 pub enum JsInterpreterError {
     #[error("{0}")]
-    Error(#[from] anyhow::Error) // TODO: big todo
+    Error(#[from] anyhow::Error), // TODO: big todo
 }
 
 pub struct JsInterpreter {
@@ -37,6 +37,7 @@ impl JsInterpreter {
             None => Self::STD_CODE,
             Some(r) => r,
         };
+        assert!(std.len() > 0);
         context
             .eval_global("std.js", std)
             .context("Failed to evaluate std.js")?;
@@ -57,15 +58,26 @@ impl MapInterpreter for JsInterpreter {
             .borrow_mut()
             .set_input(input, parameters, security);
 
-        let script = std::str::from_utf8(code).context("Code must be valid utf8 text").map_err(|e| MapInterpreterRunError::Error(e.to_string()))?;
+        let script = std::str::from_utf8(code)
+            .context("Code must be valid utf8 text")
+            .map_err(|e| MapInterpreterRunError::Error(e.to_string()))?;
+        if script.len() == 0 {
+            return Err(MapInterpreterRunError::Error(
+                "Map code must not be empty".into(),
+            ));
+        }
+
         let entry = format!("_start(\"{}\")", entry);
 
         self.context
             .eval_global("map.js", script)
-            .context("Failed to evaluate map code").map_err(|e| MapInterpreterRunError::Error(e.to_string()))?;
+            .context("Failed to evaluate map code")
+            .map_err(|e| MapInterpreterRunError::Error(e.to_string()))?;
+        debug_assert!(entry.len() > 0);
         self.context
             .eval_global("entry.js", &entry)
-            .context("Failed to evaluate entry").map_err(|e| MapInterpreterRunError::Error(e.to_string()))?;
+            .context("Failed to evaluate entry")
+            .map_err(|e| MapInterpreterRunError::Error(e.to_string()))?;
         let result = self.state.borrow_mut().take_output().unwrap();
 
         Ok(result)

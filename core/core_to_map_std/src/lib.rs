@@ -113,9 +113,9 @@ use sf_std::unstable::HostValue;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MapInterpreterRunError {
-	// TODO
-	#[error("{0}")]
-	Error(String)
+    // TODO
+    #[error("{0}")]
+    Error(String),
 }
 pub trait MapInterpreter {
     fn run(

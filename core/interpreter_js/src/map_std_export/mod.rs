@@ -17,24 +17,29 @@ macro_rules! link_into {
     (
         $context: expr, $state: expr, $parent: expr, {
             $(
-                $( @strace($enable_strace: literal) )? $key: literal: $fn_impl: expr
+                $key: literal: $fn_impl: expr
             ),+ $(,)?
         }
     ) => {
         $({
             let state = $state.clone();
             let fun = $context.wrap_callback(move |context, this, args| {
+                let __span = tracing::span!(tracing::Level::TRACE, $key).entered();
+
                 let result = $fn_impl(state.borrow_mut().deref_mut(), context, this, args).map_err(anyhow::Error::from);
 
-                $(
-                    if $enable_strace {
-                        eprint!("core: [strace] {}(this: {:?}", $key, JsValueDebug(&this));
-                        for arg in args {
-                            eprint!(", {:?}", JsValueDebug(arg));
-                        }
-                        eprintln!(") -> {:?}", result.as_ref().map(JsValueDebug));
+                if tracing::enabled!(tracing::Level::TRACE) {
+                    use std::fmt::Write;
+
+                    let mut buffer = String::new();
+                    write!(&mut buffer, "{}(this: {:?}", $key, JsValueDebug(&this)).unwrap();
+                    for arg in args {
+                        write!(&mut buffer, ", {:?}", JsValueDebug(arg)).unwrap();
                     }
-                )?
+                    write!(&mut buffer, ") -> {:?}", result.as_ref().map(JsValueDebug)).unwrap();
+
+                    tracing::trace!("{}", buffer);
+                }
 
                 result
             }).context(concat!("Failed to define ", $key, " callback"))?;

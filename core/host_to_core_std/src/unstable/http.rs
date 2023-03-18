@@ -1,10 +1,10 @@
 use std::io::Read;
 
-use thiserror::Error;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::{abi::Size, HeadersMultiMap, MultiMap, encode_query};
 use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
+use crate::{abi::Size, encode_query, HeadersMultiMap, MultiMap};
 
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
@@ -51,7 +51,7 @@ pub enum HttpCallError {
     #[error("HttpCall error: {0}")]
     Request(String), // TODO: more granular
     #[error("OutHttpCallHead error: {0}")]
-    Response(String) // TODO: more granular
+    Response(String), // TODO: more granular
 }
 pub struct HttpRequest {
     handle: usize,
@@ -67,7 +67,7 @@ impl HttpRequest {
     ) -> Result<Self, HttpCallError> {
         let url = match encode_query(query) {
             empty if empty.len() == 0 => url.to_string(),
-            query => format!("{}?{}", url, query)
+            query => format!("{}?{}", url, query),
         };
 
         let response = HttpCallRequest {

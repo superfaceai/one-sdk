@@ -19,7 +19,14 @@ extern "C" {
 pub extern "C" fn __export_superface_core_setup() {
     // call ctors first
     unsafe { __wasm_call_ctors() };
-    eprintln!("core: superface_core_setup called");
+
+    // initialize tracing
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(tracing::Level::TRACE)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
+    tracing::debug!("superface_core_setup called");
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
     if lock.is_some() {
@@ -36,7 +43,7 @@ pub extern "C" fn __export_superface_core_setup() {
 ///
 /// This function must be called exactly once after calling core setup.
 pub extern "C" fn __export_superface_core_teardown() {
-    eprintln!("core: superface_core_teardown called");
+    tracing::debug!("superface_core_teardown called");
 
     match GLOBAL_STATE.try_lock() {
         Err(_) => panic!("Global state lock already locked: perform most likely panicked"),
@@ -60,13 +67,15 @@ pub extern "C" fn __export_superface_core_teardown() {
 /// All information about map to be performed will be retrieved through messages.
 pub extern "C" fn __export_superface_core_perform() {
     let mut lock = GLOBAL_STATE.lock().unwrap();
-    let state: &mut SuperfaceCore = lock.as_mut().unwrap();
+    let state: &mut SuperfaceCore = lock
+        .as_mut()
+        .expect("Global state missing: has superface_core_setup been called?");
 
     let result = state.perform();
     if let Err(err) = result {
         // if there is an error here that means the core couldn't send a message
         // to the host
         // TODO: should be call teardown and abort or let the host call teardown?
-        eprintln!("core: perform error: {:#}", err);
+        tracing::error!("perform error: {:#}", err);
     }
 }

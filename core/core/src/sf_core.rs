@@ -12,8 +12,8 @@ use sf_std::unstable::{
     perform::{perform_input, perform_output, PerformOutput},
 };
 
-use map_std::MapInterpreter;
 use interpreter_js::JsInterpreter;
+use map_std::MapInterpreter;
 
 struct MapCacheEntry {
     store_time: Instant,
