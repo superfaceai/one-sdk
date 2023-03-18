@@ -79,3 +79,15 @@ pub extern "C" fn __export_superface_core_perform() {
         tracing::error!("perform error: {:#}", err);
     }
 }
+
+// TODO: clean up how this should work
+#[no_mangle]
+#[export_name = "superface_core_async_init"]
+pub extern "C" fn __export_superface_core_async_init(size: usize) -> usize {
+    let mut asyncify_stack = Vec::<u8>::new();
+    asyncify_stack.reserve_exact(size);
+    asyncify_stack.resize(size, 0);
+
+    let ptr = asyncify_stack.leak().as_mut_ptr();
+    return ptr as usize;
+}

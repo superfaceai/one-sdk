@@ -42,7 +42,7 @@ impl SuperfaceCore {
             _ => (),
         }
 
-        let mut map = Vec::new();
+        let mut map = Vec::with_capacity(16 * 1024);
         match map_name.strip_prefix("file://") {
             Some(path) => {
                 let mut file = OpenOptions::new()

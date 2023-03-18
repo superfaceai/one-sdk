@@ -12,7 +12,6 @@ cp 'target/wasm32-wasi/debug/superface_core.wasm' 'dist/core.wasm'
 
 echo 'Running asyncify...'
 wasm-opt -O2 --asyncify --pass-arg=asyncify-asserts \
-	--pass-arg asyncify-imports@sf_host_unstable.message_exchange,sf_host_unstable.stream_read,sf_host_unstable.stream_write \
 	'dist/core.wasm' --output 'dist/core-async.wasm'
 
 echo 'Optimizing wasm...'
