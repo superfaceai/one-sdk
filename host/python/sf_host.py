@@ -115,7 +115,7 @@ def _join_abi_result(lower, upper):
 	upper = (upper & 0x1) << 31
 
 	return lower | upper
-def _split_u64(value):
+def _split_abi_result(value):
 	lower = value & 0x7FFFFFFF
 	upper = (value >> 31) & 0x1
 
@@ -210,7 +210,7 @@ def link(app):
 
 
 	def __export_stream_read(handle, out_ptr, out_len):
-		stream = app.streams.get(handle)
+		stream = app.get_stream(handle)
 		if stream is None:
 			# TODO: Err(errno) - choose which errno for invalid stream handle
 			return _abi_err(Errno.BADF)
@@ -236,7 +236,7 @@ def link(app):
 	)
 
 	def __export_stream_write(handle, in_ptr, in_len):
-		stream = app.streams.get(handle)
+		stream = app.get_stream(handle)
 		if stream is None:
 			return _abi_err(Errno.BADF)
 
@@ -262,8 +262,8 @@ def link(app):
 	)
 
 	def __export_stream_close(handle):
-		stream = app.streams.close(handle)
-		if stream is None:
+		success = app.close_stream(handle)
+		if not success:
 			return _abi_err(Errno.BADF)
 
 		return _abi_ok(0)

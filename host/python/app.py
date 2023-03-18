@@ -275,6 +275,12 @@ class App:
 			return self.fs.file_open(message)
 
 		return "Unknown message"
+	
+	def get_stream(self, handle):
+		return self.streams.get(handle)
+	
+	def close_stream(self, handle)
+		return self.streams.close(handle) is not None
 
 	def debug_ensure_no_leaks(self):
 		"""
