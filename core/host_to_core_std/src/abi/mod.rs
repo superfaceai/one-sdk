@@ -26,7 +26,7 @@ mod exchange;
 mod result;
 
 pub use self::{
-    bits::{AbiPair, AbiPairRepr, Ptr, Size},
+    bits::{AbiPair, AbiPairRepr, Handle, Ptr, Size},
     exchange::{JsonMessageError, MessageFn, StreamFn},
     result::{err_from_wasi_errno, AbiResult, AbiResultRepr},
 };

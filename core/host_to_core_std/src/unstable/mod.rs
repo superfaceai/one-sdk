@@ -1,7 +1,7 @@
 //! Unstable functions provide no stability guarantees
 
 use super::MessageExchange;
-use crate::abi::{AbiResultRepr, MessageFn, Ptr, Size, StreamFn};
+use crate::abi::{AbiResultRepr, Handle, MessageFn, Ptr, Size, StreamFn};
 
 pub mod fs;
 pub mod http;
@@ -32,12 +32,12 @@ extern "C" {
         msg_len: Size,
         out_ptr: Ptr<u8>,
         out_len: Size,
-        ret_handle: Ptr<Size>,
+        ret_handle: Ptr<Handle>,
     ) -> Size;
 
     #[link_name = "message_exchange_retrieve"]
     fn __import_message_exchange_retrieve(
-        handle: Size,
+        handle: Handle,
         out_ptr: Ptr<u8>,
         out_len: Size,
     ) -> AbiResultRepr;
@@ -49,13 +49,13 @@ extern "C" fn __import_message_exchange(
     _msg_len: Size,
     _out_ptr: Ptr<u8>,
     _out_len: Size,
-    _ret_handle: Ptr<Size>,
+    _ret_handle: Ptr<Handle>,
 ) -> Size {
     unreachable!()
 }
 #[cfg(test)]
 extern "C" fn __import_message_exchange_retrieve(
-    _handle: Size,
+    _handle: Handle,
     _out_ptr: Ptr<u8>,
     _out_len: Size,
 ) -> AbiResultRepr {
@@ -79,19 +79,19 @@ const STREAM_IO: StreamFn = unsafe {
 #[link(wasm_import_module = "sf_host_unstable")]
 extern "C" {
     #[link_name = "stream_read"]
-    fn __import_stream_read(handle: Size, out_ptr: Ptr<u8>, out_len: Size) -> AbiResultRepr;
+    fn __import_stream_read(handle: Handle, out_ptr: Ptr<u8>, out_len: Size) -> AbiResultRepr;
 
     #[link_name = "stream_write"]
-    fn __import_stream_write(handle: Size, in_ptr: Ptr<u8>, in_len: Size) -> AbiResultRepr;
+    fn __import_stream_write(handle: Handle, in_ptr: Ptr<u8>, in_len: Size) -> AbiResultRepr;
 
     #[link_name = "stream_close"]
-    fn __import_stream_close(handle: Size) -> AbiResultRepr;
+    fn __import_stream_close(handle: Handle) -> AbiResultRepr;
 }
 
 // this is impractical but the imports don't get stripped when we are testing cdylib, so we stub them out
 #[cfg(test)]
 extern "C" fn __import_stream_read(
-    _handle: Size,
+    _handle: Handle,
     _out_ptr: Ptr<u8>,
     _out_len: Size,
 ) -> AbiResultRepr {
@@ -99,14 +99,14 @@ extern "C" fn __import_stream_read(
 }
 #[cfg(test)]
 extern "C" fn __import_stream_write(
-    _handle: Size,
+    _handle: Handle,
     _in_ptr: Ptr<u8>,
     _in_len: Size,
 ) -> AbiResultRepr {
     unreachable!()
 }
 #[cfg(test)]
-extern "C" fn __import_stream_close(handle: Size) -> AbiResultRepr {
+extern "C" fn __import_stream_close(handle: Handle) -> AbiResultRepr {
     use crate::abi::AbiResult;
     // this is actually called in tests which construct IoStreams, so we always succeed here
     // TODO: this should possibly be configurable on per-test basis

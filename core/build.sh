@@ -5,6 +5,7 @@ set -e
 base=$(dirname "$0")
 cd "$base"
 
+# cargo wasi test -- --nocapture
 cargo build --package superface_core --target wasm32-wasi
 
 rm -rf dist && mkdir dist

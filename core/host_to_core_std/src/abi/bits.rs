@@ -38,6 +38,9 @@ pub type Size = usize;
 /// The actual type used in FFI to represent a pair.
 pub type AbiPairRepr = Size;
 
+/// Opaque resource identifier.
+pub type Handle = u32;
+
 /// Struct representing a pair of `(Size, Size)` in ABI.
 ///
 /// Generic parameters `LOWER_BITS` can be used to choose how many bits to allocate for

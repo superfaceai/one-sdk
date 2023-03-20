@@ -1,14 +1,15 @@
 use serde::{Deserialize, Serialize};
 
 use super::STREAM_IO;
+use crate::abi::Handle;
 
 /// Stream which can be read from or written to.
 ///
 /// Not all streams can be both read from and written to, those will return an error.
 #[derive(Debug, PartialEq, Eq)]
-pub struct IoStream(usize);
+pub struct IoStream(Handle);
 impl IoStream {
-    pub(crate) fn from_raw_handle(handle: usize) -> Self {
+    pub(crate) fn from_raw_handle(handle: Handle) -> Self {
         Self(handle)
     }
 
@@ -43,6 +44,6 @@ impl Serialize for IoStream {
 }
 impl<'de> Deserialize<'de> for IoStream {
     fn deserialize<D: serde::Deserializer<'de>>(de: D) -> Result<IoStream, D::Error> {
-        usize::deserialize(de).map(IoStream::from_raw_handle)
+        Handle::deserialize(de).map(IoStream::from_raw_handle)
     }
 }

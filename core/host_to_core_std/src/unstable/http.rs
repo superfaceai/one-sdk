@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
-use crate::{abi::Size, encode_query, HeadersMultiMap, MultiMap};
+use crate::{abi::Handle, encode_query, HeadersMultiMap, MultiMap};
 
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
@@ -22,7 +22,7 @@ define_exchange_core_to_host! {
         Ok {
             #[serde(default)]
             request_body_stream: Option<IoStream>,
-            handle: Size,
+            handle: Handle,
         },
         Err {
             error: String
@@ -33,7 +33,7 @@ define_exchange_core_to_host! {
     struct HttpCallHeadRequest {
         kind: "http-call-head",
         /// Handle previously returned by `http-call`.
-        handle: Size
+        handle: Handle
     } -> enum HttpCallHeadResponse {
         Ok {
             status: u16,
@@ -54,7 +54,7 @@ pub enum HttpCallError {
     Response(String), // TODO: more granular
 }
 pub struct HttpRequest {
-    handle: usize,
+    handle: Handle,
 }
 impl HttpRequest {
     // TODO: proper errors

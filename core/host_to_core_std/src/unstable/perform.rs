@@ -18,7 +18,7 @@ define_exchange_core_to_host! {
             /// Must be an object with at least these properties:
             /// ```ts
             /// type Parameters = {
-            ///     provider: {
+            ///     __provider: {
             ///         services: Record<string, { baseUrl: string }>
             ///     }
             /// }
@@ -26,6 +26,9 @@ define_exchange_core_to_host! {
             map_parameters: HostValue,
             /// Security values passed into the map.
             map_security: HostValue
+        },
+        Err {
+            error: String
         }
     }
 }
@@ -38,7 +41,8 @@ define_exchange_core_to_host! {
         /// Only errors defined in the profile are returned here.
         map_result: &'a Result<HostValue, HostValue>
     } -> enum PerformOutputResponse {
-        Ok
+        Ok,
+        Err { error: String }
     }
 }
 
@@ -68,6 +72,7 @@ pub fn perform_input() -> PerformInput {
             map_parameters,
             map_security,
         },
+        PerformInputResponse::Err { error } => panic!("perform-input error: {}", error),
     }
 }
 
@@ -81,6 +86,7 @@ pub fn perform_output(output: PerformOutput) {
 
     match response {
         PerformOutputResponse::Ok => (),
+        PerformOutputResponse::Err { error } => panic!("perform-output error: {}", error),
     }
 }
 
@@ -133,6 +139,7 @@ mod test {
                 assert_eq!(map_parameters, HostValue::None);
                 assert_eq!(map_security, HostValue::String("banana".into()));
             }
+            PerformInputResponse::Err { .. } => unreachable!(),
         }
     }
 
@@ -161,6 +168,7 @@ mod test {
 
         match serde_json::from_value::<PerformOutputResponse>(actual).unwrap() {
             PerformOutputResponse::Ok => (),
+            PerformOutputResponse::Err { .. } => unreachable!(),
         }
     }
 }

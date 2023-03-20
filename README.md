@@ -23,6 +23,8 @@ python3 -m pip install wasmtime requests
 brew install node
 ```
 
+Build with `./core/build.sh`, result will be in `core/dist`. Note that this builds the debug version (as opposed to the Dockerfile building release), so it will be way bigger.
+
 ## Monorepo structure
 
 ```shell
