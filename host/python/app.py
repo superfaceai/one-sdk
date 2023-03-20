@@ -279,7 +279,7 @@ class App:
 	def get_stream(self, handle):
 		return self.streams.get(handle)
 	
-	def close_stream(self, handle)
+	def close_stream(self, handle):
 		return self.streams.close(handle) is not None
 
 	def debug_ensure_no_leaks(self):
