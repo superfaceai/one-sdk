@@ -2,7 +2,7 @@
 
 Core can be built in docker to avoid installing compiler dependencies. Run `docker build core -o core/dist`.
 
-A very simple smoke test can be run `host/test.sh py` - should perform NearbyPoi against overpass-de and return an Ok result.
+A very simple smoke test can be run `host/test.sh py` - should perform NearbyPoi against overpass-de and return an Ok result. 
 
 ## Development requirements
 
@@ -10,13 +10,13 @@ macOS:
 ```
 # Core dependencies
 brew install rustup-init
-brew install binaryen # for wasm-op
+brew install binaryen # for wasm-opt
 rustup target add wasm32-wasi
 # run from repo root (or extract so that there is `core/wasi-sdk-19.0`)
 wget -qO - https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-19/wasi-sdk-19.0-macos.tar.gz | tar xvf - -C core
 # TODO: clang must also be installed on the system (for C headers)
 
-# Pythion host dependencies
+# Python host dependencies
 python3 -m pip install wasmtime requests
 
 # JS host dependencies
