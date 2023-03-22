@@ -17,5 +17,5 @@ interpreter_js = { path = "../interpreter_js" }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3" }
 
-[dev-dependencies]
-sf_std = { path = "../host_to_core_std", package = "host_to_core_std", features = ["stub_ffi"] }
+# [dev-dependencies]
+# sf_std = { path = "../host_to_core_std", package = "host_to_core_std", features = ["stub_ffi"] }

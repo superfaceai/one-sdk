@@ -11,7 +11,8 @@ thiserror = { workspace = true }
 sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
 map_std = { path = "../core_to_map_std", package = "core_to_map_std" }
 
-quickjs-wasm-rs = { version = "0.1", features = [] }
+quickjs-wasm-rs = { git = "https://github.com/Shopify/javy.git", tag = "v0.6.0", features = [] }
+# quickjs-wasm-sys = { git = "https://github.com/Shopify/javy.git", tag = "v0.6.0", features = [] }
 
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -21,3 +22,6 @@ base64 = { workspace = true }
 tracing = { workspace = true }
 
 slab = "0.4"
+
+[dev-dependencies]
+sf_std = { path = "../host_to_core_std", package = "host_to_core_std", features = ["stub_ffi"] }

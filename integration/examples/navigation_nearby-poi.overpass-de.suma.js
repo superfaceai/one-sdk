@@ -13,7 +13,7 @@ function _start(usecaseName) {
   }
 
   const { input, parameters, security } = std.unstable.takeInput();
-  std.ffi.unstable.printDebug(
+  __ffi.unstable.printDebug(
     'Running with input:',
     input,
     'parameters:',
@@ -115,6 +115,7 @@ function NearbyPoi(input, parameters, security) {
       );
       const response = std.unstable.fetch(url, requestOptions).response();
       HTTP_RESPONSE: {
+        __ffi.unstable.printDebug(response);
         /* response 200 "application/json" "*" */
         if (
           response.status === 200 &&

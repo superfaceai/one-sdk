@@ -16,9 +16,11 @@ COPY ./interpreter_js ./interpreter_js
 COPY ./core ./core
 
 ENV CARGO_HOME=/var/cache/cargo
+ENV CARGO_TARGET_DIR=/var/cache/target
 # TODO: also run tests?
-RUN --mount=type=cache,target=/var/cache/cargo cargo build --locked --package superface_core --release --target wasm32-wasi
-RUN mkdir -p /opt/superface/ && cp 'target/wasm32-wasi/release/superface_core.wasm' '/opt/superface/core.wasm'
+RUN --mount=type=cache,target=/var/cache/cargo --mount=type=cache,target=/var/cache/target \
+	cargo build --locked --package superface_core --release --target wasm32-wasi && \
+	mkdir -p /opt/superface/ && cp '/var/cache/target/wasm32-wasi/release/superface_core.wasm' '/opt/superface/core.wasm'
 
 WORKDIR /opt/superface
 RUN wasm-opt -O2 ./core.wasm --output ./core.wasm

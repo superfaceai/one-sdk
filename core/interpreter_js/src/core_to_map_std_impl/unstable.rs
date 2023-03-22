@@ -9,7 +9,7 @@ use sf_std::MultiMap;
 
 use super::JsValueDebug;
 
-pub const MODULE_NAME: &[&str] = &["std", "ffi", "unstable"];
+pub const MODULE_NAME: &[&str] = &["__ffi", "unstable"];
 
 pub fn link<H: MapStdUnstable + 'static>(
     context: &mut Context,

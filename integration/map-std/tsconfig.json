@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "strict": true,
+    "rootDir": "src/",
+    "outDir": "dist/",
+    "lib": ["ES2022"],
+    "declaration": true,
+    "stripInternal": true
+  },
+	"include": ["src/std_unstable.ts", "src/ffi.d.ts"]
+}

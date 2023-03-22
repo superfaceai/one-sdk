@@ -117,6 +117,12 @@ pub type MultiMap = HashMap<String, Vec<String>>;
 // TODO: consider making the key always lowercase
 pub type HeadersMultiMap = MultiMap;
 
+pub fn lowercase_headers_multimap(map: MultiMap) -> MultiMap {
+    map.into_iter()
+        .map(|(key, value)| (key.to_lowercase(), value))
+        .collect()
+}
+
 pub fn encode_query(query: &MultiMap) -> String {
     let mut pairs = Vec::<(&str, &str)>::new();
 

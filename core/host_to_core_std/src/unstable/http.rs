@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
-use crate::{abi::Handle, encode_query, HeadersMultiMap, MultiMap};
+use crate::{abi::Handle, encode_query, lowercase_headers_multimap, HeadersMultiMap, MultiMap};
 
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
@@ -106,7 +106,7 @@ impl HttpRequest {
                 body_stream,
             } => Ok(HttpResponse {
                 status,
-                headers,
+                headers: lowercase_headers_multimap(headers),
                 body: body_stream,
             }),
         }
