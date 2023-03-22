@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "module": "None",
     "target": "ES2022",
     "strict": true,
     "rootDir": "src/",

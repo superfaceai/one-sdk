@@ -24,7 +24,6 @@ fn fmt_error(error: anyhow::Error) -> MapInterpreterRunError {
 
 pub struct JsInterpreter {
     context: Context,
-    stdlib_bundle: String,
     #[allow(dead_code)]
     state: Rc<RefCell<InterpreterState>>,
 }
@@ -51,11 +50,11 @@ impl JsInterpreter {
         };
         assert!(stdlib_bundle.len() > 0);
 
-        Ok(Self {
-            context,
-            state,
-            stdlib_bundle,
-        })
+        let mut me = Self { context, state };
+        me.eval_global(&stdlib_bundle)
+            .context("Failed to evaluate stdlib")?;
+
+        Ok(me)
     }
 
     /*
@@ -97,10 +96,7 @@ impl MapInterpreter for JsInterpreter {
                 "Map code must not be empty".into(),
             ));
         }
-        let bundle = format!(
-            "{}\n\n{}\n\n_start('{}');",
-            self.stdlib_bundle, map_code, entry
-        );
+        let bundle = format!("{}\n\n_start('{}');", map_code, entry);
 
         self.eval_global(&bundle)
             .context("Failed to run map bundle")

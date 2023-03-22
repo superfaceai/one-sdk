@@ -31,7 +31,7 @@ pub fn link<H: MapStdUnstable + 'static>(
             "utf8_to_bytes": __export_utf8_to_bytes,
             "bytes_to_base64": __export_bytes_to_base64,
             "base64_to_bytes": __export_base64_to_bytes,
-            "map_to_urlencode": __export_map_to_urlencode,
+            "map_to_urlencoded": __export_map_to_urlencoded,
             // messages
             "message_exchange": __export_message_exchange,
             // streams
@@ -64,7 +64,7 @@ fn __export_stream_read<H: MapStdUnstable + 'static>(
 ) -> Result<JsValue, JSError> {
     let (handle, buf) = ensure_arguments!("stream_read" args; 0: i32, 1: mut_bytes);
 
-    match state.stream_read(handle as usize, buf) {
+    match state.stream_read(handle as _, buf) {
         Ok(count) => Ok(context.value_from_u64(count as u64).unwrap()),
         Err(err) => Err(JSError::Type(format!("stream_read: {}", err))),
     }
@@ -78,7 +78,7 @@ fn __export_stream_write<H: MapStdUnstable + 'static>(
 ) -> Result<JsValue, JSError> {
     let (handle, buf) = ensure_arguments!("stream_write" args; 0: i32, 1: bytes);
 
-    match state.stream_write(handle as usize, buf) {
+    match state.stream_write(handle as _, buf) {
         Ok(count) => Ok(context.value_from_u64(count as u64).unwrap()),
         Err(err) => Err(JSError::Type(format!("stream_write: {}", err))),
     }
@@ -92,7 +92,7 @@ fn __export_stream_close<H: MapStdUnstable + 'static>(
 ) -> Result<JsValue, JSError> {
     let handle = ensure_arguments!("stream_close" args; 0: i32);
 
-    match state.stream_close(handle as usize) {
+    match state.stream_close(handle as _) {
         Ok(()) => Ok(context.undefined_value().unwrap()),
         Err(err) => Err(JSError::Type(format!("stream_close: {}", err))),
     }
@@ -194,13 +194,13 @@ fn __export_base64_to_bytes<H: MapStdUnstable + 'static>(
     }
 }
 
-fn __export_map_to_urlencode<H: MapStdUnstable + 'static>(
+fn __export_map_to_urlencoded<H: MapStdUnstable + 'static>(
     _state: &mut H,
     context: &Context,
     _this: &JsValue,
     args: &[JsValue],
 ) -> Result<JsValue, JSError> {
-    let value = ensure_arguments!("map_to_urlencode" args; 0: value);
+    let value = ensure_arguments!("map_to_urlencoded" args; 0: value);
     let mut properties = value.properties().unwrap();
 
     let mut multimap = MultiMap::new();

@@ -1,3 +1,5 @@
+"use strict";
+/** @internal */
 const __std = {
     // TODO: make public?
     Bytes: class Bytes {
@@ -291,7 +293,7 @@ const std = {
                     bodyBytes = __std.Bytes.encode(JSON.stringify(body));
                 }
                 else if (contentType.startsWith(std.unstable.CONTENT_TYPE.URLENCODED)) {
-                    bodyBytes = __std.Bytes.encode(__ffi.unstable.map_to_urlencode(__std.util.ensureMultimap(body)));
+                    bodyBytes = __std.Bytes.encode(__ffi.unstable.map_to_urlencoded(__std.util.ensureMultimap(body)));
                 }
                 else if (std.unstable.CONTENT_TYPE.RE_BINARY.test(contentType)) {
                     bodyBytes = Buffer.from(body).inner;

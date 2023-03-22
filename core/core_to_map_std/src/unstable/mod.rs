@@ -3,7 +3,7 @@ use thiserror::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use sf_std::{abi::Size, HeadersMultiMap, MultiMap};
+use sf_std::{abi::Handle, HeadersMultiMap, MultiMap};
 
 #[allow(dead_code)]
 pub const MODULE_NAME: &str = "sf_core_unstable";
@@ -28,7 +28,7 @@ pub struct HttpResponse {
     /// Headers, as returned from the server without any client-side joining.
     pub headers: HeadersMultiMap,
     /// Body stream of content-encoding decoded data.
-    pub body_stream: usize,
+    pub body_stream: Handle,
 }
 #[derive(Debug, Error)]
 pub enum HttpCallError {
@@ -61,13 +61,13 @@ pub trait MapStdUnstable {
     fn abort(&mut self, message: &str, filename: &str, line: usize, column: usize) -> String;
 
     // streams
-    fn stream_read(&mut self, handle: usize, buf: &mut [u8]) -> std::io::Result<usize>;
-    fn stream_write(&mut self, handle: usize, buf: &[u8]) -> std::io::Result<usize>;
-    fn stream_close(&mut self, handle: usize) -> std::io::Result<()>;
+    fn stream_read(&mut self, handle: Handle, buf: &mut [u8]) -> std::io::Result<usize>;
+    fn stream_write(&mut self, handle: Handle, buf: &[u8]) -> std::io::Result<usize>;
+    fn stream_close(&mut self, handle: Handle) -> std::io::Result<()>;
 
     // http
-    fn http_call(&mut self, params: HttpRequest<'_>) -> Result<usize, HttpCallError>;
-    fn http_call_head(&mut self, handle: usize) -> Result<HttpResponse, HttpCallHeadError>;
+    fn http_call(&mut self, params: HttpRequest<'_>) -> Result<Handle, HttpCallError>;
+    fn http_call_head(&mut self, handle: Handle) -> Result<HttpResponse, HttpCallHeadError>;
 
     // input and output
     fn take_input(&mut self) -> Result<(MapValue, MapValue, MapValue), TakeInputError>;
@@ -92,7 +92,7 @@ define_exchange_map_to_core! {
         } -> enum Response {
             Ok {
                 request_body_stream: Option<()>, // TODO: think about implementation/ergonomics
-                handle: Size,
+                handle: Handle,
             },
             Err { error: String, }
         } => {
@@ -113,12 +113,12 @@ define_exchange_map_to_core! {
             }
         },
         HttpCallHead {
-            handle: usize,
+            handle: Handle,
         } -> enum Response {
             Ok {
                 status: u16,
                 headers: HeadersMultiMap,
-                body_stream: usize,
+                body_stream: Handle,
             },
             Err { error: String, },
         } => match state.http_call_head(handle) {

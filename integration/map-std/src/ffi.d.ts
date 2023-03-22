@@ -12,7 +12,7 @@ declare type StdFfi = {
     utf8_to_bytes(utf8: string): ArrayBuffer,
     bytes_to_base64(bytes: ArrayBuffer): string,
     base64_to_bytes(base64: string): ArrayBuffer,
-    map_to_urlencode(value: Record<string, string[]>): string,
+    map_to_urlencoded(value: Record<string, string[]>): string,
     // env
     print(message: string): void,
     printDebug(...data: unknown[]): void,

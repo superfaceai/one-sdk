@@ -1,12 +1,12 @@
-export type MultiMap = Record<string, string[]>;
-export type Encoding = 'utf8' | 'base64';
-export type FetchOptions = {
+type MultiMap = Record<string, string[]>;
+type Encoding = 'utf8' | 'base64';
+type FetchOptions = {
     method?: string;
     headers?: MultiMap;
     query?: MultiMap;
     body?: string | number[] | Buffer;
 };
-export type AnyValue = null | string | number | boolean | AnyValue[] | {
+type AnyValue = null | string | number | boolean | AnyValue[] | {
     [s in string]: AnyValue;
 };
 declare class __HttpRequest {
@@ -22,7 +22,7 @@ declare class __HttpResponse {
     bodyJson(): unknown;
     bodyAuto(): unknown;
 }
-export type Std = typeof std;
+type Std = typeof std;
 declare const std: {
     readonly unstable: {
         readonly MapError: {
@@ -50,11 +50,10 @@ declare const std: {
         readonly fetch: (url: string, options: FetchOptions) => __HttpRequest;
     };
 };
-export declare class Buffer {
+declare class Buffer {
     #private;
     static from(value: unknown, encoding?: Encoding): Buffer;
     static isBuffer(value: unknown): value is Buffer;
     private constructor();
     toString(encoding?: Encoding): string;
 }
-export {};

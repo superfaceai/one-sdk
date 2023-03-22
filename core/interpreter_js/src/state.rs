@@ -6,7 +6,10 @@ use map_std::unstable::{
     HttpCallError, HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
     HttpResponse as MapHttpResponse, MapStdUnstable, MapValue, SetOutputError, TakeInputError,
 };
-use sf_std::unstable::{http::HttpRequest, HostValue, IoStream};
+use sf_std::{
+    abi::Handle,
+    unstable::{http::HttpRequest, HostValue, IoStream},
+};
 
 struct HandleMap<T> {
     // TODO: figure out if we need generational ids or if it is secure assuming each map has its own state
@@ -17,23 +20,23 @@ impl<T> HandleMap<T> {
         Self { data: Slab::new() }
     }
 
-    const fn handle_to_index(handle: usize) -> Option<usize> {
-        handle.checked_sub(1)
+    const fn handle_to_index(handle: Handle) -> Option<usize> {
+        (handle as usize).checked_sub(1)
     }
 
-    const fn index_to_handle(index: usize) -> usize {
-        index + 1
+    const fn index_to_handle(index: usize) -> Handle {
+        (index + 1) as Handle
     }
 
-    pub fn insert(&mut self, value: T) -> usize {
+    pub fn insert(&mut self, value: T) -> Handle {
         Self::index_to_handle(self.data.insert(value))
     }
 
-    pub fn get_mut(&mut self, handle: usize) -> Option<&mut T> {
+    pub fn get_mut(&mut self, handle: Handle) -> Option<&mut T> {
         Self::handle_to_index(handle).and_then(|h| self.data.get_mut(h))
     }
 
-    pub fn try_remove(&mut self, handle: usize) -> Option<T> {
+    pub fn try_remove(&mut self, handle: Handle) -> Option<T> {
         Self::handle_to_index(handle).and_then(|h| self.data.try_remove(h))
     }
 }
@@ -72,28 +75,28 @@ impl MapStdUnstable for InterpreterState {
         tracing::info!("map: {}", message);
     }
 
-    fn stream_read(&mut self, handle: usize, buf: &mut [u8]) -> std::io::Result<usize> {
+    fn stream_read(&mut self, handle: Handle, buf: &mut [u8]) -> std::io::Result<usize> {
         match self.streams.get_mut(handle) {
             None => Err(std::io::ErrorKind::NotFound.into()),
             Some(stream) => stream.read(buf),
         }
     }
 
-    fn stream_write(&mut self, handle: usize, buf: &[u8]) -> std::io::Result<usize> {
+    fn stream_write(&mut self, handle: Handle, buf: &[u8]) -> std::io::Result<usize> {
         match self.streams.get_mut(handle) {
             None => Err(std::io::ErrorKind::NotFound.into()),
             Some(stream) => stream.write(buf),
         }
     }
 
-    fn stream_close(&mut self, handle: usize) -> std::io::Result<()> {
+    fn stream_close(&mut self, handle: Handle) -> std::io::Result<()> {
         match self.streams.try_remove(handle) {
             None => Err(std::io::ErrorKind::NotFound.into()),
             Some(_) => Ok(()), // drop cleans up
         }
     }
 
-    fn http_call(&mut self, params: MapHttpRequest<'_>) -> Result<usize, HttpCallError> {
+    fn http_call(&mut self, params: MapHttpRequest<'_>) -> Result<Handle, HttpCallError> {
         let request = HttpRequest::fetch(
             params.method,
             params.url,
@@ -106,7 +109,7 @@ impl MapStdUnstable for InterpreterState {
         Ok(self.http_requests.insert(request))
     }
 
-    fn http_call_head(&mut self, handle: usize) -> Result<MapHttpResponse, MapHttpCallHeadError> {
+    fn http_call_head(&mut self, handle: Handle) -> Result<MapHttpResponse, MapHttpCallHeadError> {
         match self.http_requests.try_remove(handle) {
             None => Err(MapHttpCallHeadError::InvalidHandle),
             Some(mut request) => match request.into_response() {

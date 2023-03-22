@@ -1,11 +1,17 @@
 // internal and private //
+/** @internal */
 type StdPrivate = typeof __std;
+/** @internal */
 type Bytes = InstanceType<StdPrivate["Bytes"]>;
+/** @internal */
 type ByteStream = InstanceType<StdPrivate["ByteStream"]>;
 
+/** @internal */
 type JsonReplacer = (this: any, key: string, value: any) => any;
+/** @internal */
 type JsonReviver = (this: any, key: string, value: any) => any;
 
+/** @internal */
 const __std = {
   // TODO: make public?
   Bytes: class Bytes {
@@ -177,10 +183,10 @@ const __std = {
 } as const;
 
 // public //
-export type MultiMap = Record<string, string[]>;
-export type Encoding = 'utf8' | 'base64';
+type MultiMap = Record<string, string[]>;
+type Encoding = 'utf8' | 'base64';
 
-export type FetchOptions = {
+type FetchOptions = {
   method?: string,
   headers?: MultiMap,
   query?: MultiMap,
@@ -189,7 +195,7 @@ export type FetchOptions = {
 
 // Can't use Record<string, AnyValue> but can use { [s in string]: AnyValue }. Typescript go brr.
 // The types here have defined message_exchange format and can safely be serialized and deserialized across the core<->map boundary.
-export type AnyValue = null | string | number | boolean | AnyValue[] | { [s in string]: AnyValue };
+type AnyValue = null | string | number | boolean | AnyValue[] | { [s in string]: AnyValue };
 
 // TODO: couldn't make these types inline with `std` because then it fails with self-referential instantiation error. but they ideally should not pollute the global namespace
 class __HttpRequest {
@@ -267,7 +273,7 @@ class __HttpResponse {
     return this.bodyText();
   }
 }
-export type Std = typeof std;
+type Std = typeof std;
 const std = {
   unstable: {
     MapError: class MapError {
@@ -355,7 +361,7 @@ const std = {
           bodyBytes = __std.Bytes.encode(JSON.stringify(body));
         } else if (contentType.startsWith(std.unstable.CONTENT_TYPE.URLENCODED)) {
           bodyBytes = __std.Bytes.encode(
-            __ffi.unstable.map_to_urlencode(__std.util.ensureMultimap(body))
+            __ffi.unstable.map_to_urlencoded(__std.util.ensureMultimap(body))
           );
         } else if (std.unstable.CONTENT_TYPE.RE_BINARY.test(contentType)) {
           bodyBytes = Buffer.from(body).inner;
@@ -387,7 +393,7 @@ const std = {
 } as const;
 
 // TODO: Comlink/node map compat
-export class Buffer {
+class Buffer {
   static from(value: unknown, encoding: Encoding = 'utf8'): Buffer {
     if (typeof value === 'string') {
       return new Buffer(__std.Bytes.encode(value, encoding));
