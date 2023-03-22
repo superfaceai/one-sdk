@@ -16,6 +16,7 @@ COPY ./interpreter_js ./interpreter_js
 COPY ./core ./core
 
 ENV CARGO_HOME=/var/cache/cargo
+# TODO: also run tests?
 RUN --mount=type=cache,target=/var/cache/cargo cargo build --locked --package superface_core --release --target wasm32-wasi
 RUN mkdir -p /opt/superface/ && cp 'target/wasm32-wasi/release/superface_core.wasm' '/opt/superface/core.wasm'
 

@@ -5,7 +5,6 @@ edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
-test = false # TODO: won't compile because of missing imports, currently there are no tests in this crate though
 
 [dependencies]
 anyhow = "1"
@@ -17,3 +16,6 @@ interpreter_js = { path = "../interpreter_js" }
 
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3" }
+
+[dev-dependencies]
+sf_std = { path = "../host_to_core_std", package = "host_to_core_std", features = ["stub_ffi"] }

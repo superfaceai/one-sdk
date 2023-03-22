@@ -23,7 +23,7 @@ const EXCHANGE_MESSAGE: MessageFn = unsafe {
         __import_message_exchange_retrieve,
     )
 };
-#[cfg(not(test))]
+#[cfg(not(feature = "stub_ffi"))]
 #[link(wasm_import_module = "sf_host_unstable")]
 extern "C" {
     #[link_name = "message_exchange"]
@@ -42,8 +42,7 @@ extern "C" {
         out_len: Size,
     ) -> AbiResultRepr;
 }
-// this is impractical but the imports don't get stripped when we are testing cdylib, so we stub them out
-#[cfg(test)]
+#[cfg(feature = "stub_ffi")]
 extern "C" fn __import_message_exchange(
     _msg_ptr: Ptr<u8>,
     _msg_len: Size,
@@ -53,7 +52,7 @@ extern "C" fn __import_message_exchange(
 ) -> Size {
     unreachable!()
 }
-#[cfg(test)]
+#[cfg(feature = "stub_ffi")]
 extern "C" fn __import_message_exchange_retrieve(
     _handle: Handle,
     _out_ptr: Ptr<u8>,
@@ -74,8 +73,7 @@ const STREAM_IO: StreamFn = unsafe {
         __import_stream_close,
     )
 };
-
-#[cfg(not(test))]
+#[cfg(not(feature = "stub_ffi"))]
 #[link(wasm_import_module = "sf_host_unstable")]
 extern "C" {
     #[link_name = "stream_read"]
@@ -87,9 +85,7 @@ extern "C" {
     #[link_name = "stream_close"]
     fn __import_stream_close(handle: Handle) -> AbiResultRepr;
 }
-
-// this is impractical but the imports don't get stripped when we are testing cdylib, so we stub them out
-#[cfg(test)]
+#[cfg(feature = "stub_ffi")]
 extern "C" fn __import_stream_read(
     _handle: Handle,
     _out_ptr: Ptr<u8>,
@@ -97,7 +93,7 @@ extern "C" fn __import_stream_read(
 ) -> AbiResultRepr {
     unreachable!()
 }
-#[cfg(test)]
+#[cfg(feature = "stub_ffi")]
 extern "C" fn __import_stream_write(
     _handle: Handle,
     _in_ptr: Ptr<u8>,
@@ -105,14 +101,14 @@ extern "C" fn __import_stream_write(
 ) -> AbiResultRepr {
     unreachable!()
 }
-#[cfg(test)]
+#[cfg(feature = "stub_ffi")]
 extern "C" fn __import_stream_close(handle: Handle) -> AbiResultRepr {
-    use crate::abi::AbiResult;
     // this is actually called in tests which construct IoStreams, so we always succeed here
     // TODO: this should possibly be configurable on per-test basis
     assert_ne!(handle, 0);
-    AbiResult::Ok(0).into()
+    0
 }
+
 #[cfg(test)]
 mod test {
     use serde_json::json;
