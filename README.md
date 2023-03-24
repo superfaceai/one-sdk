@@ -1,6 +1,6 @@
 ## Try it out
 
-Core can be built in docker to avoid installing compiler dependencies. Run `docker build core -o core/dist`.
+Core can be built in docker to avoid installing compiler dependencies. Run `docker build core -o core/dist` (or on arm64 `docker build core -f core/Dockerfile-arm64 -o core/dist`, but beware that this takes a really long time as it builds wasi-sdk, including clang).
 
 A very simple smoke test can be run `host/test.sh py` - should perform NearbyPoi against overpass-de and return an Ok result. 
 

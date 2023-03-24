@@ -1,13 +1,12 @@
 FROM rust:1.68 as builder
 
-
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y binaryen clang libclang-dev && rm -rf /var/lib/apt/lists/*
 RUN rustup target add wasm32-wasi
 
 WORKDIR /usr/src/superface_core
 ENV QUICKJS_WASM_SYS_WASI_SDK_PATH=/usr/src/superface_core/wasi-sdk-19.0
-RUN wget -qO - https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-19/wasi-sdk-19.0-linux.tar.gz | tar xzvf -
+RUN wget -qO - https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-19/wasi-sdk-19.0-linux.tar.gz | tar xzf -
 
 COPY ./Cargo.toml ./Cargo.lock ./
 COPY ./host_to_core_std ./host_to_core_std
