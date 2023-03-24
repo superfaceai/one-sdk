@@ -9,8 +9,7 @@
 //! the caller must pass a destination buffer.
 //!
 //! However, it cannot know the size of the message up front. If the response is longer than the buffer provided to the call, the response
-//! is stored by the callee and the function returns the size of the message and a handle:
-//! `i64` with lower 32 bits the size and upper 32 bits as the handle.
+//! is stored by the callee and the function returns the size of the message and a handle.
 //! This handle can be used to retrieve the message with a second call. By selecting a reasonable buffer size, the caller can avoid
 //! most secondary calls.
 //!
