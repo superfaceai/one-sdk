@@ -1,5 +1,7 @@
 use std::sync::Mutex;
 
+use sf_std::abi::{Ptr, Size};
+
 mod sf_core;
 use sf_core::SuperfaceCore;
 
@@ -80,14 +82,23 @@ pub extern "C" fn __export_superface_core_perform() {
     }
 }
 
-// TODO: clean up how this should work
 #[no_mangle]
-#[export_name = "superface_core_async_init"]
-pub extern "C" fn __export_superface_core_async_init(size: usize) -> usize {
-    let mut asyncify_stack = Vec::<u8>::new();
-    asyncify_stack.reserve_exact(size);
-    asyncify_stack.resize(size, 0);
+#[export_name = "asyncify_alloc_stack"]
+#[cfg(feature = "asyncify")]
+pub extern "C" fn __export_superface_core_async_init(mut data_ptr: Ptr<Size>, stack_size: Size) {
+    // We allocate Size elements to ensure correct alignment, but size is in bytes.
+    let len = stack_size / std::mem::size_of::<Size>();
+    
+    let mut asyncify_stack = Vec::<Size>::new();
+    asyncify_stack.reserve_exact(len);
+    asyncify_stack.resize(len, 0);
+    // leak the stack so deallocation doesn't happen
+    let asyncify_stack = asyncify_stack.leak();
 
-    let ptr = asyncify_stack.leak().as_mut_ptr();
-    return ptr as usize;
+    // part of the data contract is that we write the resulting range to the data struct ourselves
+    let stack = asyncify_stack.as_mut_ptr_range();
+    unsafe {
+        data_ptr.mut_ptr().write(stack.start as Size);
+        data_ptr.mut_ptr().offset(1).write(stack.end as Size)
+    }
 }

@@ -6,6 +6,10 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+default = ["asyncify"]
+asyncify = []
+
 [dependencies]
 anyhow = "1"
 thiserror = { workspace = true }

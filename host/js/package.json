@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "main": "dist/index.js",
   "license": "MIT",
-  "dependencies": {
-    "asyncify-wasm": "^1.2.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^18.15.3",
     "rimraf": "^4.4.0",

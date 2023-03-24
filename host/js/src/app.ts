@@ -1,5 +1,5 @@
-import * as Asyncify from 'asyncify-wasm';
 import { HandleMap } from './handle_map';
+import { Asyncify } from './asyncify';
 
 import * as sf_host from './sf_host';
 
@@ -26,7 +26,7 @@ export interface AppContext {
   handleMessage(message: any): Promise<any>;
   readStream(handle: number, out: Uint8Array): Promise<number>;
   writeStream(handle: number, data: Uint8Array): Promise<number>;
-  closeStream(handle: number): void;
+  closeStream(handle: number): Promise<void>;
 }
 
 class ReadableStreamAdapter implements Stream {
@@ -95,8 +95,9 @@ type Stream = {
 };
 type AppCore = {
   instance: WebAssembly.Instance;
+  asyncify: Asyncify;
   setupFn: () => void;
-  teardownFn: () => void;
+  teardownFn: () => Promise<void>;
   performFn: () => Promise<void>;
 };
 export class App implements AppContext {
@@ -117,24 +118,25 @@ export class App implements AppContext {
     this.requests = new HandleMap();
   }
 
-  private importObject(): WebAssembly.Imports {
+  private importObject(asyncify: Asyncify): WebAssembly.Imports {
     return {
       wasi_snapshot_preview1: this.wasi.wasiImport,
-      ...sf_host.link(this, this.textCoder)
+      ...sf_host.link(this, this.textCoder, asyncify)
     }
   }
 
   async loadCore(wasm: BufferSource) {
     const module = await WebAssembly.compile(wasm);
-    const instance = await Asyncify.instantiate(module, this.importObject());
+    const [instance, asyncify] = await Asyncify.instantiate(module, (asyncify) => this.importObject(asyncify));
 
     this.wasi.initialize(instance);
 
     this.core = {
       instance,
+      asyncify,
       setupFn: instance.exports['superface_core_setup'] as () => void,
-      teardownFn: instance.exports['superface_core_teardown'] as () => void,
-      performFn: instance.exports['superface_core_perform'] as () => Promise<void>
+      teardownFn: asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void),
+      performFn: asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void)
     };
   }
 
@@ -151,15 +153,11 @@ export class App implements AppContext {
   }
 
   async setup(): Promise<void> {
-    await this.core!!.setupFn();
-    const dataSize = 8 * 1024;
-    const dataStart = await (this.core!!.instance.exports['superface_core_async_init'] as any)(dataSize);
-    this.memoryView.setUint32(16, dataStart, true);
-    this.memoryView.setUint32(16 + 4, dataStart + dataSize, true);
+    this.core!!.setupFn();
   }
 
   async teardown(): Promise<void> {
-    return this.core!!.teardownFn();
+    return await this.core!!.teardownFn();
   }
 
   async perform(
