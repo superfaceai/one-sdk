@@ -19,6 +19,10 @@ export interface FileSystem {
   write(handle: number, data: Uint8Array): Promise<number>;
   close(handle: number): Promise<void>;
 }
+export interface Timers {
+  setTimeout(callback: () => void, ms: number): number;
+  clearTimeout(handle: number): void;
+}
 export interface AppContext {
   memoryBytes: Uint8Array;
   memoryView: DataView;
@@ -73,6 +77,45 @@ class ReadableStreamAdapter implements Stream {
   }
 }
 
+/** Async mutex allows us to synchronize multiple async tasks.
+ * 
+ * For example, if a perform is in-flight but is waiting for I/O the async task is suspended. If at the same time
+ * the periodic timer fires, this could cause core to be invoked twice within the same asyncify context, causing undefined behavior.
+ * 
+ * We can avoid this by synchronizing over core.
+ */
+class AsyncMutex<T> {
+  private promise: Promise<void>;
+  private resolve: () => void;
+  private value: T;
+
+  constructor(value: T) {
+    this.promise = Promise.resolve();
+    this.resolve = () => {};
+    this.value = value;
+  }
+
+  /**
+   * Get the protected value without respecting the lock.
+   * 
+   * This is unsafe, but it is needed to get access to memory in sf_host imports.
+   */
+  get unsafeValue(): T {
+    return this.value;
+  }
+
+  public async withLock<R>(fn: (value: T) => Promise<R>): Promise<R> {
+    await this.promise;
+    this.promise = new Promise((resolve) => { this.resolve = resolve; });
+
+    const result = await fn(this.value);
+
+    this.resolve();
+
+    return result;
+  }
+}
+
 function headersToMultimap(headers: Headers): Record<string, string[]> {
   const result: Record<string, string[]> = {};
 
@@ -96,26 +139,41 @@ type Stream = {
 type AppCore = {
   instance: WebAssembly.Instance;
   asyncify: Asyncify;
-  setupFn: () => void;
+  setupFn: () => Promise<void>;
   teardownFn: () => Promise<void>;
   performFn: () => Promise<void>;
+  periodicFn: () => Promise<void>;
 };
 export class App implements AppContext {
   private readonly wasi: WasiContext;
   private readonly textCoder: TextCoder;
   private readonly fileSystem: FileSystem;
+  private readonly timers: Timers;
 
   private readonly streams: HandleMap<Stream>;
   private readonly requests: HandleMap<Promise<Response>>;
 
-  private core: AppCore | undefined = undefined;
+  private core: AsyncMutex<AppCore> | undefined = undefined;
   private performState: { mapName: string, mapUsecase: string, mapInput: unknown, mapParameters: unknown, mapSecurity: unknown, mapOutput?: unknown } | undefined = undefined;
-  constructor(wasi: WasiContext, dependencies: { fileSystem: FileSystem, textCoder: TextCoder }) {
+
+  private periodicState: {
+    period: number; // in ms
+    timeout: number; // timeout handle
+  };
+
+  constructor(
+    wasi: WasiContext,
+    dependencies: { fileSystem: FileSystem, textCoder: TextCoder, timers: Timers },
+    options: { periodicPeriod?: number }
+  ) {
     this.wasi = wasi;
     this.textCoder = dependencies.textCoder;
     this.fileSystem = dependencies.fileSystem;
+    this.timers = dependencies.timers;
     this.streams = new HandleMap();
     this.requests = new HandleMap();
+
+    this.periodicState = { period: options.periodicPeriod ?? 10000, timeout: 0 };
   }
 
   private importObject(asyncify: Asyncify): WebAssembly.Imports {
@@ -131,17 +189,18 @@ export class App implements AppContext {
 
     this.wasi.initialize(instance);
 
-    this.core = {
+    this.core = new AsyncMutex({
       instance,
       asyncify,
-      setupFn: instance.exports['superface_core_setup'] as () => void,
+      setupFn: asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void),
       teardownFn: asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void),
-      performFn: asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void)
-    };
+      performFn: asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void),
+      periodicFn: asyncify.wrapExport(instance.exports['superface_core_periodic'] as () => void)
+    });
   }
 
   private get memory(): WebAssembly.Memory {
-    return this.core!!.instance.exports.memory as WebAssembly.Memory;
+    return this.core!!.unsafeValue.instance.exports.memory as WebAssembly.Memory;
   }
 
   get memoryBytes(): Uint8Array {
@@ -152,28 +211,41 @@ export class App implements AppContext {
     return new DataView(this.memory.buffer);
   }
 
-  async setup(): Promise<void> {
-    this.core!!.setupFn();
+  public async setup(): Promise<void> {
+    await this.core!!.withLock(core => core.setupFn());
+    this.periodic(); // launch periodic task
   }
 
-  async teardown(): Promise<void> {
-    return await this.core!!.teardownFn();
+  public async teardown(): Promise<void> {
+    this.timers.clearTimeout(this.periodicState.timeout);
+    return this.core!!.withLock(core => core.teardownFn());
   }
 
-  async perform(
+  public async perform(
     mapName: string,
     mapUsecase: string,
     mapInput: unknown,
     mapParameters: unknown,
     mapSecurity: unknown
   ): Promise<unknown> {
-    this.performState = { mapName, mapUsecase, mapInput, mapParameters, mapSecurity };
-    await this.core!!.performFn();
+    return this.core!!.withLock(
+      async (core) => {
+        this.performState = { mapName, mapUsecase, mapInput, mapParameters, mapSecurity };
+        await core.performFn();
 
-    const output = this.performState.mapOutput;
-    this.performState = undefined;
+        const output = this.performState.mapOutput;
+        this.performState = undefined;
+        return output;
+      }
+    );
+  }
 
-    return output;
+  private async periodic(): Promise<void> {
+    this.timers.clearTimeout(this.periodicState.timeout);
+    
+    await this.core!!.withLock(core => core.periodicFn());
+
+    this.periodicState.timeout = this.timers.setTimeout(() => { this.periodic() }, this.periodicState.period);
   }
 
   async handleMessage(message: any): Promise<any> {

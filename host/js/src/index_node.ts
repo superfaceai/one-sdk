@@ -1,8 +1,9 @@
 import fs, { FileHandle } from 'fs/promises';
+import { promisify } from 'util';
 import { WASI } from 'wasi';
 
 import { App } from './app';
-import type { TextCoder, FileSystem } from './app';
+import type { TextCoder, FileSystem, Timers } from './app';
 import { HandleMap } from './handle_map';
 
 class NodeTextCoder implements TextCoder {
@@ -71,11 +72,21 @@ class NodeFileSystem implements FileSystem {
   }
 }
 
+class NodeTimers implements Timers {
+  public setTimeout(callback: () => void, ms: number): number {
+    return setTimeout(callback, ms) as unknown as number;
+  }
+
+  public clearTimeout(handle: number): void {
+    clearTimeout(handle);
+  }
+}
+
 async function main() {
   const wasi = new WASI({
     env: process.env
   });
-  const app = new App(wasi, { fileSystem: new NodeFileSystem(), textCoder: new NodeTextCoder() });
+  const app = new App(wasi, { fileSystem: new NodeFileSystem(), textCoder: new NodeTextCoder(), timers: new NodeTimers() }, {  periodicPeriod: 1000 });
   await app.loadCore(
     await fs.readFile(process.argv[2])
   );
@@ -105,6 +116,9 @@ async function main() {
   await app.setup();
   const result = await app.perform(mapName, mapUsecase, mapInput, mapParameters, mapSecurity)
   console.log('host: result:', result)
+
+  await promisify(setTimeout)(10000);
+
   await app.teardown();
 }
 

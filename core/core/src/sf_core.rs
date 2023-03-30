@@ -14,11 +14,22 @@ use sf_std::unstable::{
 
 use interpreter_js::JsInterpreter;
 use map_std::MapInterpreter;
+use tracing::instrument;
 
 struct MapCacheEntry {
     store_time: Instant,
     map: Vec<u8>,
 }
+impl std::fmt::Debug for MapCacheEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MapCacheEntry")
+            .field("store_time", &self.store_time)
+            .field("map", &format!("<{} bytes>", self.map.len()))
+            .finish()
+    }
+}
+
+#[derive(Debug)]
 pub struct SuperfaceCore {
     map_cache: HashMap<String, MapCacheEntry>,
 }
@@ -78,6 +89,13 @@ impl SuperfaceCore {
                 map,
             },
         );
+        Ok(())
+    }
+
+    // TODO: use thiserror
+    #[instrument(level = "Trace")]
+    pub fn periodic(&mut self) -> anyhow::Result<()> {
+        tracing::trace!("periodic invoked");
         Ok(())
     }
 
