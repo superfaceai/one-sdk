@@ -40,6 +40,14 @@ impl JsInterpreter {
         Ok(Self { context, state })
     }
 
+    pub fn set_input(&mut self, input: MapValue) {
+        self.state.borrow_mut().set_input(input)
+    }
+
+    pub fn take_output(&mut self) -> Result<MapValue, MapValue> {
+        self.state.borrow_mut().take_output().unwrap()
+    }
+
     pub fn eval_code(&mut self, name: &str, code: &str) -> Result<(), JsInterpreterError> {
         if code.len() == 0 {
             return Err(JsInterpreterError::EvalCodeEmpty);
@@ -53,12 +61,20 @@ impl JsInterpreter {
         Ok(())
     }
 
-    pub fn set_input(&mut self, input: MapValue) {
-        self.state.borrow_mut().set_input(input)
+    pub fn compile_code(&mut self, name: &str, code: &str) -> Result<Vec<u8>, JsInterpreterError> {
+        if code.len() == 0 {
+            return Err(JsInterpreterError::EvalCodeEmpty);
+        }
+        
+        let bytecode = self.context.compile_global(name, code).context("Failed to compile global code")?;
+
+        Ok(bytecode)
     }
 
-    pub fn take_output(&mut self) -> Result<MapValue, MapValue> {
-        self.state.borrow_mut().take_output().unwrap()
+    pub fn eval_bytecode(&mut self, bytecode: &[u8]) -> Result<(), JsInterpreterError> {
+        self.context.eval_binary(bytecode)?;
+
+        Ok(())
     }
 }
 impl MapInterpreter for JsInterpreter {

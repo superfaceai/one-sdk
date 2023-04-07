@@ -1,11 +1,3 @@
-export class Parser {
-	constructor() {}
-
-	public parse(document: string): Record<string, unknown> {
-		return {};
-	}
-}
-
-export function unusedFn() {
-	return "boo";
-}
+export { profileRules } from './syntax';
+export { parseRuleResult } from './syntax/parser';
+export { Source } from './common';

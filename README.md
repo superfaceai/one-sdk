@@ -61,6 +61,7 @@ Build with `./core/build.sh`, result will be in `core/dist`. Note that this buil
         js/ # JS assets, such as the core_to_map stdlib wrappers or profile-validator
     build.sh # calls `cargo build` but also `wasm-opt --asyncify ..`
   integration/ # any tooling for integration development
+    core-ffi/ # TypeScript declarations for core_to_map imports
     map-std/ # core_to_map stdlib wrappers TypeScript source
       src/
     profile-validator/ # profile validator extracted from TS SDK
