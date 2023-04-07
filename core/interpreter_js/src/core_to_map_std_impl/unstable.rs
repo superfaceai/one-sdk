@@ -24,14 +24,13 @@ pub fn link<H: MapStdUnstable + 'static>(
         {
             // debug
             "printDebug": __export_print_debug,
-            // env
             "print": __export_print,
-            "abort": __export_abort,
+            // env
             "bytes_to_utf8": __export_bytes_to_utf8,
             "utf8_to_bytes": __export_utf8_to_bytes,
             "bytes_to_base64": __export_bytes_to_base64,
             "base64_to_bytes": __export_base64_to_bytes,
-            "map_to_urlencoded": __export_map_to_urlencoded,
+            "record_to_urlencoded": __export_record_to_urlencoded,
             // messages
             "message_exchange": __export_message_exchange,
             // streams
@@ -127,15 +126,6 @@ fn __export_print_debug<H: MapStdUnstable + 'static>(
     Ok(context.undefined_value().unwrap())
 }
 
-fn __export_abort<H: MapStdUnstable + 'static>(
-    _state: &mut H,
-    _context: &Context,
-    _this: &JsValue,
-    _args: &[JsValue],
-) -> Result<JsValue, JSError> {
-    panic!()
-}
-
 fn __export_bytes_to_utf8<H: MapStdUnstable + 'static>(
     _state: &mut H,
     context: &Context,
@@ -194,13 +184,13 @@ fn __export_base64_to_bytes<H: MapStdUnstable + 'static>(
     }
 }
 
-fn __export_map_to_urlencoded<H: MapStdUnstable + 'static>(
+fn __export_record_to_urlencoded<H: MapStdUnstable + 'static>(
     _state: &mut H,
     context: &Context,
     _this: &JsValue,
     args: &[JsValue],
 ) -> Result<JsValue, JSError> {
-    let value = ensure_arguments!("map_to_urlencoded" args; 0: value);
+    let value = ensure_arguments!("record_to_urlencoded" args; 0: value);
     let mut properties = value.properties().unwrap();
 
     let mut multimap = MultiMap::new();
