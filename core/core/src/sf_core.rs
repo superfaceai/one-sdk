@@ -34,6 +34,8 @@ pub struct SuperfaceCore {
     map_cache: HashMap<String, MapCacheEntry>,
 }
 impl SuperfaceCore {
+    const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
+
     const MAX_CACHE_TIME: Duration = Duration::from_secs(3);
 
     // TODO: Use thiserror and define specific errors
@@ -105,7 +107,7 @@ impl SuperfaceCore {
 
         self.cache_map(&perform_input.map_name)
             .context("Failed to cache map")?;
-        let wasm = self
+        let map_code = self
             .map_cache
             .get(&perform_input.map_name)
             .unwrap()
@@ -114,30 +116,30 @@ impl SuperfaceCore {
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = {
-            let replacement_std = match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
-                None => None,
-                Some(path) => {
-                    let mut file = OpenOptions::new()
-                        .read(true)
-                        .open(&path)
-                        .context("Failed to open map stdlib file")?;
+        let mut interpreter = JsInterpreter::new().context("Failed to initialize interpreter")?;
+        // here we allow runtime stdlib replacement for development purposes
+        // this might be removed in the future
+        match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
+            None => {
+                interpreter.eval_code(Self::MAP_STDLIB_JS)
+            },
+            Some(path) => {
+                let mut file = OpenOptions::new()
+                    .read(true)
+                    .open(&path)
+                    .context("Failed to open map stdlib file")?;
 
-                    let mut string = String::new();
-                    file.read_to_string(&mut string)
-                        .context("Failed to open map stdlib file")?;
+                let mut replacement = String::new();
+                file.read_to_string(&mut replacement)
+                    .context("Failed to open map stdlib file")?;
 
-                    Some(string)
-                }
-            };
-
-            JsInterpreter::new(replacement_std.as_deref())
-                .context("Failed to initialize interpreter")?
-        };
+                interpreter.eval_code(&replacement)
+            }
+        }.context("Failed to evaluate map stdlib code")?;
 
         let map_result = interpreter
             .run(
-                wasm,
+                map_code,
                 &perform_input.map_usecase,
                 perform_input.map_input,
                 perform_input.map_parameters,

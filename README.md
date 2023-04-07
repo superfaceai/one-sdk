@@ -31,39 +31,44 @@ Build with `./core/build.sh`, result will be in `core/dist`. Note that this buil
 .
   host/
     python/
-	  __main__.py
-	  [python files]
+      __main__.py
+      [python files]
     js/
-	  package.json
-	  tsconfig.json
-	  src/
-	    [ts files]
+      package.json
+      tsconfig.json
+      src/
+        [ts files]
   core/
     .cargo/
-	  config
+      config
     Cargo.toml # workspace
-	wasi-sdk-19.0/ # not in git, needed for building quickjs
-	host_to_core_std/ # host_to_core stdlib import (sys) + wrappers (high-level)
-	  Cargo.toml
-	  src/
-	core_to_map_std/ # core_to_map stdlib implementation (but not export)
-	  Cargo.toml
-	  src/
-	interpreter_js/ # quickjs interpreter, core_to_map export
-	  Cargo.toml
-	  src/
-	  map_std/ # core_to_map stdlib import + wrappers, TypeScript
-	    std.ts
-	  build.rs # builds `map_std` and compiles std.js to bytecode
-	core/ # main crate, builds into core.wasm
-	  Cargo.toml
-	  src/
-	build.sh # calls `cargo build` but also `wasm-opt --asyncify ..`
+    wasi-sdk-19.0/ # not in git, needed for building quickjs
+    host_to_core_std/ # host_to_core stdlib import (sys) + wrappers (high-level)
+      Cargo.toml
+      src/
+    core_to_map_std/ # core_to_map stdlib implementation (but not export)
+      Cargo.toml
+      src/
+    interpreter_js/ # quickjs interpreter, core_to_map export
+      Cargo.toml
+      src/
+      map_std/ # core_to_map stdlib import + wrappers
+        std_unstable.js
+    core/ # main crate, builds into core.wasm
+      Cargo.toml
+      src/
+      assets/
+        js/ # JS assets, such as the core_to_map stdlib wrappers or profile-validator
+    build.sh # calls `cargo build` but also `wasm-opt --asyncify ..`
   integration/ # any tooling for integration development
-	examples/ # example integrations
-	  character-information/
-	    swapi/
-	      package.json # for stdlib type declarations, optional
+    map-std/ # core_to_map stdlib wrappers TypeScript source
+      src/
+    profile-validator/ # profile validator extracted from TS SDK
+      src/
+    examples/ # example integrations
+      character-information/
+        swapi/
+          package.json # for stdlib type declarations, optional
           character-information.swapi.js
 ```
 

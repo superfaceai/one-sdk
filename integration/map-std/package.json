@@ -4,9 +4,12 @@
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
+    "esbuild": "^0.17.15",
     "typescript": "^5.0.2"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "build:declarations": "tsc -p tsconfig.json --emitDeclarationOnly",
+    "build": "yarn check && esbuild src/std.ts --bundle --platform=neutral --format=iife --tree-shaking=true --outfile=dist/map_std.js"
   }
 }

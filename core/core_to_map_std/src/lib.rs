@@ -116,6 +116,8 @@ pub enum MapInterpreterRunError {
     // TODO
     #[error("{0}")]
     Error(String),
+	#[error("Map code cannot be an empty string")]
+    MapCodeEmpty
 }
 pub trait MapInterpreter {
     fn run(
