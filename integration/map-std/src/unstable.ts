@@ -1,8 +1,10 @@
-import { messageExchange, Bytes, ByteStream, jsonReviverMapValue, jsonReplacerMapValue, ensureMultimap } from './internal';
-import type { MultiMap, Encoding } from './internal';
-import { Buffer } from './node_compat';
+import { messageExchange, jsonReviverMapValue, jsonReplacerMapValue } from './internal/message';
+import { ensureMultimap } from './internal/util';
+import { Bytes, ByteStream } from './internal/bytes';
+import type { MultiMap } from './internal/types';
+import { Buffer } from './internal/node_compat';
 
-export type { MultiMap, Encoding } from './internal';
+export type { MultiMap, Encoding } from './internal/types';
 
 export type FetchOptions = {
   method?: string,
@@ -114,7 +116,7 @@ export function takeInput(): AnyValue {
   }, undefined, jsonReviverMapValue);
 
   if (response.kind === 'ok') {
-    return { input: response.input, parameters: response.parameters, security: response.security };
+    return response.input;
   } else {
     throw new Error(response.error);
   }

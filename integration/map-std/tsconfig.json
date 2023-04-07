@@ -3,9 +3,11 @@
     "strict": true,
     "target": "ES2022",
     "rootDir": "src/",
+    "outDir": "dist/",
     "lib": ["ES2022"],
     "declaration": true,
     "declarationDir": "./types"
   },
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+  "exclude": ["src/map_std.ts"]
 }

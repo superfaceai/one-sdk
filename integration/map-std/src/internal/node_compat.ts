@@ -1,5 +1,5 @@
-import { Bytes } from './internal';
-import { Encoding } from './unstable';
+import { Bytes } from './bytes';
+import type { Encoding } from './types';
 
 // TODO: Comlink/node map compat
 export class Buffer {

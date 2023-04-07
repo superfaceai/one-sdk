@@ -1,0 +1,20 @@
+{
+  "name": "profile-validator",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "@types/core-ffi": "../core-ffi",
+    "esbuild": "^0.17.15",
+    "rimraf": "^4.4.1",
+    "typescript": "^5.0.3"
+  },
+  "dependencies": {
+    "map-std": "../map-std"
+  },
+  "scripts": {
+    "check": "tsc -p tsconfig.json -noEmit",
+    "build:esbuild": "esbuild src/profile_validator.ts --bundle --target=es2022 --platform=neutral --main-fields=module --format=iife --tree-shaking=true --outfile=dist/profile_validator.js",
+    "build": "yarn check && rimraf dist/ && yarn build:esbuild"
+  }
+}

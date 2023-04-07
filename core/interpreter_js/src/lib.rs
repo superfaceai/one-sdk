@@ -4,8 +4,7 @@ use anyhow::Context as AnyhowContext;
 use quickjs_wasm_rs::Context;
 use thiserror::Error;
 
-use map_std::{MapInterpreter, MapInterpreterRunError};
-use sf_std::unstable::HostValue;
+use map_std::{unstable::MapValue, MapInterpreter, MapInterpreterRunError};
 
 mod state;
 use state::InterpreterState;
@@ -15,9 +14,9 @@ mod core_to_map_std_impl;
 #[derive(Debug, Error)]
 pub enum JsInterpreterError {
     #[error("{0}")]
-    Error(#[from] anyhow::Error), // TODO: big todo
+    Error(#[from] anyhow::Error), // TODO: big todo - Javy uses anyhow, we need to figure out how to reasonably interface with that
     #[error("Eval code cannot be an empty string")]
-    EvalCodeEmpty
+    EvalCodeEmpty,
 }
 
 fn fmt_error(error: anyhow::Error) -> MapInterpreterRunError {
@@ -41,17 +40,25 @@ impl JsInterpreter {
         Ok(Self { context, state })
     }
 
-    pub fn eval_code(&mut self, code: &str) -> Result<(), JsInterpreterError> {
+    pub fn eval_code(&mut self, name: &str, code: &str) -> Result<(), JsInterpreterError> {
         if code.len() == 0 {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
         tracing::trace!("Evaluating global: {}", code);
         self.context
-            .eval_global("<global>", code)
+            .eval_global(name, code)
             .context("Failed to evaluate global code")?;
 
         Ok(())
+    }
+
+    pub fn set_input(&mut self, input: MapValue) {
+        self.state.borrow_mut().set_input(input)
+    }
+
+    pub fn take_output(&mut self) -> Result<MapValue, MapValue> {
+        self.state.borrow_mut().take_output().unwrap()
     }
 }
 impl MapInterpreter for JsInterpreter {
@@ -59,13 +66,18 @@ impl MapInterpreter for JsInterpreter {
         &mut self,
         code: &[u8],
         entry: &str,
-        input: HostValue,
-        parameters: HostValue,
-        security: HostValue,
-    ) -> Result<Result<HostValue, HostValue>, MapInterpreterRunError> {
-        self.state
-            .borrow_mut()
-            .set_input(input, parameters, security);
+        input: MapValue,
+        parameters: MapValue,
+        security: MapValue,
+    ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError> {
+        self.set_input(MapValue::Object({
+            let mut map = serde_json::Map::default();
+            map.insert("input".to_string(), input);
+            map.insert("parameters".to_string(), parameters);
+            map.insert("security".to_string(), security);
+
+            map
+        }));
 
         let map_code = std::str::from_utf8(code)
             .context("Code must be valid utf8 text")
@@ -75,12 +87,10 @@ impl MapInterpreter for JsInterpreter {
         }
         let bundle = format!("{}\n\n_start('{}');", map_code, entry);
 
-        self.eval_code(&bundle)
+        self.eval_code("map.js", &bundle)
             .context("Failed to run map bundle")
             .map_err(fmt_error)?;
 
-        Ok(
-            self.state.borrow_mut().take_output().unwrap()
-        )
+        Ok(self.take_output())
     }
 }

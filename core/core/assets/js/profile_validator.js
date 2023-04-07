@@ -6,7 +6,22 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // src/internal/bytes.ts
+  // node_modules/map-std/dist/unstable.js
+  var unstable_exports = {};
+  __export(unstable_exports, {
+    CONTENT_TYPE: () => CONTENT_TYPE,
+    HttpRequest: () => HttpRequest,
+    HttpResponse: () => HttpResponse,
+    MapError: () => MapError,
+    fetch: () => fetch,
+    print: () => print,
+    resolveRequestUrl: () => resolveRequestUrl,
+    setOutputFailure: () => setOutputFailure,
+    setOutputSuccess: () => setOutputSuccess,
+    takeInput: () => takeInput
+  });
+
+  // node_modules/map-std/dist/internal/bytes.js
   var Bytes = class {
     #buffer;
     #len;
@@ -60,6 +75,7 @@
       }
       throw new Error(`encoding "${encoding}" not implemented`);
     }
+    // TODO: support other encodings, currently this is always utf-8
     static encode(string, encoding = "utf8") {
       let buffer;
       if (encoding === "utf8") {
@@ -94,7 +110,7 @@
     }
   };
 
-  // src/internal/node_compat.ts
+  // node_modules/map-std/dist/internal/node_compat.js
   var Buffer2 = class {
     static from(value, encoding = "utf8") {
       if (typeof value === "string") {
@@ -130,22 +146,7 @@
     }
   };
 
-  // src/unstable.ts
-  var unstable_exports = {};
-  __export(unstable_exports, {
-    CONTENT_TYPE: () => CONTENT_TYPE,
-    HttpRequest: () => HttpRequest,
-    HttpResponse: () => HttpResponse,
-    MapError: () => MapError,
-    fetch: () => fetch,
-    print: () => print,
-    resolveRequestUrl: () => resolveRequestUrl,
-    setOutputFailure: () => setOutputFailure,
-    setOutputSuccess: () => setOutputSuccess,
-    takeInput: () => takeInput
-  });
-
-  // src/internal/message.ts
+  // node_modules/map-std/dist/internal/message.js
   function jsonReplacerMapValue(key, value) {
     if (Buffer2.isBuffer(value)) {
       return { type: "Buffer", data: value.inner.toArray() };
@@ -161,13 +162,11 @@
     return value;
   }
   function messageExchange(message, replacer = void 0, reviver = void 0) {
-    const response = __ffi.unstable.message_exchange(
-      JSON.stringify(message, replacer)
-    );
+    const response = __ffi.unstable.message_exchange(JSON.stringify(message, replacer));
     return JSON.parse(response, reviver);
   }
 
-  // src/internal/util.ts
+  // node_modules/map-std/dist/internal/util.js
   function ensureMultimap(map, lowercaseKeys = false) {
     const result = {};
     if (typeof map !== "object" || map === null) {
@@ -185,7 +184,7 @@
     return result;
   }
 
-  // src/unstable.ts
+  // node_modules/map-std/dist/unstable.js
   var HttpRequest = class {
     #handle;
     /** @internal */
@@ -248,6 +247,7 @@
     }
   };
   var MapError = class {
+    output;
     constructor(output) {
       this.output = output;
     }
@@ -321,9 +321,7 @@
       if (contentType.startsWith(CONTENT_TYPE.JSON)) {
         bodyBytes = Bytes.encode(JSON.stringify(body));
       } else if (contentType.startsWith(CONTENT_TYPE.URLENCODED)) {
-        bodyBytes = Bytes.encode(
-          __ffi.unstable.record_to_urlencoded(ensureMultimap(body))
-        );
+        bodyBytes = Bytes.encode(__ffi.unstable.record_to_urlencoded(ensureMultimap(body)));
       } else if (CONTENT_TYPE.RE_BINARY.test(contentType)) {
         bodyBytes = Buffer2.from(body).inner;
       } else {
@@ -346,9 +344,26 @@
     }
   }
 
-  // src/map_std.ts
-  globalThis.std = {
-    unstable: unstable_exports
+  // src/parser/index.ts
+  var Parser = class {
+    constructor() {
+    }
+    parse(document) {
+      return {};
+    }
   };
-  globalThis.Buffer = Buffer2;
+
+  // src/index.ts
+  var FRUIT = "banana";
+  function getFruit(...args) {
+    let fruit = FRUIT;
+    if (false) {
+      fruit = unusedFn();
+    }
+    return new Parser().parse(`${fruit}s are great!`);
+  }
+
+  // src/profile_validator.ts
+  var input = unstable_exports.takeInput();
+  unstable_exports.setOutputSuccess({ fruit: getFruit(input) });
 })();

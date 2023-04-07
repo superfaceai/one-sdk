@@ -70,7 +70,7 @@ pub trait MapStdUnstable {
     fn http_call_head(&mut self, handle: Handle) -> Result<HttpResponse, HttpCallHeadError>;
 
     // input and output
-    fn take_input(&mut self) -> Result<(MapValue, MapValue, MapValue), TakeInputError>;
+    fn take_input(&mut self) -> Result<MapValue, TakeInputError>;
     fn set_output_success(&mut self, output: MapValue) -> Result<(), SetOutputError>;
     fn set_output_failure(&mut self, output: MapValue) -> Result<(), SetOutputError>;
 }
@@ -131,11 +131,11 @@ define_exchange_map_to_core! {
         },
         // input and output
         TakeInput -> enum Response {
-            Ok { input: JsonValue, parameters: JsonValue, security: JsonValue },
+            Ok { input: JsonValue },
             Err { error: String }
         } => match state.take_input() {
             Err(err) => Response::Err { error: err.to_string() },
-            Ok((input, parameters, security)) => Response::Ok { input, parameters, security },
+            Ok(input) => Response::Ok { input },
         },
         SetOutputSuccess { output: JsonValue } -> enum Response {
             Ok,

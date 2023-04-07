@@ -8,7 +8,7 @@ use map_std::unstable::{
 };
 use sf_std::{
     abi::Handle,
-    unstable::{http::HttpRequest, HostValue, IoStream},
+    unstable::{http::HttpRequest, IoStream},
 };
 
 struct HandleMap<T> {
@@ -44,8 +44,8 @@ impl<T> HandleMap<T> {
 pub(super) struct InterpreterState {
     http_requests: HandleMap<HttpRequest>,
     streams: HandleMap<IoStream>,
-    map_input: Option<(HostValue, HostValue, HostValue)>,
-    map_output: Option<Result<HostValue, HostValue>>,
+    map_input: Option<MapValue>,
+    map_output: Option<Result<MapValue, MapValue>>,
 }
 impl InterpreterState {
     pub fn new() -> Self {
@@ -57,12 +57,12 @@ impl InterpreterState {
         }
     }
 
-    pub fn set_input(&mut self, input: HostValue, parameters: HostValue, security: HostValue) {
+    pub fn set_input(&mut self, input: MapValue) {
         assert!(self.map_input.is_none());
-        self.map_input = Some((input, parameters, security));
+        self.map_input = Some(input);
     }
 
-    pub fn take_output(&mut self) -> Option<Result<HostValue, HostValue>> {
+    pub fn take_output(&mut self) -> Option<Result<MapValue, MapValue>> {
         self.map_output.take()
     }
 }
@@ -123,23 +123,11 @@ impl MapStdUnstable for InterpreterState {
         }
     }
 
-    fn take_input(&mut self) -> Result<(MapValue, MapValue, MapValue), TakeInputError> {
-        // TODO: here we should transform HostValue into MapValue - i.e. especially transform custom objects (streams)
-        self.map_input
-            .take()
-            .map(|(i, p, s)| {
-                (
-                    serde_json::to_value(i).unwrap(),
-                    serde_json::to_value(p).unwrap(),
-                    serde_json::to_value(s).unwrap(),
-                )
-            })
-            .ok_or(TakeInputError::AlreadyTaken)
+    fn take_input(&mut self) -> Result<MapValue, TakeInputError> {
+        self.map_input.take().ok_or(TakeInputError::AlreadyTaken)
     }
 
     fn set_output_success(&mut self, output: MapValue) -> Result<(), SetOutputError> {
-        // TODO: here we should transform MapValue into HostValue
-
         if self.map_output.is_some() {
             return Err(SetOutputError::AlreadySet);
         }
@@ -149,8 +137,6 @@ impl MapStdUnstable for InterpreterState {
     }
 
     fn set_output_failure(&mut self, output: MapValue) -> Result<(), SetOutputError> {
-        // TODO: here we should transform MapValue into HostValue
-
         if self.map_output.is_some() {
             return Err(SetOutputError::AlreadySet);
         }

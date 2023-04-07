@@ -5,6 +5,8 @@ use sf_std::abi::{Ptr, Size};
 mod sf_core;
 use sf_core::SuperfaceCore;
 
+mod profile_validator;
+
 static GLOBAL_STATE: Mutex<Option<SuperfaceCore>> = Mutex::new(None);
 
 // WASI functions which would be automatically called from `_start`, but we need to explicitly call them since we are a lib.
@@ -85,7 +87,7 @@ pub extern "C" fn __export_superface_core_perform() {
 #[no_mangle]
 #[export_name = "superface_core_periodic"]
 /// Periodic notification call.
-/// 
+///
 /// Must be called after [__export_superface_core_setup] and before [__export_superface_core_teardown].
 ///
 /// The host should call this export periodically to ensure background tasks, such as batched insights, are invoked.
@@ -110,7 +112,7 @@ pub extern "C" fn __export_superface_core_periodic() {
 pub extern "C" fn __export_superface_core_async_init(mut data_ptr: Ptr<Size>, stack_size: Size) {
     // We allocate Size elements to ensure correct alignment, but size is in bytes.
     let len = stack_size / std::mem::size_of::<Size>();
-    
+
     let mut asyncify_stack = Vec::<Size>::new();
     asyncify_stack.reserve_exact(len);
     asyncify_stack.resize(len, 0);

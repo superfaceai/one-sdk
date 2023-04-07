@@ -12,7 +12,7 @@ use super::IoStream;
 #[derive(Debug, PartialEq, Eq)]
 pub enum HostValue {
     // custom
-    Stream(IoStream),
+    Stream(IoStream), // Reference counted because streams have drop logic
     // standard
     None,
     Bool(bool),

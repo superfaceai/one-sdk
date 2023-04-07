@@ -1,15 +1,19 @@
 {
   "name": "@superfaceai/map-std",
   "version": "0.1.0",
-  "main": "index.js",
+  "module": "dist/std.js",
+  "types": "types/std",
   "license": "MIT",
   "devDependencies": {
+    "@types/core-ffi": "../core-ffi",
     "esbuild": "^0.17.15",
+    "rimraf": "^4.4.1",
     "typescript": "^5.0.2"
   },
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
-    "build:declarations": "tsc -p tsconfig.json --emitDeclarationOnly",
-    "build": "yarn check && esbuild src/std.ts --bundle --platform=neutral --format=iife --tree-shaking=true --outfile=dist/map_std.js"
+    "build:std": "tsc -p tsconfig.json",
+    "build:map_std": "esbuild src/map_std.ts --bundle --target=es2022 --platform=neutral --format=iife --tree-shaking=true --outfile=dist/map_std.js",
+    "build": "yarn check && rimraf types/ dist/ && yarn build:map_std && yarn build:std"
   }
 }

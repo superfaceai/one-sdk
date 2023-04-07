@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     io::Read,
     time::{Duration, Instant},
 };
@@ -7,14 +7,17 @@ use std::{
 use anyhow::Context;
 
 use sf_std::unstable::{
-    fs::OpenOptions,
+    fs::{self, OpenOptions},
     http::HttpRequest,
     perform::{perform_input, perform_output, PerformOutput},
+    HostValue,
 };
 
 use interpreter_js::JsInterpreter;
-use map_std::MapInterpreter;
+use map_std::{unstable::MapValue, MapInterpreter};
 use tracing::instrument;
+
+use crate::profile_validator::ProfileValidator;
 
 struct MapCacheEntry {
     store_time: Instant,
@@ -94,6 +97,55 @@ impl SuperfaceCore {
         Ok(())
     }
 
+    /// Converts HostValue into MapValue.
+    ///
+    /// For primitive types this is a simple move. For custom types with drop code this might include adding
+    /// reference counting and registering handles.
+    fn host_value_to_map_value(&mut self, value: HostValue) -> MapValue {
+        match value {
+            HostValue::Stream(_) => todo!(),
+            HostValue::None => MapValue::Null,
+            HostValue::Bool(b) => MapValue::Bool(b),
+            HostValue::Number(n) => MapValue::Number(n),
+            HostValue::String(s) => MapValue::String(s),
+            HostValue::Array(a) => MapValue::Array(
+                a.into_iter()
+                    .map(|v| self.host_value_to_map_value(v))
+                    .collect(),
+            ),
+            HostValue::Object(o) => {
+                let mut res = MapValue::Object(Default::default());
+                res.as_object_mut().unwrap().extend(
+                    o.into_iter()
+                        .map(|(k, v)| (k, self.host_value_to_map_value(v))),
+                );
+
+                res
+            }
+        }
+    }
+
+    /// Converts MapValue into HostValue.
+    ///
+    /// This is the opposite action to [host_value_to_map_value].
+    fn map_value_to_host_value(&mut self, value: MapValue) -> HostValue {
+        match value {
+            MapValue::Null => HostValue::None,
+            MapValue::Bool(b) => HostValue::Bool(b),
+            MapValue::Number(n) => HostValue::Number(n),
+            MapValue::String(s) => HostValue::String(s),
+            MapValue::Array(a) => HostValue::Array(
+                a.into_iter()
+                    .map(|v| self.map_value_to_host_value(v))
+                    .collect(),
+            ),
+            MapValue::Object(o) => HostValue::Object(BTreeMap::from_iter(
+                o.into_iter()
+                    .map(|(k, v)| (k, self.map_value_to_host_value(v))),
+            )),
+        }
+    }
+
     // TODO: use thiserror
     #[instrument(level = "Trace")]
     pub fn periodic(&mut self) -> anyhow::Result<()> {
@@ -107,12 +159,14 @@ impl SuperfaceCore {
 
         self.cache_map(&perform_input.map_name)
             .context("Failed to cache map")?;
-        let map_code = self
-            .map_cache
-            .get(&perform_input.map_name)
-            .unwrap()
-            .map
-            .as_slice();
+
+        let map_input = self.host_value_to_map_value(perform_input.map_input);
+        let map_parameters = self.host_value_to_map_value(perform_input.map_parameters);
+        let map_security = self.host_value_to_map_value(perform_input.map_security);
+
+        let mut profile_validator = ProfileValidator::new("".to_string())
+            .context("Failed to initialize profile validator")?;
+        profile_validator.validate_input(map_input.clone()).unwrap();
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
@@ -120,35 +174,35 @@ impl SuperfaceCore {
         // here we allow runtime stdlib replacement for development purposes
         // this might be removed in the future
         match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
-            None => {
-                interpreter.eval_code(Self::MAP_STDLIB_JS)
-            },
+            None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
-                let mut file = OpenOptions::new()
-                    .read(true)
-                    .open(&path)
-                    .context("Failed to open map stdlib file")?;
-
-                let mut replacement = String::new();
-                file.read_to_string(&mut replacement)
-                    .context("Failed to open map stdlib file")?;
-
-                interpreter.eval_code(&replacement)
+                let replacement =
+                    fs::read_to_string(&path).context("Failed to load replaement map_str")?;
+                interpreter.eval_code(&path, &replacement)
             }
-        }.context("Failed to evaluate map stdlib code")?;
+        }
+        .context("Failed to evaluate map stdlib code")?;
 
+        let map_code = self
+            .map_cache
+            .get(&perform_input.map_name)
+            .unwrap()
+            .map
+            .as_slice();
         let map_result = interpreter
             .run(
                 map_code,
                 &perform_input.map_usecase,
-                perform_input.map_input,
-                perform_input.map_parameters,
-                perform_input.map_security,
+                map_input,
+                map_parameters,
+                map_security,
             )
             .context(format!(
                 "Failed to run map \"{}::{}\"",
                 perform_input.map_name, perform_input.map_usecase
-            ))?;
+            ))?
+            .map(|v| self.map_value_to_host_value(v))
+            .map_err(|v| self.map_value_to_host_value(v));
 
         perform_output(PerformOutput { map_result });
 
