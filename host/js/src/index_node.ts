@@ -174,13 +174,3 @@ export class SuperfaceClient {
     return result;
   }
 }
-
-async function main() {
-  const superface = new SuperfaceClient({ superfacePath: process.argv[2] });
-  const result = await superface.perform(process.argv[3], {}); // FIXME: shouldn't panic if input isn't passed
-  console.log(result);
-}
-
-if (require.main === module) {
-  void main();
-}
