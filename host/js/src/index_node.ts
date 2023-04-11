@@ -1,5 +1,5 @@
 import fs, { FileHandle } from 'fs/promises';
-import { promisify } from 'util';
+import { resolve } from 'path';
 import { WASI } from 'wasi';
 
 import { App } from './app';
@@ -9,7 +9,7 @@ import { HandleMap } from './handle_map';
 class NodeTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
   private decoder: TextDecoder = new TextDecoder();
-  
+
   decodeUtf8(buffer: ArrayBufferLike): string {
     return this.decoder.decode(buffer);
   }
@@ -58,7 +58,7 @@ class NodeFileSystem implements FileSystem {
     if (file === undefined) {
       throw new Error('invalid file handle - TODO: wasi error');
     }
-    
+
     const result = await file.write(data, 0, data.length);
     return result.bytesWritten;
   }
@@ -82,45 +82,105 @@ class NodeTimers implements Timers {
   }
 }
 
-async function main() {
-  const wasi = new WASI({
-    env: process.env
-  });
-  const app = new App(wasi, { fileSystem: new NodeFileSystem(), textCoder: new NodeTextCoder(), timers: new NodeTimers() }, {  periodicPeriod: 1000 });
-  await app.loadCore(
-    await fs.readFile(process.argv[2])
-  );
+export type SuperfaceClientOptions = {
+  superfacePath?: string;
+};
 
-  const profileUrl = process.argv[3];
-  const mapUrl = process.argv[4];
-  const usecase = process.argv[5];
-  const mapInput = {
-		'center': {
-			'latitude': 51.477,
-			'longitude': 0.0,
-		},
-		'radius': 100,
-		'categories': ['CAFE']
-	}
-  const mapParameters = {
-		'__provider': {
-			'services': {
-				'default': {
-					'baseUrl': 'https://overpass-api.de'
-				}
-			},
-			'defaultService': 'default'
-		}
-	}
-  const mapSecurity = {}
+export type SuperfaceClientPerformOptions = {
+  vars?: Record<string, string>;
+  secrets?: Record<string, string>;
+};
 
-  await app.setup();
-  const result = await app.perform(profileUrl, mapUrl, usecase, mapInput, mapParameters, mapSecurity)
-  console.log('host: result:', result)
+export class SuperfaceClient {
+  public superfacePath: string = process.cwd();
 
-  await promisify(setTimeout)(10000);
+  private corePath: string;
+  private wasi: WASI;
+  private app: App;
+  private ready = false;
 
-  await app.teardown();
+  constructor(readonly options: SuperfaceClientOptions = {}) {
+    if (options.superfacePath !== undefined) {
+      this.superfacePath = options.superfacePath;
+    }
+
+    // TODO properly load core
+    this.corePath = `${__dirname}/../../../core/dist/core-async.wasm`;
+
+    this.wasi = new WASI({
+      env: process.env
+    });
+
+    this.app = new App(this.wasi, {
+      fileSystem: new NodeFileSystem(),
+      textCoder: new NodeTextCoder(),
+      timers: new NodeTimers()
+    }, { periodicPeriod: 1000 });
+
+    // TODO: event listener calling teardown
+  }
+
+  private async setup() {
+    if (this.ready) {
+      return;
+    }
+
+    await this.app.loadCore(
+      await fs.readFile(this.corePath)
+    );
+    await this.app.setup();
+
+    this.ready = true;
+  }
+
+  private async teardown() {
+    await this.app.teardown();
+    this.ready = false;
+  }
+
+  private resolveProfileUrl(): string {
+    const path = resolve(this.superfacePath, 'profile.supr');
+
+    if (fs.stat(path) === undefined) {
+      throw new Error('Profile file does not exist');
+    }
+
+    return `file://${path}`;
+  }
+
+  private resolveMapUrl(usecase: string): string {
+    const path = resolve(this.superfacePath, `${usecase}.js`);
+
+    if (fs.stat(path) === undefined) {
+      throw new Error(`Map file does not exist, usecase: ${usecase}`);
+    }
+
+    return `file://${path}`;
+  }
+
+  public async perform(usecase: string, input?: any, options?: SuperfaceClientPerformOptions): Promise<any> {
+    await this.setup();
+
+    const profileUrl = this.resolveProfileUrl();
+    const mapUrl = this.resolveMapUrl(usecase);
+
+    // TODO resolve variables
+    const vars = options?.vars ?? {};
+
+    // TODO resolve secrets
+    const secrets = options?.secrets ?? {};
+
+    const result = await this.app.perform(profileUrl, mapUrl, usecase, input, vars, secrets)
+    return result;
+  }
 }
 
-main()
+async function main() {
+  const superface = new SuperfaceClient({ superfacePath: process.argv[2] });
+  const result = await superface.perform(process.argv[3], {}); // FIXME: shouldn't panic if input isn't passed
+  console.log(result);
+}
+
+if (require.main === module) {
+  void main();
+}

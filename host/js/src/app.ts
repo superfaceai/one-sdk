@@ -43,7 +43,6 @@ class ReadableStreamAdapter implements Stream {
 
   async read(out: Uint8Array): Promise<number> {
     let chunk;
-    
     if (this.chunks.length > 0) {
       chunk = this.chunks[0];
       if (chunk.byteLength > out.byteLength) {
@@ -91,7 +90,7 @@ class AsyncMutex<T> {
 
   constructor(value: T) {
     this.promise = Promise.resolve();
-    this.resolve = () => {};
+    this.resolve = () => { };
     this.value = value;
   }
 
@@ -154,7 +153,15 @@ export class App implements AppContext {
   private readonly requests: HandleMap<Promise<Response>>;
 
   private core: AsyncMutex<AppCore> | undefined = undefined;
-  private performState: { profileUrl: string, mapUrl: string, usecase: string, mapInput: unknown, mapParameters: unknown, mapSecurity: unknown, mapOutput?: unknown } | undefined = undefined;
+  private performState: {
+    profileUrl: string,
+    mapUrl: string,
+    usecase: string,
+    input: unknown,
+    vars: Record<string, string>,
+    secrets: Record<string, string>,
+    output?: unknown
+  } | undefined = undefined;
 
   private periodicState: {
     period: number; // in ms
@@ -200,7 +207,7 @@ export class App implements AppContext {
   }
 
   private get memory(): WebAssembly.Memory {
-    return this.core!!.unsafeValue.instance.exports.memory as WebAssembly.Memory;
+    return this.core!.unsafeValue.instance.exports.memory as WebAssembly.Memory;
   }
 
   get memoryBytes(): Uint8Array {
@@ -212,29 +219,29 @@ export class App implements AppContext {
   }
 
   public async setup(): Promise<void> {
-    await this.core!!.withLock(core => core.setupFn());
+    await this.core!.withLock(core => core.setupFn());
     this.periodic(); // launch periodic task
   }
 
   public async teardown(): Promise<void> {
     this.timers.clearTimeout(this.periodicState.timeout);
-    return this.core!!.withLock(core => core.teardownFn());
+    return this.core!.withLock(core => core.teardownFn());
   }
 
   public async perform(
     profileUrl: string,
     mapUrl: string,
     usecase: string,
-    mapInput: unknown,
-    mapParameters: unknown,
-    mapSecurity: unknown
+    input: unknown,
+    vars: Record<string, string>,
+    secrets: Record<string, string>
   ): Promise<unknown> {
-    return this.core!!.withLock(
+    return this.core!.withLock(
       async (core) => {
-        this.performState = { profileUrl, mapUrl, usecase, mapInput, mapParameters, mapSecurity };
+        this.performState = { profileUrl, mapUrl, usecase, input, vars, secrets };
         await core.performFn();
 
-        const output = this.performState.mapOutput;
+        const output = this.performState.output;
         this.performState = undefined;
         return output;
       }
@@ -243,8 +250,8 @@ export class App implements AppContext {
 
   private async periodic(): Promise<void> {
     this.timers.clearTimeout(this.periodicState.timeout);
-    
-    await this.core!!.withLock(core => core.periodicFn());
+
+    await this.core!.withLock(core => core.periodicFn());
 
     this.periodicState.timeout = this.timers.setTimeout(() => { this.periodic() }, this.periodicState.period);
   }
@@ -257,17 +264,17 @@ export class App implements AppContext {
         return {
           kind: 'ok',
           profile_url: this.performState!!.profileUrl,
-          map_url: this.performState!!.mapUrl,
-          usecase: this.performState!!.usecase,
-          map_input: this.performState!!.mapInput,
-          map_parameters: this.performState!!.mapParameters,
-          map_security: this.performState!!.mapSecurity,
+          map_url: this.performState!.mapUrl,
+          usecase: this.performState!.usecase,
+          map_input: this.performState!.input,
+          map_vars: this.performState!.vars,
+          map_secrets: this.performState!.secrets,
         };
-      
+
       case 'perform-output':
-        this.performState!!.mapOutput = message.map_result;
+        this.performState!.output = message.map_result;
         return { kind: 'ok' };
-      
+
       case 'file-open': {
         const handle = await this.fileSystem.open(message.path, {
           createNew: message.create_new,
@@ -301,7 +308,7 @@ export class App implements AppContext {
 
         return { kind: 'ok', status: response.status, headers: headersToMultimap(response.headers), body_stream: this.streams.insert(bodyStream) };
       }
-      
+
       default:
         return { 'kind': 'err', 'error': 'Unknown message' }
     }
