@@ -58,16 +58,12 @@ mod test {
 
     #[test]
     fn basic_security() {
-        let security: Security = serde_json::from_str(
-            r#"
-        {
+        let security: Security = serde_json::from_value(serde_json::json!({
             "type": "http",
             "scheme": "basic",
             "user": "$USER",
             "password": "$PASSWORD"
-        }
-        "#,
-        )
+        }))
         .unwrap();
 
         assert!(matches!(
@@ -79,9 +75,7 @@ mod test {
 
     #[test]
     fn digest_security() {
-        let security: Security = serde_json::from_str(
-            r#"
-        {
+        let security: Security = serde_json::from_value(serde_json::json!({
             "type": "http",
             "scheme": "digest",
             "statusCode": 401,
@@ -89,51 +83,42 @@ mod test {
             "authorizationHeader": "Authorization",
             "user": "$USER",
             "password": "$PASSWORD"
-        }
-        "#,
-        )
+        }))
         .unwrap();
 
         assert!(matches!(
             security,
-            Security::Http(HttpSecurity::Digest { authorization_header: _, challenge_header: _, status_code: _, user, password })
+            Security::Http(HttpSecurity::Digest { user, password, .. })
             if user == "$USER" && password == "$PASSWORD"
         ));
     }
 
     #[test]
     fn bearer_security() {
-        let security: Security = serde_json::from_str(
-            r#"
-        {
+        let security: Security = serde_json::from_value(serde_json::json!({
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "jwt",
             "token": "$TOKEN"
-        }
-        "#,
-        )
+        }))
         .unwrap();
 
         assert!(matches!(
             security,
-            Security::Http(HttpSecurity::Bearer { bearer_format: _, token })
+            Security::Http(HttpSecurity::Bearer { token, .. })
             if token == "$TOKEN"
         ));
     }
 
     #[test]
     fn apikey_security() {
-        let security: Security = serde_json::from_str(
-            r#"
+        let security: Security = serde_json::from_value(serde_json::json!(
         {
             "type": "apikey",
             "in": "header",
             "name": "X-API-KEY",
             "apikey": "$API_KEY"
-        }
-        "#,
-        )
+        }))
         .unwrap();
 
         assert!(matches!(
