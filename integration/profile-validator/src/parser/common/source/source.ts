@@ -40,7 +40,7 @@ export class Source {
   }
 
   checksum(): string {
-    const hash = this.body.length.toString(); // brr
+    const hash = this.body.length.toString(); // TODO: we will eventually need crypto in maps
 
     return hash;
   }
