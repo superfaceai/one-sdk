@@ -1,6 +1,6 @@
 declare const __ffi: StdFfi;
 declare type StdFfi = {
-	unstable: {
+  unstable: {
     // messages
     message_exchange(message: string): string,
     // streams

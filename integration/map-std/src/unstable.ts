@@ -3,6 +3,7 @@ import { ensureMultimap } from './internal/util';
 import { Bytes, ByteStream } from './internal/bytes';
 import type { MultiMap } from './internal/types';
 import { Buffer } from './internal/node_compat';
+import { SecurityConfiguration } from './security';
 
 export type { MultiMap, Encoding } from './internal/types';
 
@@ -10,7 +11,8 @@ export type FetchOptions = {
   method?: string,
   headers?: MultiMap,
   query?: MultiMap,
-  body?: string | number[] | Buffer
+  body?: string | number[] | Buffer,
+  security?: SecurityConfiguration,
 };
 
 // Can't use Record<string, AnyValue> but can use { [s in string]: AnyValue }. Typescript go brr.
@@ -199,7 +201,8 @@ export function fetch(url: string, options: FetchOptions): HttpRequest {
     url,
     headers,
     query: ensureMultimap(options.query ?? {}),
-    body: finalBody
+    body: finalBody,
+    security: options.security,
   });
 
   if (response.kind === 'ok') {

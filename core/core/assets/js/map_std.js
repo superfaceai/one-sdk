@@ -337,7 +337,8 @@
       url,
       headers,
       query: ensureMultimap(options.query ?? {}),
-      body: finalBody
+      body: finalBody,
+      security: options.security
     });
     if (response.kind === "ok") {
       return new HttpRequest(response.handle);
