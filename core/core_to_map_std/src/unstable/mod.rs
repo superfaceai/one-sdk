@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 
 use sf_std::{abi::Handle, HeadersMultiMap, MultiMap};
 
+use self::security::Security;
+
+pub mod security;
+
 #[allow(dead_code)]
 pub const MODULE_NAME: &str = "sf_core_unstable";
 
@@ -158,6 +162,8 @@ pub struct HttpRequest<'a> {
     pub query: &'a MultiMap,
     /// Body as bytes.
     pub body: Option<&'a [u8]>,
+    /// Security configuration
+    pub security: &'a Security,
 }
 pub struct HttpResponse {
     /// Status code of the response.
@@ -225,6 +231,7 @@ define_exchange_map_to_core! {
             url: &'a str,
             headers: HeadersMultiMap,
             query: MultiMap,
+            security: Security,
             body: Option<Vec<u8>>,
         } -> enum Response {
             Ok {
@@ -238,6 +245,7 @@ define_exchange_map_to_core! {
                 url,
                 headers: &headers,
                 query: &query,
+                security: &security,
                 body: body.as_deref(),
             });
 

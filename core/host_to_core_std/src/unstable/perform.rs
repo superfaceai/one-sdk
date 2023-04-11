@@ -15,19 +15,10 @@ define_exchange_core_to_host! {
             usecase: String,
             /// Input passed into the map.
             map_input: HostValue,
-            /// Parameters passed into the map.
-            ///
-            /// Must be an object with at least these properties:
-            /// ```ts
-            /// type Parameters = {
-            ///     __provider: {
-            ///         services: Record<string, { baseUrl: string }>
-            ///     }
-            /// }
-            /// ```
-            map_parameters: HostValue,
-            /// Security values passed into the map.
-            map_security: HostValue
+            /// Variables passed to map.
+            map_vars: HostValue,
+            /// Secrets used to resolve security values.
+            map_secrets: HostValue
         },
         Err {
             error: String
@@ -53,8 +44,8 @@ pub struct PerformInput {
     pub map_url: String,
     pub usecase: String,
     pub map_input: HostValue,
-    pub map_parameters: HostValue,
-    pub map_security: HostValue,
+    pub map_vars: HostValue,
+    pub map_secrets: HostValue,
 }
 pub fn perform_input() -> PerformInput {
     let response = PerformInputRequest::new()
@@ -65,17 +56,17 @@ pub fn perform_input() -> PerformInput {
         PerformInputResponse::Ok {
             profile_url,
             map_url,
-            map_input,
             usecase,
-            map_parameters,
-            map_security,
+            map_input,
+            map_vars,
+            map_secrets,
         } => PerformInput {
             profile_url,
             map_url,
             usecase,
             map_input,
-            map_parameters,
-            map_security,
+            map_vars,
+            map_secrets,
         },
         PerformInputResponse::Err { error } => panic!("perform-input error: {}", error),
     }
@@ -97,6 +88,8 @@ pub fn perform_output(output: PerformOutput) {
 
 #[cfg(test)]
 mod test {
+    use std::collections::BTreeMap;
+
     use serde_json::json;
 
     use super::{
@@ -127,8 +120,10 @@ mod test {
             "map_url": "foo",
             "usecase": "bar",
             "map_input": true,
-            "map_parameters": null,
-            "map_security": "banana"
+            "map_vars": null,
+            "map_secrets": {
+                "TOKEN": "banana"
+            }
         });
 
         match serde_json::from_value::<PerformInputResponse>(actual).unwrap() {
@@ -137,15 +132,21 @@ mod test {
                 map_url,
                 usecase,
                 map_input,
-                map_parameters,
-                map_security,
+                map_vars,
+                map_secrets,
             } => {
                 assert_eq!(profile_url, "quz");
                 assert_eq!(map_url, "foo");
                 assert_eq!(usecase, "bar");
                 assert_eq!(map_input, HostValue::Bool(true));
-                assert_eq!(map_parameters, HostValue::None);
-                assert_eq!(map_security, HostValue::String("banana".into()));
+                assert_eq!(map_vars, HostValue::None);
+                assert_eq!(
+                    map_secrets,
+                    HostValue::Object(BTreeMap::from([(
+                        String::from("TOKEN"),
+                        HostValue::String(String::from("banana"))
+                    )]))
+                );
             }
             PerformInputResponse::Err { .. } => unreachable!(),
         }

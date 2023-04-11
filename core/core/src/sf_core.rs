@@ -69,6 +69,7 @@ impl SuperfaceCore {
                 file.read_to_end(&mut data)
                     .context("Failed to read map file")?;
             }
+            // TODO: http + https
             None => {
                 // TODO: better url join
                 let url_base =
@@ -158,8 +159,8 @@ impl SuperfaceCore {
             .context("Failed to cache map")?;
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
-        let map_parameters = self.host_value_to_map_value(perform_input.map_parameters);
-        let map_security = self.host_value_to_map_value(perform_input.map_security);
+        let map_vars = self.host_value_to_map_value(perform_input.map_vars);
+        let map_secrets = self.host_value_to_map_value(perform_input.map_secrets);
 
         let mut profile_validator = ProfileValidator::new(
             std::str::from_utf8(
@@ -202,8 +203,8 @@ impl SuperfaceCore {
                 map_code,
                 &perform_input.usecase,
                 map_input,
-                map_parameters,
-                map_security,
+                map_vars,
+                map_secrets,
             )
             .context(format!(
                 "Failed to run map \"{}::{}\"",

@@ -39,12 +39,11 @@ macro_rules! define_exchange_map_to_core {
 		enum $receiver_enum: ident $(<$life: lifetime>)? {
 			$(
 				$in_name: ident $({
-                    $(
+          $(
 						$( #[$in_field_attr: meta] )*
 						$in_field_name: ident : $in_field_type: ty
 					),+ $(,)?
-                })?
-				->
+        })? ->
 				$( #[$out_attr: meta] )*
 				enum $out_name: ident {
 					$(
