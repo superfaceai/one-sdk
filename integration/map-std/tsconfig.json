@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
-    "module": "None",
-    "target": "ES2022",
     "strict": true,
+    "target": "ES2022",
     "rootDir": "src/",
     "outDir": "dist/",
     "lib": ["ES2022"],
     "declaration": true,
-    "stripInternal": true
+    "declarationDir": "./types"
   },
-	"include": ["src/std_unstable.ts", "src/ffi.d.ts"]
+	"include": ["src/**/*.ts"],
+  "exclude": ["src/map_std.ts"]
 }

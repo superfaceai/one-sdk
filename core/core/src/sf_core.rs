@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     io::Read,
     time::{Duration, Instant},
 };
@@ -7,45 +7,50 @@ use std::{
 use anyhow::Context;
 
 use sf_std::unstable::{
-    fs::OpenOptions,
+    fs::{self, OpenOptions},
     http::HttpRequest,
     perform::{perform_input, perform_output, PerformOutput},
+    HostValue,
 };
 
 use interpreter_js::JsInterpreter;
-use map_std::MapInterpreter;
+use map_std::{unstable::MapValue, MapInterpreter};
 use tracing::instrument;
 
-struct MapCacheEntry {
+use crate::profile_validator::ProfileValidator;
+
+struct DocumentCacheEntry {
     store_time: Instant,
-    map: Vec<u8>,
+    data: Vec<u8>,
 }
-impl std::fmt::Debug for MapCacheEntry {
+impl std::fmt::Debug for DocumentCacheEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MapCacheEntry")
             .field("store_time", &self.store_time)
-            .field("map", &format!("<{} bytes>", self.map.len()))
+            .field("data", &format!("<{} bytes>", self.data.len()))
             .finish()
     }
 }
 
 #[derive(Debug)]
 pub struct SuperfaceCore {
-    map_cache: HashMap<String, MapCacheEntry>,
+    document_cache: HashMap<String, DocumentCacheEntry>,
 }
 impl SuperfaceCore {
+    const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
+
     const MAX_CACHE_TIME: Duration = Duration::from_secs(3);
 
     // TODO: Use thiserror and define specific errors
     pub fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            map_cache: HashMap::new(),
+            document_cache: HashMap::new(),
         })
     }
 
-    fn cache_map(&mut self, map_name: &str) -> anyhow::Result<()> {
-        match self.map_cache.get(map_name) {
-            Some(MapCacheEntry { store_time, .. })
+    fn cache_document(&mut self, url: &str) -> anyhow::Result<()> {
+        match self.document_cache.get(url) {
+            Some(DocumentCacheEntry { store_time, .. })
                 if store_time.elapsed() <= Self::MAX_CACHE_TIME =>
             {
                 return Ok(())
@@ -53,22 +58,22 @@ impl SuperfaceCore {
             _ => (),
         }
 
-        let mut map = Vec::with_capacity(16 * 1024);
-        match map_name.strip_prefix("file://") {
+        let mut data = Vec::with_capacity(16 * 1024);
+        match url.strip_prefix("file://") {
             Some(path) => {
                 let mut file = OpenOptions::new()
                     .read(true)
                     .open(&path)
                     .context("Failed to open map file")?;
 
-                file.read_to_end(&mut map)
+                file.read_to_end(&mut data)
                     .context("Failed to read map file")?;
             }
             None => {
                 // TODO: better url join
                 let url_base =
                     std::env::var("SF_REGISTRY_URL").unwrap_or("http://localhost:8321".to_string());
-                let url = format!("{}/{}.js", url_base, map_name);
+                let url = format!("{}/{}.js", url_base, url);
 
                 let mut response =
                     HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
@@ -77,19 +82,63 @@ impl SuperfaceCore {
                         .context("Failed to retrieve response")?;
                 response
                     .body()
-                    .read_to_end(&mut map)
+                    .read_to_end(&mut data)
                     .context("Failed to read response body")?;
             }
         };
 
-        self.map_cache.insert(
-            map_name.to_string(),
-            MapCacheEntry {
+        self.document_cache.insert(
+            url.to_string(),
+            DocumentCacheEntry {
                 store_time: Instant::now(),
-                map,
+                data,
             },
         );
         Ok(())
+    }
+
+    /// Converts HostValue into MapValue.
+    ///
+    /// For primitive types this is a simple move. For custom types with drop code this might include adding
+    /// reference counting and registering handles.
+    fn host_value_to_map_value(&mut self, value: HostValue) -> MapValue {
+        match value {
+            HostValue::Stream(_) => todo!(),
+            HostValue::None => MapValue::None,
+            HostValue::Bool(b) => MapValue::Bool(b),
+            HostValue::Number(n) => MapValue::Number(n),
+            HostValue::String(s) => MapValue::String(s),
+            HostValue::Array(a) => MapValue::Array(
+                a.into_iter()
+                    .map(|v| self.host_value_to_map_value(v))
+                    .collect(),
+            ),
+            HostValue::Object(o) => MapValue::Object(BTreeMap::from_iter(
+                o.into_iter()
+                    .map(|(k, v)| (k, self.host_value_to_map_value(v))),
+            )),
+        }
+    }
+
+    /// Converts MapValue into HostValue.
+    ///
+    /// This is the opposite action to [host_value_to_map_value].
+    fn map_value_to_host_value(&mut self, value: MapValue) -> HostValue {
+        match value {
+            MapValue::None => HostValue::None,
+            MapValue::Bool(b) => HostValue::Bool(b),
+            MapValue::Number(n) => HostValue::Number(n),
+            MapValue::String(s) => HostValue::String(s),
+            MapValue::Array(a) => HostValue::Array(
+                a.into_iter()
+                    .map(|v| self.map_value_to_host_value(v))
+                    .collect(),
+            ),
+            MapValue::Object(o) => HostValue::Object(BTreeMap::from_iter(
+                o.into_iter()
+                    .map(|(k, v)| (k, self.map_value_to_host_value(v))),
+            )),
+        }
     }
 
     // TODO: use thiserror
@@ -103,51 +152,70 @@ impl SuperfaceCore {
     pub fn perform(&mut self) -> anyhow::Result<()> {
         let perform_input = perform_input();
 
-        self.cache_map(&perform_input.map_name)
+        self.cache_document(&perform_input.profile_url)
+            .context("Failed to cache profile")?;
+        self.cache_document(&perform_input.map_url)
             .context("Failed to cache map")?;
-        let wasm = self
-            .map_cache
-            .get(&perform_input.map_name)
+
+        let map_input = self.host_value_to_map_value(perform_input.map_input);
+        let map_parameters = self.host_value_to_map_value(perform_input.map_parameters);
+        let map_security = self.host_value_to_map_value(perform_input.map_security);
+
+        let mut profile_validator = ProfileValidator::new(
+            std::str::from_utf8(
+                self.document_cache
+                    .get(&perform_input.profile_url)
+                    .unwrap()
+                    .data
+                    .as_slice(),
+            )
             .unwrap()
-            .map
-            .as_slice();
+            .to_string(),
+            perform_input.usecase.clone(),
+        )
+        .context("Failed to initialize profile validator")?;
+        profile_validator.validate_input(map_input.clone()).unwrap();
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = {
-            let replacement_std = match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
-                None => None,
-                Some(path) => {
-                    let mut file = OpenOptions::new()
-                        .read(true)
-                        .open(&path)
-                        .context("Failed to open map stdlib file")?;
+        let mut interpreter = JsInterpreter::new().context("Failed to initialize interpreter")?;
+        // here we allow runtime stdlib replacement for development purposes
+        // this might be removed in the future
+        match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
+            None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
+            Some(path) => {
+                let replacement =
+                    fs::read_to_string(&path).context("Failed to load replacement map_std")?;
+                interpreter.eval_code(&path, &replacement)
+            }
+        }
+        .context("Failed to evaluate map stdlib code")?;
 
-                    let mut string = String::new();
-                    file.read_to_string(&mut string)
-                        .context("Failed to open map stdlib file")?;
-
-                    Some(string)
-                }
-            };
-
-            JsInterpreter::new(replacement_std.as_deref())
-                .context("Failed to initialize interpreter")?
-        };
-
+        let map_code = &self
+            .document_cache
+            .get(&perform_input.map_url)
+            .unwrap()
+            .data
+            .as_slice();
         let map_result = interpreter
             .run(
-                wasm,
-                &perform_input.map_usecase,
-                perform_input.map_input,
-                perform_input.map_parameters,
-                perform_input.map_security,
+                map_code,
+                &perform_input.usecase,
+                map_input,
+                map_parameters,
+                map_security,
             )
             .context(format!(
                 "Failed to run map \"{}::{}\"",
-                perform_input.map_name, perform_input.map_usecase
+                perform_input.map_url, perform_input.usecase
             ))?;
 
+        profile_validator
+            .validate_output(map_result.clone())
+            .unwrap();
+        let map_result = map_result
+            .map(|v| self.map_value_to_host_value(v))
+            .map_err(|v| self.map_value_to_host_value(v));
         perform_output(PerformOutput { map_result });
 
         Ok(())

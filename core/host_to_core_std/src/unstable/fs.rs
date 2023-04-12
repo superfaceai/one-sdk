@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Read};
 
 use serde::{Deserialize, Serialize};
 
@@ -105,4 +105,13 @@ impl OpenOptions {
             FileOpenResponse::Err { errno } => Err(err_from_wasi_errno(errno)),
         }
     }
+}
+
+pub fn read_to_string(path: &str) -> Result<String, io::Error> {
+    let mut file = OpenOptions::new().read(true).open(path.as_ref())?;
+
+    let mut data = String::new();
+    file.read_to_string(&mut data)?;
+
+    Ok(data)
 }

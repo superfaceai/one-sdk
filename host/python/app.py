@@ -230,15 +230,17 @@ class App:
 
 	def perform(
 		self,
-		map_name,
-		map_usecase,
+		profile_url,
+		map_url,
+		usecase,
 		map_input = None,
 		map_parameters = None,
 		map_security = None
 	):
 		self.perform_state = {
-			"map_name": map_name,
-			"map_usecase": map_usecase,
+			"profile_url": profile_url,
+			"map_url": map_url,
+			"usecase": usecase,
 			"map_input": map_input,
 			"map_parameters": map_parameters,
 			"map_security": map_security,
@@ -256,8 +258,9 @@ class App:
 		if message["kind"] == "perform-input":
 			return {
 				"kind": "ok",
-				"map_name": self.perform_state["map_name"],
-				"map_usecase": self.perform_state["map_usecase"],
+				"profile_url": self.perform_state["profile_url"],
+				"map_url": self.perform_state["map_url"],
+				"usecase": self.perform_state["usecase"],
 				"map_input": self.perform_state["map_input"],
 				"map_parameters": self.perform_state["map_parameters"],
 				"map_security": self.perform_state["map_security"]

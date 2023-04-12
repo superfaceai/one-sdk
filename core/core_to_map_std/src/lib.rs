@@ -109,21 +109,23 @@ pub mod unstable;
 
 pub trait CoreToMapStd: unstable::MapStdUnstable {}
 
-use sf_std::unstable::HostValue;
+use unstable::MapValue;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MapInterpreterRunError {
     // TODO
     #[error("{0}")]
     Error(String),
+    #[error("Map code cannot be an empty string")]
+    MapCodeEmpty,
 }
 pub trait MapInterpreter {
     fn run(
         &mut self,
         code: &[u8],
         entry: &str,
-        input: HostValue,
-        parameters: HostValue,
-        security: HostValue,
-    ) -> Result<Result<HostValue, HostValue>, MapInterpreterRunError>;
+        input: MapValue,
+        parameters: MapValue,
+        security: MapValue,
+    ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError>;
 }
