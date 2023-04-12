@@ -293,11 +293,16 @@ export class App implements AppContext {
       }
 
       case 'http-call': {
-        const request = fetch(message.url, {
+        const requestInit: RequestInit = {
           method: message.method,
           headers: message.headers,
-          body: new Uint8Array(message.body)
-        });
+        };
+
+        if (message.body !== undefined && message.body !== null) {
+          requestInit.body = new Uint8Array(message.body);
+        }
+
+        const request = fetch(message.url, requestInit);
 
         return { kind: 'ok', handle: this.requests.insert(request) };
       }
