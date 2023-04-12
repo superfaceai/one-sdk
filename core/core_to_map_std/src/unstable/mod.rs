@@ -1,14 +1,136 @@
+use std::collections::BTreeMap;
+
 use thiserror::Error;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 
 use sf_std::{abi::Handle, HeadersMultiMap, MultiMap};
 
 #[allow(dead_code)]
 pub const MODULE_NAME: &str = "sf_core_unstable";
 
-pub type MapValue = JsonValue;
+#[derive(Debug, Clone)]
+pub enum MapValue {
+    None,
+    Bool(bool),
+    Number(serde_json::Number),
+    String(String),
+    Array(Vec<Self>),
+    Object(BTreeMap<String, Self>),
+}
+impl Serialize for MapValue {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // see file serde_json/src/value/ser.rs:14
+        use serde::ser::SerializeMap;
+
+        match self {
+            Self::None => serializer.serialize_unit(),
+            Self::Bool(b) => serializer.serialize_bool(*b),
+            Self::Number(n) => n.serialize(serializer),
+            Self::String(s) => serializer.serialize_str(s),
+            Self::Array(v) => v.serialize(serializer),
+            Self::Object(m) => {
+                // start serializing the map, and we know the length
+                let mut map = serializer.serialize_map(Some(m.len()))?;
+                for (key, value) in m {
+                    map.serialize_entry(key, value)?;
+                }
+                map.end()
+            }
+        }
+    }
+}
+impl<'de> Deserialize<'de> for MapValue {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // see file serde_json/src/value/de.rs:22
+        use serde::de::{MapAccess, SeqAccess, Visitor};
+        use std::fmt;
+
+        struct ValueVisitor;
+        impl<'de> Visitor<'de> for ValueVisitor {
+            type Value = MapValue;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "any valid JSON value or one of custom types")
+            }
+
+            #[inline]
+            fn visit_bool<E>(self, value: bool) -> Result<MapValue, E> {
+                Ok(MapValue::Bool(value))
+            }
+
+            #[inline]
+            fn visit_i64<E>(self, value: i64) -> Result<MapValue, E> {
+                Ok(MapValue::Number(value.into()))
+            }
+            #[inline]
+            fn visit_u64<E>(self, value: u64) -> Result<MapValue, E> {
+                Ok(MapValue::Number(value.into()))
+            }
+            #[inline]
+            fn visit_f64<E>(self, value: f64) -> Result<MapValue, E> {
+                Ok(serde_json::Number::from_f64(value).map_or(MapValue::None, MapValue::Number))
+            }
+
+            #[inline]
+            fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<MapValue, E> {
+                self.visit_string(String::from(value))
+            }
+            #[inline]
+            fn visit_string<E>(self, value: String) -> Result<MapValue, E> {
+                Ok(MapValue::String(value))
+            }
+
+            #[inline]
+            fn visit_none<E>(self) -> Result<MapValue, E> {
+                Ok(MapValue::None)
+            }
+            #[inline]
+            fn visit_unit<E>(self) -> Result<MapValue, E> {
+                Ok(MapValue::None)
+            }
+
+            #[inline]
+            fn visit_some<D: serde::Deserializer<'de>>(
+                self,
+                deserializer: D,
+            ) -> Result<MapValue, D::Error> {
+                Deserialize::deserialize(deserializer)
+            }
+
+            #[inline]
+            fn visit_seq<V: SeqAccess<'de>>(self, mut visitor: V) -> Result<MapValue, V::Error> {
+                let mut vec = Vec::new();
+
+                while let Some(elem) = visitor.next_element()? {
+                    vec.push(elem);
+                }
+
+                Ok(MapValue::Array(vec))
+            }
+
+            fn visit_map<V: MapAccess<'de>>(self, mut visitor: V) -> Result<MapValue, V::Error> {
+                let values = match visitor.next_key::<String>()? {
+                    None => BTreeMap::new(),
+                    Some(first_key) => {
+                        let mut values = BTreeMap::new();
+
+                        values.insert(first_key, visitor.next_value()?);
+                        while let Some((key, value)) = visitor.next_entry()? {
+                            values.insert(key, value);
+                        }
+
+                        values
+                    }
+                };
+
+                Ok(MapValue::Object(values))
+            }
+        }
+
+        deserializer.deserialize_any(ValueVisitor)
+    }
+}
 
 pub struct HttpRequest<'a> {
     /// HTTP method - will be used as-is.
@@ -131,13 +253,13 @@ define_exchange_map_to_core! {
         },
         // input and output
         TakeInput -> enum Response {
-            Ok { input: JsonValue },
+            Ok { input: MapValue },
             Err { error: String }
         } => match state.take_input() {
             Err(err) => Response::Err { error: err.to_string() },
             Ok(input) => Response::Ok { input },
         },
-        SetOutputSuccess { output: JsonValue } -> enum Response {
+        SetOutputSuccess { output: MapValue } -> enum Response {
             Ok,
             Err {
                 error: String
@@ -146,7 +268,7 @@ define_exchange_map_to_core! {
             Ok(()) => Response::Ok,
             Err(err) => Response::Err { error: err.to_string() }
         },
-        SetOutputFailure { output: JsonValue } -> enum Response {
+        SetOutputFailure { output: MapValue } -> enum Response {
             Ok,
             Err {
                 error: String

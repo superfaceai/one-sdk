@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
 use quickjs_wasm_rs::Context;
@@ -53,7 +53,6 @@ impl JsInterpreter {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
-        tracing::trace!("Evaluating global: {}", code);
         self.context
             .eval_global(name, code)
             .context("Failed to evaluate global code")?;
@@ -65,8 +64,11 @@ impl JsInterpreter {
         if code.len() == 0 {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
-        
-        let bytecode = self.context.compile_global(name, code).context("Failed to compile global code")?;
+
+        let bytecode = self
+            .context
+            .compile_global(name, code)
+            .context("Failed to compile global code")?;
 
         Ok(bytecode)
     }
@@ -86,14 +88,11 @@ impl MapInterpreter for JsInterpreter {
         parameters: MapValue,
         security: MapValue,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError> {
-        self.set_input(MapValue::Object({
-            let mut map = serde_json::Map::default();
-            map.insert("input".to_string(), input);
-            map.insert("parameters".to_string(), parameters);
-            map.insert("security".to_string(), security);
-
-            map
-        }));
+        self.set_input(MapValue::Object(BTreeMap::from_iter([
+            ("input".to_string(), input),
+            ("parameters".to_string(), parameters),
+            ("security".to_string(), security),
+        ])));
 
         let map_code = std::str::from_utf8(code)
             .context("Code must be valid utf8 text")

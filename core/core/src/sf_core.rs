@@ -104,7 +104,7 @@ impl SuperfaceCore {
     fn host_value_to_map_value(&mut self, value: HostValue) -> MapValue {
         match value {
             HostValue::Stream(_) => todo!(),
-            HostValue::None => MapValue::Null,
+            HostValue::None => MapValue::None,
             HostValue::Bool(b) => MapValue::Bool(b),
             HostValue::Number(n) => MapValue::Number(n),
             HostValue::String(s) => MapValue::String(s),
@@ -113,15 +113,10 @@ impl SuperfaceCore {
                     .map(|v| self.host_value_to_map_value(v))
                     .collect(),
             ),
-            HostValue::Object(o) => {
-                let mut res = MapValue::Object(Default::default());
-                res.as_object_mut().unwrap().extend(
-                    o.into_iter()
-                        .map(|(k, v)| (k, self.host_value_to_map_value(v))),
-                );
-
-                res
-            }
+            HostValue::Object(o) => MapValue::Object(BTreeMap::from_iter(
+                o.into_iter()
+                    .map(|(k, v)| (k, self.host_value_to_map_value(v))),
+            )),
         }
     }
 
@@ -130,7 +125,7 @@ impl SuperfaceCore {
     /// This is the opposite action to [host_value_to_map_value].
     fn map_value_to_host_value(&mut self, value: MapValue) -> HostValue {
         match value {
-            MapValue::Null => HostValue::None,
+            MapValue::None => HostValue::None,
             MapValue::Bool(b) => HostValue::Bool(b),
             MapValue::Number(n) => HostValue::Number(n),
             MapValue::String(s) => HostValue::String(s),
@@ -164,7 +159,8 @@ impl SuperfaceCore {
         let map_parameters = self.host_value_to_map_value(perform_input.map_parameters);
         let map_security = self.host_value_to_map_value(perform_input.map_security);
 
-        let mut profile_validator = ProfileValidator::new(r#"
+        let mut profile_validator = ProfileValidator::new(
+            r#"
         """
         Points of Interest
         Find points of interest near the given location using a map service.
@@ -274,8 +270,11 @@ impl SuperfaceCore {
           ATM,
           PARKING
         }
-        "#.to_string())
-            .context("Failed to initialize profile validator")?;
+        "#
+            .to_string(),
+            "NearbyPoi".to_string(),
+        )
+        .context("Failed to initialize profile validator")?;
         profile_validator.validate_input(map_input.clone()).unwrap();
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
@@ -312,11 +311,12 @@ impl SuperfaceCore {
                 perform_input.map_name, perform_input.map_usecase
             ))?;
 
-        profile_validator.validate_output(map_result.clone()).unwrap();
+        profile_validator
+            .validate_output(map_result.clone())
+            .unwrap();
         let map_result = map_result
             .map(|v| self.map_value_to_host_value(v))
-            .map_err(|v| self.map_value_to_host_value(v))
-        ;
+            .map_err(|v| self.map_value_to_host_value(v));
         perform_output(PerformOutput { map_result });
 
         Ok(())

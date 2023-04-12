@@ -19,9 +19,9 @@ pub enum HostValue {
     // We use serde_json Number type, no reason to redefine it
     Number(serde_json::Number),
     String(String),
-    Array(Vec<HostValue>),
+    Array(Vec<Self>),
     // serde_json::Value::Object is backed by BTreeMap by default
-    Object(BTreeMap<String, HostValue>),
+    Object(BTreeMap<String, Self>),
 }
 impl HostValue {
     const CUSTOM_TYPE_STREAM: &'static str = "$HostValue::Stream";

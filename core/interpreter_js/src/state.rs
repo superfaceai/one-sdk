@@ -131,7 +131,7 @@ impl MapStdUnstable for InterpreterState {
         if self.map_output.is_some() {
             return Err(SetOutputError::AlreadySet);
         }
-        self.map_output = Some(Ok(serde_json::from_value(output).unwrap()));
+        self.map_output = Some(Ok(output));
 
         Ok(())
     }
@@ -140,7 +140,7 @@ impl MapStdUnstable for InterpreterState {
         if self.map_output.is_some() {
             return Err(SetOutputError::AlreadySet);
         }
-        self.map_output = Some(Err(serde_json::from_value(output).unwrap()));
+        self.map_output = Some(Err(output));
 
         Ok(())
     }
