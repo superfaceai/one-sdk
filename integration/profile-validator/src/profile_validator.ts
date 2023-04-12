@@ -4,68 +4,61 @@ import { unstable } from 'map-std';
 import { parseRuleResult, profileRules, Source } from './parser';
 import { ProfileParameterValidator, ok, err } from './validator';
 
-// cache AST between runs
+// cache AST/validator between runs
 declare const globalThis: { profileValidator?: ProfileParameterValidator };
 
-function main() {
-  const input = unstable.takeInput() as {
-    profile?: string,
-    usecase?: string,
-    input?: AnyValue,
-    result?: AnyValue,
-    error?: AnyValue
-  };
-  let result: Record<string, AnyValue> = {};
+function _start() {
+  let result;
+  try {
+    result = main(unstable.takeInput() as any);
+    unstable.setOutputSuccess(result);
+  } catch (e) {
+    unstable.setOutputFailure((e as Error).message);
+  }
+}
 
+function main(input: {
+  profile?: string,
+  usecase?: string,
+  input?: AnyValue,
+  result?: AnyValue,
+  error?: AnyValue
+}): AnyValue {
   if (input.profile) {
     const ast = parseRuleResult(profileRules.PROFILE_DOCUMENT, new Source(input.profile));
     if (ast.kind !== 'success') {
-      unstable.setOutputFailure(ast.error as unknown as AnyValue);
-      return;
+      throw ast.error;
     }
 
     globalThis.profileValidator = new ProfileParameterValidator(ast.value);
-    result['profile'] = true;
+    return true;
+  }
+
+  if (globalThis.profileValidator === undefined) {
+    throw new Error('Profile not set');
+  }
+  if (!input.usecase) {
+    throw new Error('Usecase not set');
   }
 
   if (input.input) {
-    if (globalThis.profileValidator === undefined) {
-      unstable.setOutputFailure('Profile not set');
-      return;
-    }
-    if (!input.usecase) {
-      unstable.setOutputFailure('Usecase not set');
-      return;
-    }
-
-    result['input'] = globalThis.profileValidator.validate(input.input, 'input', input.usecase) as any;
+    return globalThis.profileValidator.validate(input.input, 'input', input.usecase).match(
+      _ok => null,
+      err => err.message
+    );
   }
   if (input.result) {
-    if (globalThis.profileValidator === undefined) {
-      unstable.setOutputFailure('Profile not set');
-      return;
-    }
-    if (!input.usecase) {
-      unstable.setOutputFailure('Usecase not set');
-      return;
-    }
-
-    result['result'] = globalThis.profileValidator.validate(input.input, 'result', input.usecase) as any;
+    return globalThis.profileValidator.validate(input.input, 'result', input.usecase).match(
+      _ok => null,
+      err => err.message
+    );
   }
   if (input.error) {
-    if (globalThis.profileValidator === undefined) {
-      unstable.setOutputFailure('Profile not set');
-      return;
-    }
-    if (!input.usecase) {
-      unstable.setOutputFailure('Usecase not set');
-      return;
-    }
-
     // TODO: not supported by current validator
-    unstable.setOutputFailure('Error validation not supported');
+    throw new Error('Error validation not supported');
   }
 
-  unstable.setOutputSuccess(result);
+  return null;
 }
-main()
+
+_start()

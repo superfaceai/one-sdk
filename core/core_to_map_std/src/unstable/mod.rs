@@ -18,6 +18,21 @@ pub enum MapValue {
     Array(Vec<Self>),
     Object(BTreeMap<String, Self>),
 }
+impl MapValue {
+    pub fn try_into_string(self) -> Option<String> {
+        match self {
+            Self::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn try_into_object(self) -> Option<BTreeMap<String, Self>> {
+        match self {
+            Self::Object(o) => Some(o),
+            _ => None,
+        }
+    }
+}
 impl Serialize for MapValue {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         // see file serde_json/src/value/ser.rs:14

@@ -19,22 +19,22 @@ use tracing::instrument;
 
 use crate::profile_validator::ProfileValidator;
 
-struct MapCacheEntry {
+struct DocumentCacheEntry {
     store_time: Instant,
-    map: Vec<u8>,
+    data: Vec<u8>,
 }
-impl std::fmt::Debug for MapCacheEntry {
+impl std::fmt::Debug for DocumentCacheEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MapCacheEntry")
             .field("store_time", &self.store_time)
-            .field("map", &format!("<{} bytes>", self.map.len()))
+            .field("data", &format!("<{} bytes>", self.data.len()))
             .finish()
     }
 }
 
 #[derive(Debug)]
 pub struct SuperfaceCore {
-    map_cache: HashMap<String, MapCacheEntry>,
+    document_cache: HashMap<String, DocumentCacheEntry>,
 }
 impl SuperfaceCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
@@ -44,13 +44,13 @@ impl SuperfaceCore {
     // TODO: Use thiserror and define specific errors
     pub fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            map_cache: HashMap::new(),
+            document_cache: HashMap::new(),
         })
     }
 
-    fn cache_map(&mut self, map_name: &str) -> anyhow::Result<()> {
-        match self.map_cache.get(map_name) {
-            Some(MapCacheEntry { store_time, .. })
+    fn cache_document(&mut self, url: &str) -> anyhow::Result<()> {
+        match self.document_cache.get(url) {
+            Some(DocumentCacheEntry { store_time, .. })
                 if store_time.elapsed() <= Self::MAX_CACHE_TIME =>
             {
                 return Ok(())
@@ -58,22 +58,22 @@ impl SuperfaceCore {
             _ => (),
         }
 
-        let mut map = Vec::with_capacity(16 * 1024);
-        match map_name.strip_prefix("file://") {
+        let mut data = Vec::with_capacity(16 * 1024);
+        match url.strip_prefix("file://") {
             Some(path) => {
                 let mut file = OpenOptions::new()
                     .read(true)
                     .open(&path)
                     .context("Failed to open map file")?;
 
-                file.read_to_end(&mut map)
+                file.read_to_end(&mut data)
                     .context("Failed to read map file")?;
             }
             None => {
                 // TODO: better url join
                 let url_base =
                     std::env::var("SF_REGISTRY_URL").unwrap_or("http://localhost:8321".to_string());
-                let url = format!("{}/{}.js", url_base, map_name);
+                let url = format!("{}/{}.js", url_base, url);
 
                 let mut response =
                     HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
@@ -82,16 +82,16 @@ impl SuperfaceCore {
                         .context("Failed to retrieve response")?;
                 response
                     .body()
-                    .read_to_end(&mut map)
+                    .read_to_end(&mut data)
                     .context("Failed to read response body")?;
             }
         };
 
-        self.map_cache.insert(
-            map_name.to_string(),
-            MapCacheEntry {
+        self.document_cache.insert(
+            url.to_string(),
+            DocumentCacheEntry {
                 store_time: Instant::now(),
-                map,
+                data,
             },
         );
         Ok(())
@@ -152,7 +152,9 @@ impl SuperfaceCore {
     pub fn perform(&mut self) -> anyhow::Result<()> {
         let perform_input = perform_input();
 
-        self.cache_map(&perform_input.map_name)
+        self.cache_document(&perform_input.profile_url)
+            .context("Failed to cache profile")?;
+        self.cache_document(&perform_input.map_url)
             .context("Failed to cache map")?;
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
@@ -160,119 +162,16 @@ impl SuperfaceCore {
         let map_security = self.host_value_to_map_value(perform_input.map_security);
 
         let mut profile_validator = ProfileValidator::new(
-            r#"
-        """
-        Points of Interest
-        Find points of interest near the given location using a map service.
-        """
-        name = "navigation/nearby-poi"
-        version = "1.0.1"
-        
-        """
-        Find nearby points of interest
-        Find points of interest near the given location.
-        """
-        usecase NearbyPoi {
-            input {
-                """
-                center
-                Center of the search
-                """
-                center! Coordinates!
-                
-                """
-                radius
-                Radius of the search
-                """
-                radius! number!
-                
-                """
-                categories
-                Optional categories filter
-                Points belonging to at least one of these categories are returned
-                """
-                categories [InterestCategory!]
-            }
-        
-            result [
-                {
-                    "Coordinates of this point"
-                    coordinates! Coordinates!
-                    "Name of the point of interest"
-                    name! string!
-                    "Categories this point belongs to"
-                    categories! [InterestCategory!]
-                }
-            ]
-        
-            error {
-                "Human-readable status description"
-                status! string!
-                "Human-readable error message"
-                message! string!
-            }
-        
-          example success {
-            input {
-              center = {
-                latitude = 51.477,
-                longitude = 0.0,
-              },
-              radius = 100,
-              categories = ['CAFE'],
-            }
-          
-        
-          result [{
-              categories = [
-                'CAFE',
-              ],
-              coordinates = {
-                latitude = 51.476838,
-                longitude = -0.0006877,
-              },
-              name = "2738840351",
-            }
-          ]
-        }
-        
-          example failed {
-            input {
-              center = {
-                latitude = 589.477,
-                longitude = 998.0,
-              },
-              radius = 10
-            }
-        
-            error {
-              status = "Not Found",
-              message = "Invalid parameters"
-            }
-          }
-        }
-        
-        model Coordinates {
-            latitude! number!
-            longitude! number!
-        }
-        
-        model InterestCategory enum {
-            RESTAURANT,
-            CAFE,
-            BAR,
-          SCHOOL,
-          TAXI,
-          POST,
-          POLICE,
-          HEALTHCARE,
-          BANK,
-          ATM,
-          PARKING
-        }
-        "#
+            std::str::from_utf8(
+                self.document_cache
+                    .get(&perform_input.profile_url)
+                    .unwrap()
+                    .data
+                    .as_slice(),
+            )
+            .unwrap()
             .to_string(),
-            "NearbyPoi".to_string(),
+            perform_input.usecase.clone(),
         )
         .context("Failed to initialize profile validator")?;
         profile_validator.validate_input(map_input.clone()).unwrap();
@@ -292,23 +191,23 @@ impl SuperfaceCore {
         }
         .context("Failed to evaluate map stdlib code")?;
 
-        let map_code = self
-            .map_cache
-            .get(&perform_input.map_name)
+        let map_code = &self
+            .document_cache
+            .get(&perform_input.map_url)
             .unwrap()
-            .map
+            .data
             .as_slice();
         let map_result = interpreter
             .run(
                 map_code,
-                &perform_input.map_usecase,
+                &perform_input.usecase,
                 map_input,
                 map_parameters,
                 map_security,
             )
             .context(format!(
                 "Failed to run map \"{}::{}\"",
-                perform_input.map_name, perform_input.map_usecase
+                perform_input.map_url, perform_input.usecase
             ))?;
 
         profile_validator

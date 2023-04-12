@@ -7,10 +7,12 @@ define_exchange_core_to_host! {
         kind: "perform-input"
     } -> enum PerformInputResponse {
         Ok {
-            /// Remote name of the map or `file://<path>`.
-            map_name: String,
-            /// Usecase defined in the map.
-            map_usecase: String,
+            /// Url of the profile.
+            profile_url: String,
+            /// Url of the map (e.g. `file://<path>`).
+            map_url: String,
+            /// Usecase defined in the profile.
+            usecase: String,
             /// Input passed into the map.
             map_input: HostValue,
             /// Parameters passed into the map.
@@ -47,8 +49,9 @@ define_exchange_core_to_host! {
 }
 
 pub struct PerformInput {
-    pub map_name: String,
-    pub map_usecase: String,
+    pub profile_url: String,
+    pub map_url: String,
+    pub usecase: String,
     pub map_input: HostValue,
     pub map_parameters: HostValue,
     pub map_security: HostValue,
@@ -60,14 +63,16 @@ pub fn perform_input() -> PerformInput {
 
     match response {
         PerformInputResponse::Ok {
-            map_name,
+            profile_url,
+            map_url,
             map_input,
-            map_usecase,
+            usecase,
             map_parameters,
             map_security,
         } => PerformInput {
-            map_name,
-            map_usecase,
+            profile_url,
+            map_url,
+            usecase,
             map_input,
             map_parameters,
             map_security,
@@ -118,8 +123,9 @@ mod test {
     fn test_message_out_perform_input() {
         let actual = json!({
             "kind": "ok",
-            "map_name": "foo",
-            "map_usecase": "bar",
+            "profile_url": "quz",
+            "map_url": "foo",
+            "usecase": "bar",
             "map_input": true,
             "map_parameters": null,
             "map_security": "banana"
@@ -127,14 +133,16 @@ mod test {
 
         match serde_json::from_value::<PerformInputResponse>(actual).unwrap() {
             PerformInputResponse::Ok {
-                map_name,
-                map_usecase,
+                profile_url,
+                map_url,
+                usecase,
                 map_input,
                 map_parameters,
                 map_security,
             } => {
-                assert_eq!(map_name, "foo");
-                assert_eq!(map_usecase, "bar");
+                assert_eq!(profile_url, "quz");
+                assert_eq!(map_url, "foo");
+                assert_eq!(usecase, "bar");
                 assert_eq!(map_input, HostValue::Bool(true));
                 assert_eq!(map_parameters, HostValue::None);
                 assert_eq!(map_security, HostValue::String("banana".into()));

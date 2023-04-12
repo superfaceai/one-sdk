@@ -154,7 +154,7 @@ export class App implements AppContext {
   private readonly requests: HandleMap<Promise<Response>>;
 
   private core: AsyncMutex<AppCore> | undefined = undefined;
-  private performState: { mapName: string, mapUsecase: string, mapInput: unknown, mapParameters: unknown, mapSecurity: unknown, mapOutput?: unknown } | undefined = undefined;
+  private performState: { profileUrl: string, mapUrl: string, usecase: string, mapInput: unknown, mapParameters: unknown, mapSecurity: unknown, mapOutput?: unknown } | undefined = undefined;
 
   private periodicState: {
     period: number; // in ms
@@ -222,15 +222,16 @@ export class App implements AppContext {
   }
 
   public async perform(
-    mapName: string,
-    mapUsecase: string,
+    profileUrl: string,
+    mapUrl: string,
+    usecase: string,
     mapInput: unknown,
     mapParameters: unknown,
     mapSecurity: unknown
   ): Promise<unknown> {
     return this.core!!.withLock(
       async (core) => {
-        this.performState = { mapName, mapUsecase, mapInput, mapParameters, mapSecurity };
+        this.performState = { profileUrl, mapUrl, usecase, mapInput, mapParameters, mapSecurity };
         await core.performFn();
 
         const output = this.performState.mapOutput;
@@ -255,8 +256,9 @@ export class App implements AppContext {
       case 'perform-input':
         return {
           kind: 'ok',
-          map_name: this.performState!!.mapName,
-          map_usecase: this.performState!!.mapUsecase,
+          profile_url: this.performState!!.profileUrl,
+          map_url: this.performState!!.mapUrl,
+          usecase: this.performState!!.usecase,
           map_input: this.performState!!.mapInput,
           map_parameters: this.performState!!.mapParameters,
           map_security: this.performState!!.mapSecurity,

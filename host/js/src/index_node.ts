@@ -91,8 +91,9 @@ async function main() {
     await fs.readFile(process.argv[2])
   );
 
-  const mapName = process.argv[3];
-  const mapUsecase = process.argv[4];
+  const profileUrl = process.argv[3];
+  const mapUrl = process.argv[4];
+  const usecase = process.argv[5];
   const mapInput = {
 		'center': {
 			'latitude': 51.477,
@@ -114,7 +115,7 @@ async function main() {
   const mapSecurity = {}
 
   await app.setup();
-  const result = await app.perform(mapName, mapUsecase, mapInput, mapParameters, mapSecurity)
+  const result = await app.perform(profileUrl, mapUrl, usecase, mapInput, mapParameters, mapSecurity)
   console.log('host: result:', result)
 
   await promisify(setTimeout)(10000);
