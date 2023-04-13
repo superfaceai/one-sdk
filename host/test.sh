@@ -6,7 +6,7 @@ cd "$base"
 
 CORE="$base/../core/dist/core.wasm"
 CORE_ASYNC="$base/../core/dist/core-async.wasm"
-SUPERFACE_PATH="$base/../integration/examples"
+SUPERFACE_PATH="$base/../examples"
 USECASE=Example
 INPUT='{"id":1}'
 VARS='{"MY_VAR":"variable_value"}'
