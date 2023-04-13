@@ -116,8 +116,10 @@ export class SuperfaceClient {
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers()
     }, { periodicPeriod: 1000 });
+  }
 
-    // TODO: event listener calling teardown
+  public destroy() {
+    this.teardown();
   }
 
   private async setup() {
