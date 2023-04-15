@@ -85,24 +85,24 @@ pub extern "C" fn __export_superface_core_perform() {
 }
 
 #[no_mangle]
-#[export_name = "superface_core_periodic"]
-/// Periodic notification call.
+#[export_name = "superface_core_send_metrics"]
+/// Periodically sends metrics.
 ///
 /// Must be called after [__export_superface_core_setup] and before [__export_superface_core_teardown].
 ///
-/// The host should call this export periodically to ensure background tasks, such as batched insights, are invoked.
-pub extern "C" fn __export_superface_core_periodic() {
+/// The host should call this export periodically to send batched insights.
+pub extern "C" fn __export_superface_core_send_metrics() {
     let mut lock = GLOBAL_STATE.lock().unwrap();
     let state: &mut SuperfaceCore = lock
         .as_mut()
         .expect("Global state missing: has superface_core_setup been called?");
 
-    let result = state.periodic();
+    let result = state.send_metrics();
     if let Err(err) = result {
         // if there is an error here that means the core couldn't send a message
         // to the host
         // TODO: should be call teardown and abort or let the host call teardown?
-        tracing::error!("periodic error: {:#}", err);
+        tracing::error!("Send metrics error: {:#}", err);
     }
 }
 

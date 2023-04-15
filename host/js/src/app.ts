@@ -141,7 +141,7 @@ type AppCore = {
   setupFn: () => Promise<void>;
   teardownFn: () => Promise<void>;
   performFn: () => Promise<void>;
-  periodicFn: () => Promise<void>;
+  sendMetricsFn: () => Promise<void>;
 };
 export class App implements AppContext {
   private readonly wasi: WasiContext;
@@ -163,15 +163,15 @@ export class App implements AppContext {
     output?: unknown
   } | undefined = undefined;
 
-  private periodicState: {
-    period: number; // in ms
-    timeout: number; // timeout handle
+  private metricsState: {
+    timeout: number; // in ms
+    handle: number; // timeout handle
   };
 
   constructor(
     wasi: WasiContext,
     dependencies: { fileSystem: FileSystem, textCoder: TextCoder, timers: Timers },
-    options: { periodicPeriod?: number }
+    options: { metricsTimeout?: number }
   ) {
     this.wasi = wasi;
     this.textCoder = dependencies.textCoder;
@@ -179,8 +179,7 @@ export class App implements AppContext {
     this.timers = dependencies.timers;
     this.streams = new HandleMap();
     this.requests = new HandleMap();
-
-    this.periodicState = { period: options.periodicPeriod ?? 10000, timeout: 0 };
+    this.metricsState = { timeout: options.metricsTimeout ?? 1000, handle: 0 };
   }
 
   private importObject(asyncify: Asyncify): WebAssembly.Imports {
@@ -202,7 +201,7 @@ export class App implements AppContext {
       setupFn: asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void),
       teardownFn: asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void),
       performFn: asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void),
-      periodicFn: asyncify.wrapExport(instance.exports['superface_core_periodic'] as () => void)
+      sendMetricsFn: asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void)
     });
   }
 
@@ -220,11 +219,10 @@ export class App implements AppContext {
 
   public async setup(): Promise<void> {
     await this.core!.withLock(core => core.setupFn());
-    this.periodic(); // launch periodic task
   }
 
   public async teardown(): Promise<void> {
-    this.timers.clearTimeout(this.periodicState.timeout);
+    await this.sendMetrics();
     return this.core!.withLock(core => core.teardownFn());
   }
 
@@ -236,6 +234,8 @@ export class App implements AppContext {
     vars: Record<string, string>,
     secrets: Record<string, string>
   ): Promise<unknown> {
+    this.setSendMetricsTimeout();
+
     return this.core!.withLock(
       async (core) => {
         this.performState = { profileUrl, mapUrl, usecase, input, vars, secrets };
@@ -246,14 +246,6 @@ export class App implements AppContext {
         return output;
       }
     );
-  }
-
-  private async periodic(): Promise<void> {
-    this.timers.clearTimeout(this.periodicState.timeout);
-
-    await this.core!.withLock(core => core.periodicFn());
-
-    this.periodicState.timeout = this.timers.setTimeout(() => { this.periodic() }, this.periodicState.period);
   }
 
   async handleMessage(message: any): Promise<any> {
@@ -344,5 +336,18 @@ export class App implements AppContext {
     }
 
     await stream.close();
+  }
+
+  private async sendMetrics(): Promise<void> {
+    this.timers.clearTimeout(this.metricsState.handle);
+    this.metricsState.handle = 0;
+
+    await this.core!.withLock(core => core.sendMetricsFn());
+  }
+
+  private setSendMetricsTimeout() {
+    if (this.metricsState.handle === 0) {
+      this.metricsState.handle = this.timers.setTimeout(() => this.sendMetrics(), this.metricsState.timeout);
+    }
   }
 }

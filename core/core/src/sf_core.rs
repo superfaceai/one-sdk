@@ -158,8 +158,8 @@ impl SuperfaceCore {
 
     // TODO: use thiserror
     #[instrument(level = "Trace")]
-    pub fn periodic(&mut self) -> anyhow::Result<()> {
-        tracing::trace!("periodic invoked");
+    pub fn send_metrics(&mut self) -> anyhow::Result<()> {
+        tracing::trace!("send metrics");
         Ok(())
     }
 

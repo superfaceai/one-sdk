@@ -115,11 +115,34 @@ export class SuperfaceClient {
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers()
-    }, { periodicPeriod: 1000 });
+    }, { metricsTimeout: 1000 });
+
+    this.initProcessHooks();
   }
 
   public destroy() {
-    this.teardown();
+    void this.teardown();
+  }
+
+  public async perform(usecase: string, input?: any, options?: SuperfaceClientPerformOptions): Promise<any> {
+    await this.setup();
+
+    const profileUrl = this.resolveProfileUrl();
+    const mapUrl = this.resolveMapUrl(usecase);
+
+    // TODO resolve variables
+    const vars = options?.vars ?? {};
+
+    // TODO resolve secrets
+    const secrets = options?.secrets ?? {};
+
+    return await this.app.perform(profileUrl, mapUrl, usecase, input, vars, secrets);
+  }
+
+  private initProcessHooks() {
+    process.on('beforeExit', async () => {
+      await this.teardown();
+    });
   }
 
   private async setup() {
@@ -158,21 +181,5 @@ export class SuperfaceClient {
     }
 
     return `file://${path}`;
-  }
-
-  public async perform(usecase: string, input?: any, options?: SuperfaceClientPerformOptions): Promise<any> {
-    await this.setup();
-
-    const profileUrl = this.resolveProfileUrl();
-    const mapUrl = this.resolveMapUrl(usecase);
-
-    // TODO resolve variables
-    const vars = options?.vars ?? {};
-
-    // TODO resolve secrets
-    const secrets = options?.secrets ?? {};
-
-    const result = await this.app.perform(profileUrl, mapUrl, usecase, input, vars, secrets)
-    return result;
   }
 }
