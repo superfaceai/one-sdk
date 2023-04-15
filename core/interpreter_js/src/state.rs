@@ -1,4 +1,7 @@
-use std::io::{Read, Write};
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+};
 
 use slab::Slab;
 
@@ -44,6 +47,7 @@ impl<T> HandleMap<T> {
 pub(super) struct InterpreterState {
     http_requests: HandleMap<HttpRequest>,
     streams: HandleMap<IoStream>,
+    secrets: Option<HashMap<String, String>>,
     map_input: Option<MapValue>,
     map_output: Option<Result<MapValue, MapValue>>,
 }
@@ -52,14 +56,18 @@ impl InterpreterState {
         Self {
             http_requests: HandleMap::new(),
             streams: HandleMap::new(),
+            secrets: None,
             map_input: None,
             map_output: None,
         }
     }
 
-    pub fn set_input(&mut self, input: MapValue) {
+    pub fn set_input(&mut self, input: MapValue, secrets: Option<HashMap<String, String>>) {
         assert!(self.map_input.is_none());
+        assert!(self.secrets.is_none());
+
         self.map_input = Some(input);
+        self.secrets = secrets;
     }
 
     pub fn take_output(&mut self) -> Option<Result<MapValue, MapValue>> {
@@ -97,6 +105,8 @@ impl MapStdUnstable for InterpreterState {
     }
 
     fn http_call(&mut self, params: MapHttpRequest<'_>) -> Result<Handle, HttpCallError> {
+        // TODO: enrich with security
+
         let request = HttpRequest::fetch(
             params.method,
             params.url,

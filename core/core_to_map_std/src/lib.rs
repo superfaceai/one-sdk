@@ -108,6 +108,8 @@ pub mod unstable;
 
 pub trait CoreToMapStd: unstable::MapStdUnstable {}
 
+use std::collections::HashMap;
+
 use unstable::MapValue;
 
 #[derive(Debug, thiserror::Error)]
@@ -124,7 +126,7 @@ pub trait MapInterpreter {
         code: &[u8],
         entry: &str,
         input: MapValue,
-        parameters: MapValue,
-        security: MapValue,
+        vars: MapValue,
+        secrets: HashMap<String, String>,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError>;
 }

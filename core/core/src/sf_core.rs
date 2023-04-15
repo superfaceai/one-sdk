@@ -121,6 +121,20 @@ impl SuperfaceCore {
         }
     }
 
+    fn host_value_to_hash_map(&mut self, value: HostValue) -> HashMap<String, String> {
+        match value {
+            HostValue::None => HashMap::new(),
+            HostValue::Object(o) => o
+                .into_iter()
+                .map(|(k, v)| match v {
+                    HostValue::String(s) => (k, String::from(s)),
+                    _ => panic!("Expected HostValue::String"),
+                })
+                .collect(),
+            _ => panic!("Expected HostValue::Object or HostValue::None"),
+        }
+    }
+
     /// Converts MapValue into HostValue.
     ///
     /// This is the opposite action to [host_value_to_map_value].
@@ -159,8 +173,8 @@ impl SuperfaceCore {
             .context("Failed to cache map")?;
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
-        let map_vars = self.host_value_to_map_value(perform_input.map_vars);
-        let map_secrets = self.host_value_to_map_value(perform_input.map_secrets);
+        let map_vars = self.host_value_to_map_value(perform_input.map_vars); // TODO yes MapValue but limited to None and Object
+        let map_secrets = self.host_value_to_hash_map(perform_input.map_secrets);
 
         let mut profile_validator = ProfileValidator::new(
             std::str::from_utf8(
