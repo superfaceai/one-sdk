@@ -12,7 +12,7 @@ macOS:
 brew install rustup-init
 brew install binaryen # for wasm-opt
 rustup target add wasm32-wasi
-# run from repo root (or extract so that there is `core/wasi-sdk-19.0`)
+# run from repo root (or extract so that there is `core/wasi-sdk-20.0`)
 wget -qO - https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-macos.tar.gz | tar xvf - -C core
 # TODO: clang must also be installed on the system (for C headers)
 
