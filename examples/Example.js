@@ -41,15 +41,19 @@ function ExampleUsecaseImplementation() {
   const url = `https://swapi.dev/api/people/${input.id}`;
 
   const options = {
-    method: 'GET',
+    method: 'POST',
     headers: {
       'Accept': 'application/json',
     },
     security: {
-      type: 'http',
-      scheme: 'basic',
-      user: '$USER',
-      password: '$PASSWORD',
+      "type": "apikey",
+      "in": "body",
+      "name": "data",
+      "bodyType": "json",
+      "apikey": "$SECRET_NAME"
+    },
+    body: {
+      data: {}
     },
   };
 

@@ -10,7 +10,7 @@ SUPERFACE_PATH="$base/../examples"
 USECASE=Example
 INPUT='{"id":1}'
 VARS='{"MY_VAR":"variable_value"}'
-SECRETS='{"TOKEN":"token_value"}'
+SECRETS='{"SECRET_NAME":"supersecret","USER":"superuser","PASSWORD":"superpassword"}'
 
 case $1 in
 	js)

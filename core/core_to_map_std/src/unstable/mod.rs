@@ -178,6 +178,12 @@ pub enum HttpCallError {
     // TODO: define more granular categories
     #[error("http call failed: {0}")]
     Failed(String),
+
+    #[error("Missing secret value: {0}")]
+    MissingSecret(String),
+
+    #[error("Invalid security configuration: {0}")]
+    InvalidSecurityConfiguration(String),
 }
 #[derive(Debug, Error)]
 pub enum HttpCallHeadError {

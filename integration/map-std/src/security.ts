@@ -14,6 +14,12 @@ export declare enum ApiKeyPlacement {
   PATH = "path",
   QUERY = "query"
 }
+/**
+ * Body type to inject api key into.
+ **/
+export declare enum ApiKeyBodyType {
+  JSON = "json"
+}
 export declare enum HttpScheme {
   BASIC = "basic",
   BEARER = "bearer",
@@ -28,6 +34,7 @@ export declare type ApiKeySecurityScheme = {
    * @$ref ApiKeyPlacement
    */
   in: ApiKeyPlacement;
+  bodyType?: ApiKeyBodyType,
   name?: string;
 };
 /**
@@ -36,14 +43,6 @@ export declare type ApiKeySecurityScheme = {
 export declare type BasicAuthSecurityScheme = {
   type: SecurityType.HTTP;
   scheme: HttpScheme.BASIC;
-};
-/**
- * Security scheme for bearer authorization.
- **/
-export declare type BearerTokenSecurityScheme = {
-  type: SecurityType.HTTP;
-  scheme: HttpScheme.BEARER;
-  bearerFormat?: string;
 };
 /**
  * Security scheme for digest authorization.
@@ -79,12 +78,6 @@ export declare type BasicAuthSecurityValues = {
   password: string;
 };
 /**
- * 
- **/
-export declare type BearerTokenSecurityValues = {
-  token: string;
-};
-/**
  * Security values for digest security scheme
  **/
 export declare type DigestSecurityValues = {
@@ -95,5 +88,4 @@ export declare type DigestSecurityValues = {
 export type SecurityConfiguration =
   | (ApiKeySecurityScheme & ApiKeySecurityValues)
   | (BasicAuthSecurityScheme & BasicAuthSecurityValues)
-  | (BearerTokenSecurityScheme & BearerTokenSecurityValues)
   | (DigestSecurityScheme & DigestSecurityValues);
