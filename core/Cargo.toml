@@ -15,3 +15,7 @@ serde_urlencoded = { version = "0.7" }
 base64 = { version = "0.21" }
 
 tracing = { version = "0.1" }
+
+[profile.release]
+opt-level = "z"
+lto = true

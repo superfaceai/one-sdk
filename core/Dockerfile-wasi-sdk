@@ -1,0 +1,18 @@
+# See <https://github.com/WebAssembly/wasi-sdk/blob/wasi-sdk-19/Dockerfile>
+# Change to debian to use the same base image as rust builder, and use packaged cmake
+FROM debian:bullseye as wasi-sdk-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update \
+	&& apt install -y --no-install-recommends \
+		ccache curl ca-certificates build-essential \
+		clang python3 git ninja-build cmake \
+	&& apt clean \
+	&& rm -rf /var/lib/apt/lists/*
+RUN git clone --recursive --depth 1 --branch wasi-sdk-20 https://github.com/WebAssembly/wasi-sdk.git /opt/wasi-sdk
+
+WORKDIR /opt/wasi-sdk
+RUN CC=clang CXX=clang++ NINJA_FLAGS=-v make package
+
+FROM scratch AS exporter
+COPY --from=wasi-sdk-builder /opt/wasi-sdk/dist/wasi-sdk-20.0-linux.tar.gz /
