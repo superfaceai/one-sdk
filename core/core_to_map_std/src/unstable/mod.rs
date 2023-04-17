@@ -151,19 +151,19 @@ impl<'de> Deserialize<'de> for MapValue {
     }
 }
 
-pub struct HttpRequest<'a> {
+pub struct HttpRequest {
     /// HTTP method - will be used as-is.
-    pub method: &'a str,
-    pub url: &'a str,
-    pub headers: &'a HeadersMultiMap,
+    pub method: String,
+    pub url: String,
+    pub headers: HeadersMultiMap,
     /// Query parameters.
     ///
     /// Multiple values with the same key will be repeated in the query string, no joining will be performed.
-    pub query: &'a MultiMap,
+    pub query: MultiMap,
     /// Body as bytes.
-    pub body: Option<&'a [u8]>,
+    pub body: Option<Vec<u8>>,
     /// Security configuration
-    pub security: &'a Security,
+    pub security: Security, // TODO: make it optional
 }
 pub struct HttpResponse {
     /// Status code of the response.
@@ -209,7 +209,7 @@ pub trait MapStdUnstable {
     fn stream_close(&mut self, handle: Handle) -> std::io::Result<()>;
 
     // http
-    fn http_call(&mut self, params: HttpRequest<'_>) -> Result<Handle, HttpCallError>;
+    fn http_call(&mut self, params: HttpRequest) -> Result<Handle, HttpCallError>;
     fn http_call_head(&mut self, handle: Handle) -> Result<HttpResponse, HttpCallHeadError>;
 
     // input and output
@@ -224,11 +224,11 @@ pub trait MapStdUnstable {
 
 define_exchange_map_to_core! {
     let state: MapStdUnstable;
-    enum RequestUnstable<'a> {
+    enum RequestUnstable {
         // http
         HttpCall {
-            method: &'a str,
-            url: &'a str,
+            method: String,
+            url: String,
             headers: HeadersMultiMap,
             query: MultiMap,
             security: Security,
@@ -243,10 +243,10 @@ define_exchange_map_to_core! {
             let handle = state.http_call(HttpRequest {
                 method,
                 url,
-                headers: &headers,
-                query: &query,
-                security: &security,
-                body: body.as_deref(),
+                headers,
+                query,
+                security,
+                body,
             });
 
             match handle {
