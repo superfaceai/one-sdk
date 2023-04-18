@@ -29,6 +29,7 @@ RUN --mount=type=cache,target=/var/cache/cargo --mount=type=cache,target=/var/ca
 	mkdir -p /opt/superface/ && cp '/var/cache/target/wasm32-wasi/release/superface_core.wasm' '/opt/superface/core.wasm'
 
 WORKDIR /opt/superface
+# --strip-debug --strip-producers --strip-target-features -Oz
 RUN wasm-opt -O2 ./core.wasm --output ./core.wasm
 # TODO: restore when stabilised --pass-arg asyncify-imports@sf_host_unstable.message_exchange,sf_host_unstable.stream_read,sf_host_unstable.stream_write
 RUN wasm-opt -O2 --asyncify ./core.wasm --output ./core-async.wasm

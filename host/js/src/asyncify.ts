@@ -1,7 +1,7 @@
 // Based on https://github.com/GoogleChromeLabs/asyncify/blob/master/asyncify.mjs
 //
 // We can affort to be less defensive against the code that uses this (since we control it), so we don't use Proxies nor WeakMaps.
-// We also add support for our extension to asyncify - unwind stack allocation with the help of the host.
+// We also add support for our extension to asyncify - unwind stack allocation with the help of the core.
 
 enum AsyncifyState {
   Normal = 0,
@@ -30,8 +30,8 @@ export class Asyncify {
     module: WebAssembly.Module,
     imports: (self: Asyncify) => WebAssembly.Imports,
     options?: {
-      dataAddress: number,
-      unwindStackSize: number
+      dataAddress?: number,
+      unwindStackSize?: number
     }
   ): Promise<[WebAssembly.Instance, Asyncify]> {
     const asyncify = new Asyncify(options?.dataAddress ?? Asyncify.DEFAULT_DATA_ADDRESS);
@@ -46,7 +46,7 @@ export class Asyncify {
       || typeof exports.asyncify_stop_unwind !== 'function'
       || typeof exports.asyncify_get_state !== 'function'
     ) {
-      throw new Error('Some or all asyncify exports missing from module exports');
+      throw new Error('Required asyncify exports missing from module exports');
     }
     asyncify.exports = exports as AsyncifyExports;
 
@@ -111,7 +111,7 @@ export class Asyncify {
 
             state = this.getState();
             if (state !== AsyncifyState.Normal) {
-              throw new Error(`Invalid state ${state} after awaiting valud in export`);
+              throw new Error(`Invalid state ${state} after awaiting value in export`);
             }
             this.exports!!.asyncify_start_rewind(this.dataAddress);
             result = fn(...args); // -> wasm[rewinding] -> import[rewinding]
