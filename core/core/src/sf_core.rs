@@ -121,7 +121,7 @@ impl SuperfaceCore {
         }
     }
 
-    fn host_value_to_hash_map(&mut self, value: HostValue) -> HashMap<String, String> {
+    fn host_value_to_hash_map(value: HostValue) -> HashMap<String, String> {
         match value {
             HostValue::None => HashMap::new(),
             HostValue::Object(o) => o
@@ -174,7 +174,7 @@ impl SuperfaceCore {
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
         let map_vars = self.host_value_to_map_value(perform_input.map_vars); // TODO yes MapValue but limited to None and Object
-        let map_secrets = self.host_value_to_hash_map(perform_input.map_secrets);
+        let map_secrets = Self::host_value_to_hash_map(perform_input.map_secrets);
 
         let mut profile_validator = ProfileValidator::new(
             std::str::from_utf8(
