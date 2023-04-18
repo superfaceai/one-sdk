@@ -3,7 +3,7 @@ import { resolve } from 'path';
 import { WASI } from 'wasi';
 
 import { App } from './app';
-import type { TextCoder, FileSystem, Timers } from './app';
+import type { TextCoder, FileSystem, Timers, Network } from './app';
 import { HandleMap } from './handle_map';
 
 class NodeTextCoder implements TextCoder {
@@ -82,6 +82,12 @@ class NodeTimers implements Timers {
   }
 }
 
+class NodeNetwork implements Network {
+  fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+    return fetch(input, init); // TODO: import from undici explicitly
+  }
+}
+
 export type ClientOptions = {
   assetsPath?: string;
 };
@@ -112,6 +118,7 @@ export class Client {
     });
 
     this.app = new App(this.wasi, {
+      network: new NodeNetwork(),
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers()

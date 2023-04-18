@@ -19,6 +19,12 @@ export interface FileSystem {
   write(handle: number, data: Uint8Array): Promise<number>;
   close(handle: number): Promise<void>;
 }
+export interface Network {
+  fetch(
+    input: RequestInfo,
+    init?: RequestInit
+  ): Promise<Response>
+}
 export interface Timers {
   setTimeout(callback: () => void, ms: number): number;
   clearTimeout(handle: number): void;
@@ -146,6 +152,7 @@ type AppCore = {
 export class App implements AppContext {
   private readonly wasi: WasiContext;
   private readonly textCoder: TextCoder;
+  private readonly network: Network;
   private readonly fileSystem: FileSystem;
   private readonly timers: Timers;
 
@@ -170,11 +177,12 @@ export class App implements AppContext {
 
   constructor(
     wasi: WasiContext,
-    dependencies: { fileSystem: FileSystem, textCoder: TextCoder, timers: Timers },
+    dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers },
     options: { metricsTimeout?: number }
   ) {
     this.wasi = wasi;
     this.textCoder = dependencies.textCoder;
+    this.network = dependencies.network;
     this.fileSystem = dependencies.fileSystem;
     this.timers = dependencies.timers;
     this.streams = new HandleMap();
@@ -294,7 +302,7 @@ export class App implements AppContext {
           requestInit.body = new Uint8Array(message.body);
         }
 
-        const request = fetch(message.url, requestInit);
+        const request = this.network.fetch(message.url, requestInit);
 
         return { kind: 'ok', handle: this.requests.insert(request) };
       }
