@@ -69,6 +69,7 @@ impl SuperfaceCore {
                 file.read_to_end(&mut data)
                     .context("Failed to read map file")?;
             }
+            // TODO: http + https
             None => {
                 // TODO: better url join
                 let url_base =
@@ -120,6 +121,20 @@ impl SuperfaceCore {
         }
     }
 
+    fn host_value_to_hash_map(value: HostValue) -> HashMap<String, String> {
+        match value {
+            HostValue::None => HashMap::new(),
+            HostValue::Object(o) => o
+                .into_iter()
+                .map(|(k, v)| match v {
+                    HostValue::String(s) => (k, String::from(s)),
+                    _ => panic!("Expected HostValue::String"),
+                })
+                .collect(),
+            _ => panic!("Expected HostValue::Object or HostValue::None"),
+        }
+    }
+
     /// Converts MapValue into HostValue.
     ///
     /// This is the opposite action to [host_value_to_map_value].
@@ -143,8 +158,8 @@ impl SuperfaceCore {
 
     // TODO: use thiserror
     #[instrument(level = "Trace")]
-    pub fn periodic(&mut self) -> anyhow::Result<()> {
-        tracing::trace!("periodic invoked");
+    pub fn send_metrics(&mut self) -> anyhow::Result<()> {
+        tracing::trace!("send metrics");
         Ok(())
     }
 
@@ -158,8 +173,8 @@ impl SuperfaceCore {
             .context("Failed to cache map")?;
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
-        let map_parameters = self.host_value_to_map_value(perform_input.map_parameters);
-        let map_security = self.host_value_to_map_value(perform_input.map_security);
+        let map_vars = self.host_value_to_map_value(perform_input.map_vars); // TODO yes MapValue but limited to None and Object
+        let map_secrets = Self::host_value_to_hash_map(perform_input.map_secrets);
 
         let mut profile_validator = ProfileValidator::new(
             std::str::from_utf8(
@@ -202,8 +217,8 @@ impl SuperfaceCore {
                 map_code,
                 &perform_input.usecase,
                 map_input,
-                map_parameters,
-                map_security,
+                map_vars,
+                map_secrets,
             )
             .context(format!(
                 "Failed to run map \"{}::{}\"",

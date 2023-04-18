@@ -22,13 +22,32 @@
   });
 
   // node_modules/map-std/dist/internal/bytes.js
+  var __classPrivateFieldSet = function(receiver, state, value, kind, f) {
+    if (kind === "m")
+      throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f)
+      throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver))
+      throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value), value;
+  };
+  var __classPrivateFieldGet = function(receiver, state, kind, f) {
+    if (kind === "a" && !f)
+      throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver))
+      throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+  };
+  var _Bytes_buffer;
+  var _Bytes_len;
+  var _ByteStream_handle;
   var Bytes = class {
-    #buffer;
-    #len;
     // TODO: private
     constructor(buffer, len) {
-      this.#buffer = buffer;
-      this.#len = len;
+      _Bytes_buffer.set(this, void 0);
+      _Bytes_len.set(this, void 0);
+      __classPrivateFieldSet(this, _Bytes_buffer, buffer, "f");
+      __classPrivateFieldSet(this, _Bytes_len, len, "f");
     }
     static withCapacity(capacity) {
       return new Bytes(new Uint8Array(capacity ?? 0), 0);
@@ -40,16 +59,16 @@
       return Array.from(this.data);
     }
     get len() {
-      return this.#len;
+      return __classPrivateFieldGet(this, _Bytes_len, "f");
     }
     get capacity() {
-      return this.#buffer.byteLength;
+      return __classPrivateFieldGet(this, _Bytes_buffer, "f").byteLength;
     }
     get data() {
-      return this.#buffer.subarray(0, this.len);
+      return __classPrivateFieldGet(this, _Bytes_buffer, "f").subarray(0, this.len);
     }
     get uninitData() {
-      return this.#buffer.subarray(this.len);
+      return __classPrivateFieldGet(this, _Bytes_buffer, "f").subarray(this.len);
     }
     reserve(additional) {
       const want = this.len + additional;
@@ -59,15 +78,15 @@
       const newCapacity = Math.max(this.capacity * 2, want);
       const newBuffer = new Uint8Array(newCapacity);
       newBuffer.set(this.data, 0);
-      this.#buffer = newBuffer;
+      __classPrivateFieldSet(this, _Bytes_buffer, newBuffer, "f");
     }
     extend(buffer) {
       this.reserve(buffer.byteLength);
-      this.#buffer.set(new Uint8Array(buffer), this.len);
-      this.#len += buffer.byteLength;
+      __classPrivateFieldGet(this, _Bytes_buffer, "f").set(new Uint8Array(buffer), this.len);
+      __classPrivateFieldSet(this, _Bytes_len, __classPrivateFieldGet(this, _Bytes_len, "f") + buffer.byteLength, "f");
     }
     decode(encoding = "utf8") {
-      const buffer = this.#buffer.buffer.slice(0, this.len);
+      const buffer = __classPrivateFieldGet(this, _Bytes_buffer, "f").buffer.slice(0, this.len);
       if (encoding === "utf8") {
         return __ffi.unstable.bytes_to_utf8(buffer);
       } else if (encoding === "base64") {
@@ -75,7 +94,6 @@
       }
       throw new Error(`encoding "${encoding}" not implemented`);
     }
-    // TODO: support other encodings, currently this is always utf-8
     static encode(string, encoding = "utf8") {
       let buffer;
       if (encoding === "utf8") {
@@ -88,16 +106,17 @@
       return new Bytes(new Uint8Array(buffer), buffer.byteLength);
     }
   };
+  _Bytes_buffer = /* @__PURE__ */ new WeakMap(), _Bytes_len = /* @__PURE__ */ new WeakMap();
   var ByteStream = class {
-    #handle;
     constructor(handle) {
-      this.#handle = handle;
+      _ByteStream_handle.set(this, void 0);
+      __classPrivateFieldSet(this, _ByteStream_handle, handle, "f");
     }
     readToEnd() {
       const buffer = Bytes.withCapacity(8192);
       const readBuffer = new ArrayBuffer(8192);
       while (true) {
-        const count = __ffi.unstable.stream_read(this.#handle, readBuffer);
+        const count = __ffi.unstable.stream_read(__classPrivateFieldGet(this, _ByteStream_handle, "f"), readBuffer);
         if (count === 0) {
           break;
         }
@@ -106,11 +125,29 @@
       return buffer;
     }
     close() {
-      __ffi.unstable.stream_close(this.#handle);
+      __ffi.unstable.stream_close(__classPrivateFieldGet(this, _ByteStream_handle, "f"));
     }
   };
+  _ByteStream_handle = /* @__PURE__ */ new WeakMap();
 
   // node_modules/map-std/dist/internal/node_compat.js
+  var __classPrivateFieldSet2 = function(receiver, state, value, kind, f) {
+    if (kind === "m")
+      throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f)
+      throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver))
+      throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value), value;
+  };
+  var __classPrivateFieldGet2 = function(receiver, state, kind, f) {
+    if (kind === "a" && !f)
+      throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver))
+      throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+  };
+  var _Buffer_inner;
   var Buffer2 = class {
     static from(value, encoding = "utf8") {
       if (typeof value === "string") {
@@ -133,18 +170,19 @@
       }
       return false;
     }
-    #inner;
     constructor(inner) {
-      this.#inner = inner;
+      _Buffer_inner.set(this, void 0);
+      __classPrivateFieldSet2(this, _Buffer_inner, inner, "f");
     }
     /** @internal */
     get inner() {
-      return this.#inner;
+      return __classPrivateFieldGet2(this, _Buffer_inner, "f");
     }
     toString(encoding = "utf8") {
-      return this.#inner.decode(encoding);
+      return __classPrivateFieldGet2(this, _Buffer_inner, "f").decode(encoding);
     }
   };
+  _Buffer_inner = /* @__PURE__ */ new WeakMap();
 
   // node_modules/map-std/dist/internal/message.js
   function jsonReplacerMapValue(key, value) {
@@ -185,16 +223,34 @@
   }
 
   // node_modules/map-std/dist/unstable.js
+  var __classPrivateFieldSet3 = function(receiver, state, value, kind, f) {
+    if (kind === "m")
+      throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f)
+      throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver))
+      throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value), value;
+  };
+  var __classPrivateFieldGet3 = function(receiver, state, kind, f) {
+    if (kind === "a" && !f)
+      throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver))
+      throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+  };
+  var _HttpRequest_handle;
+  var _HttpResponse_bodyStream;
   var HttpRequest = class {
-    #handle;
     /** @internal */
     constructor(handle) {
-      this.#handle = handle;
+      _HttpRequest_handle.set(this, void 0);
+      __classPrivateFieldSet3(this, _HttpRequest_handle, handle, "f");
     }
     response() {
       const response = messageExchange({
         kind: "http-call-head",
-        handle: this.#handle
+        handle: __classPrivateFieldGet3(this, _HttpRequest_handle, "f")
       });
       if (response.kind === "ok") {
         return new HttpResponse(response.status, response.headers, response.body_stream);
@@ -203,20 +259,19 @@
       }
     }
   };
+  _HttpRequest_handle = /* @__PURE__ */ new WeakMap();
   var HttpResponse = class {
-    status;
-    headers;
-    #bodyStream;
     /** @internal */
     constructor(status, headers, bodyStream) {
+      _HttpResponse_bodyStream.set(this, void 0);
       this.status = status;
       this.headers = headers;
-      this.#bodyStream = new ByteStream(bodyStream);
+      __classPrivateFieldSet3(this, _HttpResponse_bodyStream, new ByteStream(bodyStream), "f");
     }
     // TODO: either make Bytes public or use a different type
     bodyBytes() {
-      const buffer = this.#bodyStream.readToEnd();
-      this.#bodyStream.close();
+      const buffer = __classPrivateFieldGet3(this, _HttpResponse_bodyStream, "f").readToEnd();
+      __classPrivateFieldGet3(this, _HttpResponse_bodyStream, "f").close();
       return buffer;
     }
     bodyText() {
@@ -246,8 +301,8 @@
       return this.bodyText();
     }
   };
+  _HttpResponse_bodyStream = /* @__PURE__ */ new WeakMap();
   var MapError = class {
-    output;
     constructor(output) {
       this.output = output;
     }
@@ -335,7 +390,8 @@
       url,
       headers,
       query: ensureMultimap(options.query ?? {}),
-      body: finalBody
+      body: finalBody,
+      security: options.security
     });
     if (response.kind === "ok") {
       return new HttpRequest(response.handle);

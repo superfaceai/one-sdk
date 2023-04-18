@@ -1,4 +1,8 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    rc::Rc,
+};
 
 use anyhow::Context as AnyhowContext;
 use quickjs_wasm_rs::Context;
@@ -40,8 +44,8 @@ impl JsInterpreter {
         Ok(Self { context, state })
     }
 
-    pub fn set_input(&mut self, input: MapValue) {
-        self.state.borrow_mut().set_input(input)
+    pub fn set_input(&mut self, input: MapValue, secrets: Option<HashMap<String, String>>) {
+        self.state.borrow_mut().set_input(input, secrets);
     }
 
     pub fn take_output(&mut self) -> Result<MapValue, MapValue> {
@@ -85,14 +89,16 @@ impl MapInterpreter for JsInterpreter {
         code: &[u8],
         entry: &str,
         input: MapValue,
-        parameters: MapValue,
-        security: MapValue,
+        vars: MapValue,
+        secrets: HashMap<String, String>,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError> {
-        self.set_input(MapValue::Object(BTreeMap::from_iter([
-            ("input".to_string(), input),
-            ("parameters".to_string(), parameters),
-            ("security".to_string(), security),
-        ])));
+        self.set_input(
+            MapValue::Object(BTreeMap::from_iter([
+                ("input".to_string(), input),
+                ("vars".to_string(), vars),
+            ])),
+            Some(secrets),
+        );
 
         let map_code = std::str::from_utf8(code)
             .context("Code must be valid utf8 text")

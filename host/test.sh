@@ -6,19 +6,23 @@ cd "$base"
 
 CORE="$base/../core/dist/core.wasm"
 CORE_ASYNC="$base/../core/dist/core-async.wasm"
-MAP="file://$base/../integration/examples/navigation_nearby-poi.overpass-de.suma.js"
-PROFILE="file://$base/../integration/examples/navigation_nearby-poi.supr"
-USECASE=NearbyPoi
+ASSETS_PATH="$base/../examples"
+USECASE=Example
+INPUT='{"id":1}'
+VARS='{"MY_VAR":"variable_value"}'
+SECRETS='{"SECRET_NAME":"supersecret","USER":"superuser","PASSWORD":"superpassword"}'
 
 case $1 in
 	js)
 		cd js
 		yarn build
-		node --experimental-wasi-unstable-preview1 dist/index_node.js "$CORE_ASYNC" "$PROFILE" "$MAP" $USECASE
+		cd ..
+		node --experimental-wasi-unstable-preview1 ./test.js "$ASSETS_PATH" $USECASE $INPUT $VARS $SECRETS
 	;;
 
 	python|py)
-		python3 ./python "$CORE" "$PROFILE" "$MAP" $USECASE
+		# FIXME
+		python3 ./python "$CORE" "$MAP" $USECASE
 	;;
 
 	*)

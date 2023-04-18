@@ -43,7 +43,6 @@ class ReadableStreamAdapter implements Stream {
 
   async read(out: Uint8Array): Promise<number> {
     let chunk;
-    
     if (this.chunks.length > 0) {
       chunk = this.chunks[0];
       if (chunk.byteLength > out.byteLength) {
@@ -91,7 +90,7 @@ class AsyncMutex<T> {
 
   constructor(value: T) {
     this.promise = Promise.resolve();
-    this.resolve = () => {};
+    this.resolve = () => { };
     this.value = value;
   }
 
@@ -142,7 +141,7 @@ type AppCore = {
   setupFn: () => Promise<void>;
   teardownFn: () => Promise<void>;
   performFn: () => Promise<void>;
-  periodicFn: () => Promise<void>;
+  sendMetricsFn: () => Promise<void>;
 };
 export class App implements AppContext {
   private readonly wasi: WasiContext;
@@ -154,17 +153,25 @@ export class App implements AppContext {
   private readonly requests: HandleMap<Promise<Response>>;
 
   private core: AsyncMutex<AppCore> | undefined = undefined;
-  private performState: { profileUrl: string, mapUrl: string, usecase: string, mapInput: unknown, mapParameters: unknown, mapSecurity: unknown, mapOutput?: unknown } | undefined = undefined;
+  private performState: {
+    profileUrl: string,
+    mapUrl: string,
+    usecase: string,
+    input: unknown,
+    vars: Record<string, string>,
+    secrets: Record<string, string>,
+    output?: unknown
+  } | undefined = undefined;
 
-  private periodicState: {
-    period: number; // in ms
-    timeout: number; // timeout handle
+  private metricsState: {
+    timeout: number; // in ms
+    handle: number; // timeout handle
   };
 
   constructor(
     wasi: WasiContext,
     dependencies: { fileSystem: FileSystem, textCoder: TextCoder, timers: Timers },
-    options: { periodicPeriod?: number }
+    options: { metricsTimeout?: number }
   ) {
     this.wasi = wasi;
     this.textCoder = dependencies.textCoder;
@@ -172,8 +179,7 @@ export class App implements AppContext {
     this.timers = dependencies.timers;
     this.streams = new HandleMap();
     this.requests = new HandleMap();
-
-    this.periodicState = { period: options.periodicPeriod ?? 10000, timeout: 0 };
+    this.metricsState = { timeout: options.metricsTimeout ?? 1000, handle: 0 };
   }
 
   private importObject(asyncify: Asyncify): WebAssembly.Imports {
@@ -195,12 +201,12 @@ export class App implements AppContext {
       setupFn: asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void),
       teardownFn: asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void),
       performFn: asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void),
-      periodicFn: asyncify.wrapExport(instance.exports['superface_core_periodic'] as () => void)
+      sendMetricsFn: asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void)
     });
   }
 
   private get memory(): WebAssembly.Memory {
-    return this.core!!.unsafeValue.instance.exports.memory as WebAssembly.Memory;
+    return this.core!.unsafeValue.instance.exports.memory as WebAssembly.Memory;
   }
 
   get memoryBytes(): Uint8Array {
@@ -212,41 +218,34 @@ export class App implements AppContext {
   }
 
   public async setup(): Promise<void> {
-    await this.core!!.withLock(core => core.setupFn());
-    this.periodic(); // launch periodic task
+    await this.core!.withLock(core => core.setupFn());
   }
 
   public async teardown(): Promise<void> {
-    this.timers.clearTimeout(this.periodicState.timeout);
-    return this.core!!.withLock(core => core.teardownFn());
+    await this.sendMetrics();
+    return this.core!.withLock(core => core.teardownFn());
   }
 
   public async perform(
     profileUrl: string,
     mapUrl: string,
     usecase: string,
-    mapInput: unknown,
-    mapParameters: unknown,
-    mapSecurity: unknown
+    input: unknown,
+    vars: Record<string, string>,
+    secrets: Record<string, string>
   ): Promise<unknown> {
-    return this.core!!.withLock(
+    this.setSendMetricsTimeout();
+
+    return this.core!.withLock(
       async (core) => {
-        this.performState = { profileUrl, mapUrl, usecase, mapInput, mapParameters, mapSecurity };
+        this.performState = { profileUrl, mapUrl, usecase, input, vars, secrets };
         await core.performFn();
 
-        const output = this.performState.mapOutput;
+        const output = this.performState.output;
         this.performState = undefined;
         return output;
       }
     );
-  }
-
-  private async periodic(): Promise<void> {
-    this.timers.clearTimeout(this.periodicState.timeout);
-    
-    await this.core!!.withLock(core => core.periodicFn());
-
-    this.periodicState.timeout = this.timers.setTimeout(() => { this.periodic() }, this.periodicState.period);
   }
 
   async handleMessage(message: any): Promise<any> {
@@ -257,17 +256,17 @@ export class App implements AppContext {
         return {
           kind: 'ok',
           profile_url: this.performState!!.profileUrl,
-          map_url: this.performState!!.mapUrl,
-          usecase: this.performState!!.usecase,
-          map_input: this.performState!!.mapInput,
-          map_parameters: this.performState!!.mapParameters,
-          map_security: this.performState!!.mapSecurity,
+          map_url: this.performState!.mapUrl,
+          usecase: this.performState!.usecase,
+          map_input: this.performState!.input,
+          map_vars: this.performState!.vars,
+          map_secrets: this.performState!.secrets,
         };
-      
+
       case 'perform-output':
-        this.performState!!.mapOutput = message.map_result;
+        this.performState!.output = message.map_result;
         return { kind: 'ok' };
-      
+
       case 'file-open': {
         const handle = await this.fileSystem.open(message.path, {
           createNew: message.create_new,
@@ -286,11 +285,16 @@ export class App implements AppContext {
       }
 
       case 'http-call': {
-        const request = fetch(message.url, {
+        const requestInit: RequestInit = {
           method: message.method,
           headers: message.headers,
-          body: new Uint8Array(message.body)
-        });
+        };
+
+        if (message.body !== undefined && message.body !== null) {
+          requestInit.body = new Uint8Array(message.body);
+        }
+
+        const request = fetch(message.url, requestInit);
 
         return { kind: 'ok', handle: this.requests.insert(request) };
       }
@@ -301,7 +305,7 @@ export class App implements AppContext {
 
         return { kind: 'ok', status: response.status, headers: headersToMultimap(response.headers), body_stream: this.streams.insert(bodyStream) };
       }
-      
+
       default:
         return { 'kind': 'err', 'error': 'Unknown message' }
     }
@@ -332,5 +336,18 @@ export class App implements AppContext {
     }
 
     await stream.close();
+  }
+
+  private async sendMetrics(): Promise<void> {
+    this.timers.clearTimeout(this.metricsState.handle);
+    this.metricsState.handle = 0;
+
+    await this.core!.withLock(core => core.sendMetricsFn());
+  }
+
+  private setSendMetricsTimeout() {
+    if (this.metricsState.handle === 0) {
+      this.metricsState.handle = this.timers.setTimeout(() => this.sendMetrics(), this.metricsState.timeout);
+    }
   }
 }
