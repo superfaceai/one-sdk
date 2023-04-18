@@ -82,26 +82,26 @@ class NodeTimers implements Timers {
   }
 }
 
-export type SuperfaceClientOptions = {
-  superfacePath?: string;
+export type ClientOptions = {
+  assetsPath?: string;
 };
 
-export type SuperfaceClientPerformOptions = {
+export type ClientPerformOptions = {
   vars?: Record<string, string>;
   secrets?: Record<string, string>;
 };
 
-export class SuperfaceClient {
-  public superfacePath: string = process.cwd();
+export class Client {
+  public assetsPath: string = process.cwd();
 
   private corePath: string;
   private wasi: WASI;
   private app: App;
   private ready = false;
 
-  constructor(readonly options: SuperfaceClientOptions = {}) {
-    if (options.superfacePath !== undefined) {
-      this.superfacePath = options.superfacePath;
+  constructor(readonly options: ClientOptions = {}) {
+    if (options.assetsPath !== undefined) {
+      this.assetsPath = options.assetsPath;
     }
 
     // TODO properly load core
@@ -124,7 +124,7 @@ export class SuperfaceClient {
     void this.teardown();
   }
 
-  public async perform(usecase: string, input?: any, options?: SuperfaceClientPerformOptions): Promise<any> {
+  public async perform(usecase: string, input?: any, options?: ClientPerformOptions): Promise<any> {
     await this.setup();
 
     const profileUrl = this.resolveProfileUrl();
@@ -164,7 +164,7 @@ export class SuperfaceClient {
   }
 
   private resolveProfileUrl(): string {
-    const path = resolve(this.superfacePath, 'profile.supr');
+    const path = resolve(this.assetsPath, 'profile.supr');
 
     if (fs.stat(path) === undefined) {
       throw new Error('Profile file does not exist');
@@ -174,7 +174,7 @@ export class SuperfaceClient {
   }
 
   private resolveMapUrl(usecase: string): string {
-    const path = resolve(this.superfacePath, `${usecase}.js`);
+    const path = resolve(this.assetsPath, `${usecase}.js`);
 
     if (fs.stat(path) === undefined) {
       throw new Error(`Map file does not exist, usecase: ${usecase}`);

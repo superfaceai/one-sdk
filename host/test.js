@@ -1,7 +1,7 @@
-const { SuperfaceClient } = require('./js/dist/index_node.js');
+const { Client } = require('./js/dist/node.js');
 
 async function main() {
-  const superface = new SuperfaceClient({ superfacePath: process.argv[2] });
+  const superface = new Client({ assetsPath: process.argv[2] });
   const result = await superface.perform(
     process.argv[3],
     JSON.parse(process.argv[4]),

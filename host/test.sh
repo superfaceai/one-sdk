@@ -6,7 +6,7 @@ cd "$base"
 
 CORE="$base/../core/dist/core.wasm"
 CORE_ASYNC="$base/../core/dist/core-async.wasm"
-SUPERFACE_PATH="$base/../examples"
+ASSETS_PATH="$base/../examples"
 USECASE=Example
 INPUT='{"id":1}'
 VARS='{"MY_VAR":"variable_value"}'
@@ -17,7 +17,7 @@ case $1 in
 		cd js
 		yarn build
 		cd ..
-		node --experimental-wasi-unstable-preview1 ./test.js "$SUPERFACE_PATH" $USECASE $INPUT $VARS $SECRETS
+		node --experimental-wasi-unstable-preview1 ./test.js "$ASSETS_PATH" $USECASE $INPUT $VARS $SECRETS
 	;;
 
 	python|py)
