@@ -59,34 +59,44 @@ impl SuperfaceCore {
         }
 
         let mut data = Vec::with_capacity(16 * 1024);
-        match url.strip_prefix("file://") {
-            Some(path) => {
-                let mut file = OpenOptions::new()
+        if let Some(path) = url.strip_prefix("file://") {
+            let mut file = OpenOptions::new()
                     .read(true)
                     .open(&path)
                     .context("Failed to open map file")?;
 
                 file.read_to_end(&mut data)
                     .context("Failed to read map file")?;
-            }
-            // TODO: http + https
-            None => {
-                // TODO: better url join
-                let url_base =
-                    std::env::var("SF_REGISTRY_URL").unwrap_or("http://localhost:8321".to_string());
-                let url = format!("{}/{}.js", url_base, url);
+        } else if url.starts_with("https://") || url.starts_with("http://") {
+            let mut response =
+                HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
+                    .context("Failed to retrieve map over HTTP")?
+                    .into_response()
+                    .context("Failed to retrieve response")?;
+            response
+                .body()
+                .read_to_end(&mut data)
+                .context("Failed to read response body")?;
+        } else if let Some(data_base64) = url.strip_prefix("data:;base64,") {
+            // TODO: just hacking it in here
+            use base64::Engine;
+            data = base64::engine::general_purpose::STANDARD.decode(data_base64).unwrap();
+        } else {
+            // TODO: better url join
+            let url_base =
+                std::env::var("SF_REGISTRY_URL").unwrap_or("http://localhost:8321".to_string());
+            let url = format!("{}/{}.js", url_base, url);
 
-                let mut response =
-                    HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
-                        .context("Failed to retrieve map over HTTP")?
-                        .into_response()
-                        .context("Failed to retrieve response")?;
-                response
-                    .body()
-                    .read_to_end(&mut data)
-                    .context("Failed to read response body")?;
-            }
-        };
+            let mut response =
+                HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
+                    .context("Failed to retrieve map over HTTP")?
+                    .into_response()
+                    .context("Failed to retrieve response")?;
+            response
+                .body()
+                .read_to_end(&mut data)
+                .context("Failed to read response body")?;
+        }
 
         self.document_cache.insert(
             url.to_string(),
@@ -176,20 +186,22 @@ impl SuperfaceCore {
         let map_vars = self.host_value_to_map_value(perform_input.map_vars); // TODO yes MapValue but limited to None and Object
         let map_secrets = Self::host_value_to_hash_map(perform_input.map_secrets);
 
-        let mut profile_validator = ProfileValidator::new(
-            std::str::from_utf8(
-                self.document_cache
-                    .get(&perform_input.profile_url)
-                    .unwrap()
-                    .data
-                    .as_slice(),
-            )
-            .unwrap()
-            .to_string(),
-            perform_input.usecase.clone(),
-        )
-        .context("Failed to initialize profile validator")?;
-        profile_validator.validate_input(map_input.clone()).unwrap();
+        // let mut profile_validator = ProfileValidator::new(
+        //     std::str::from_utf8(
+        //         self.document_cache
+        //             .get(&perform_input.profile_url)
+        //             .unwrap()
+        //             .data
+        //             .as_slice(),
+        //     )
+        //     .unwrap()
+        //     .to_string(),
+        //     perform_input.usecase.clone(),
+        // )
+        // .context("Failed to initialize profile validator")?;
+        // if let Err(err) = profile_validator.validate_input(map_input.clone()) {
+        //     tracing::error!("Input validation error: {}", err);
+        // }
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
@@ -225,9 +237,9 @@ impl SuperfaceCore {
                 perform_input.map_url, perform_input.usecase
             ))?;
 
-        profile_validator
-            .validate_output(map_result.clone())
-            .unwrap();
+        // if let Err(err) = profile_validator.validate_output(map_result.clone()) {
+        //     tracing::error!("Output validation error: {}", err);
+        // }
         let map_result = map_result
             .map(|v| self.map_value_to_host_value(v))
             .map_err(|v| self.map_value_to_host_value(v));

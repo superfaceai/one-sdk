@@ -501,6 +501,7 @@ name = "superface_core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "core_to_map_std",
  "host_to_core_std",
  "interpreter_js",

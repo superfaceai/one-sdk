@@ -18,6 +18,8 @@ sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
 map_std = { path = "../core_to_map_std", package = "core_to_map_std" }
 interpreter_js = { path = "../interpreter_js" }
 
+base64 = { workspace = true }
+
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3" }
 
