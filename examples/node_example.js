@@ -1,4 +1,4 @@
-const { Client } = require('./js/dist/node.js');
+const { Client } = require('../host/js/dist/node');
 
 async function main() {
   const superface = new Client({ assetsPath: process.argv[2] });

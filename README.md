@@ -1,8 +1,8 @@
-## Try it out
+# ¯\\_(ツ)_/¯
 
-Core can be built in docker to avoid installing compiler dependencies. Run `docker build core -o core/dist` (or on arm64 `docker build core -f core/Dockerfile-arm64 -o core/dist`, but beware that this takes a really long time as it builds wasi-sdk, including clang).
+A simple demenonstration can be run with `./examples/run.sh js`. It builds entire projects and Node.js host, then runs the example.
 
-A very simple smoke test can be run `host/test.sh py` - should perform NearbyPoi against overpass-de and return an Ok result. 
+This will require to have Development requirements installed.
 
 ## Development requirements
 
@@ -11,10 +11,6 @@ macOS:
 # Core dependencies
 brew install rustup-init
 brew install binaryen # for wasm-opt
-rustup target add wasm32-wasi
-# run from repo root (or extract so that there is `core/wasi-sdk-20.0`)
-wget -qO - https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-macos.tar.gz | tar xvf - -C core
-# TODO: clang must also be installed on the system (for C headers)
 
 # Python host dependencies
 python3 -m pip install wasmtime requests
@@ -23,7 +19,11 @@ python3 -m pip install wasmtime requests
 brew install node
 ```
 
-Build with `./core/build.sh`, result will be in `core/dist`. Note that this builds the debug version (as opposed to the Dockerfile building release), so it will be way bigger.
+For development build with `make` from root. To create release build run `make mode=release`.
+
+### Docker
+
+Core can be built in docker to avoid installing compiler dependencies. Run `docker build core -o core/dist` (or on arm64 `docker build core -f core/Dockerfile-arm64 -o core/dist`, but beware that this takes a really long time as it builds wasi-sdk, including clang).
 
 ## Monorepo structure
 
@@ -42,35 +42,35 @@ Build with `./core/build.sh`, result will be in `core/dist`. Note that this buil
     .cargo/
       config
     Cargo.toml # workspace
-    wasi-sdk-19.0/ # not in git, needed for building quickjs
-    host_to_core_std/ # host_to_core stdlib import (sys) + wrappers (high-level)
+    wasi-sdk-*/ # not in git, needed for building quickjs
+    core/ # main crate, builds into core.wasm
       Cargo.toml
       src/
+      assets/
+        js/ # JS assets, such as the core_to_map stdlib wrappers or profile-validator (added during build)
     core_to_map_std/ # core_to_map stdlib implementation (but not export)
+      Cargo.toml
+      src/
+    host_to_core_std/ # host_to_core stdlib import (sys) + wrappers (high-level)
       Cargo.toml
       src/
     interpreter_js/ # quickjs interpreter, core_to_map export
       Cargo.toml
       src/
-      map_std/ # core_to_map stdlib import + wrappers
-        std_unstable.js
-    core/ # main crate, builds into core.wasm
-      Cargo.toml
-      src/
-      assets/
-        js/ # JS assets, such as the core_to_map stdlib wrappers or profile-validator
-    build.sh # calls `cargo build` but also `wasm-opt --asyncify ..`
   integration/ # any tooling for integration development
+    package.json # for yarn workspace configuration
     core-ffi/ # TypeScript declarations for core_to_map imports
     map-std/ # core_to_map stdlib wrappers TypeScript source
       src/
     profile-validator/ # profile validator extracted from TS SDK
       src/
-    examples/ # example integrations
-      character-information/
-        swapi/
-          package.json # for stdlib type declarations, optional
-          character-information.swapi.js
+  examples/
+    run.sh # script to run example with Basic integration example
+    node_example.js # js code to run example
+    Basic/ # Basic integration to demenostrate how the SDK works
+      package.json # for stdlib type declarations, optional
+      profile.supr # Application profile definining use-cases
+      Example.js
 ```
 
 ## Proposal: CI pipeline flow
