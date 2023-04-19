@@ -5,7 +5,7 @@
   "types": "types/std",
   "license": "MIT",
   "devDependencies": {
-    "@types/core-ffi": "../core-ffi",
+    "@types/core-ffi": "*",
     "esbuild": "^0.17.15",
     "rimraf": "^4.4.1",
     "typescript": "^5.0.2"

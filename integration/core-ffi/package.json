@@ -1,5 +1,6 @@
 {
-	"name": "core-ffi",
+	"name": "@types/core-ffi",
 	"version": "0.1.0",
-	"types": "ffi"
+	"types": "ffi",
+	"private": true
 }
