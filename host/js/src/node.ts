@@ -110,8 +110,7 @@ export class Client {
       this.assetsPath = options.assetsPath;
     }
 
-    // TODO properly load core
-    this.corePath = `${__dirname}/../../../core/dist/core-async.wasm`;
+    this.corePath = `${__dirname}/../assets/core-async.wasm`;
 
     this.wasi = new WASI({
       env: process.env
