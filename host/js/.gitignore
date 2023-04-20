@@ -1,2 +1,3 @@
 node_modules/
 dist/
+assets/core-async.wasm

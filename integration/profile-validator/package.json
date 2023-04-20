@@ -4,13 +4,13 @@
   "license": "MIT",
   "private": true,
   "devDependencies": {
-    "@types/core-ffi": "../core-ffi",
+    "@types/core-ffi": "*",
     "esbuild": "^0.17.15",
     "rimraf": "^4.4.1",
     "typescript": "^5.0.3"
   },
   "dependencies": {
-    "map-std": "../map-std"
+    "@superfaceai/map-std": "*"
   },
   "scripts": {
     "check": "tsc -p tsconfig.json -noEmit",

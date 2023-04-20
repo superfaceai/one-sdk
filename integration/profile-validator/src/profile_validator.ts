@@ -1,5 +1,5 @@
-import type { AnyValue } from 'map-std/types/unstable';
-import { unstable } from 'map-std';
+import type { AnyValue } from '@superfaceai/map-std/types/unstable';
+import { unstable } from '@superfaceai/map-std';
 
 import { parseRuleResult, profileRules, Source } from './parser';
 import { ProfileParameterValidator, ok, err } from './validator';

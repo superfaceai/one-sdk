@@ -41,20 +41,10 @@ function ExampleUsecaseImplementation() {
   const url = `https://swapi.dev/api/people/${input.id}`;
 
   const options = {
-    method: 'POST',
+    method: 'GET',
     headers: {
       'Accept': 'application/json',
-    },
-    security: {
-      "type": "apikey",
-      "in": "body",
-      "name": "data",
-      "bodyType": "json",
-      "apikey": "$SECRET_NAME"
-    },
-    body: {
-      data: {}
-    },
+    }
   };
 
   const response = std.unstable.fetch(url, options).response();

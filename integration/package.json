@@ -1,0 +1,10 @@
+{
+  "name": "@superfaceai/integration",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "core-ffi",
+    "map-std",
+    "profile-validator"
+  ]
+}
