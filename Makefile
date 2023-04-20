@@ -20,19 +20,19 @@ WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk
 # Core
 CORE_BUILD=core/target/wasm32-wasi/${mode}/superface_core.wasm
 CORE_DIST_FOLDER=core/dist
-CORE_WASM="${CORE_DIST_FOLDER}/core.wasm"
-CORE_ASYNCIFY_WASM="${CORE_DIST_FOLDER}/core-async.wasm"
+CORE_WASM=${CORE_DIST_FOLDER}/core.wasm
+CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/core-async.wasm
 CORE_JS_ASSETS=core/core/assets/js
-CORE_JS_ASSETS_MAP_STD="${CORE_JS_ASSETS}/map_std.js"
-CORE_JS_ASSETS_PROFILE_VALIDATOR="${CORE_JS_ASSETS}/profile_validator.js"
+CORE_JS_ASSETS_MAP_STD=${CORE_JS_ASSETS}/map_std.js
+CORE_JS_ASSETS_PROFILE_VALIDATOR=${CORE_JS_ASSETS}/profile_validator.js
 
 # Integration
 MAP_STD=integration/map-std/dist/map_std.js
 PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
 
 # Hosts
-HOST_JS_ASSETS=host/js/assets
-HOST_JS_ASSETS_WASM_CORE="${HOST_JS_ASSETS}/core-async.wasm"
+HOST_JS_ASSETS=host/js/common/assets
+HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/core-async.wasm
 
 all: clean build
 
@@ -73,7 +73,7 @@ ${CORE_ASYNCIFY_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
 	wasm-opt -O2 --asyncify --pass-arg=asyncify-asserts ${CORE_BUILD} --output ${CORE_ASYNCIFY_WASM}
 
 clean_core:
-	rm -r core/dist core/target
+	rm -rf core/dist core/target
 
 build_integration: ${MAP_STD} ${PROFILE_VALIDATOR}
 
@@ -84,14 +84,16 @@ ${PROFILE_VALIDATOR}:
 	cd integration && yarn install && yarn workspace profile-validator build
 
 clean_integration:
-	rm -r integration/map-std/dist integration/profile-validator/dist
+	rm -rf integration/map-std/dist integration/profile-validator/dist
 
 build_hosts: build_host_node
 clean_hosts:
-	rm -r host/js/assets host/js/dist
+	rm -rf ${HOST_JS_ASSETS} host/js/dist
 
-build_host_node: ${HOST_JS_ASSETS_WASM_CORE}
-	cd host/js && yarn install && yarn build
+build_host_js_common: ${HOST_JS_ASSETS_WASM_CORE}
+	cd host/js && yarn install && yarn workspace @superfaceai/one-sdk-common build	
+build_host_node: build_host_js_common
+	cd host/js && yarn workspace @superfaceai/one-sdk-node build
 
 ${HOST_JS_ASSETS_WASM_CORE}: ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${HOST_JS_ASSETS}

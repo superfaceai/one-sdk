@@ -1,4 +1,4 @@
-const { Client } = require('../host/js/dist/node');
+const { Client } = require('../host/js/node_modules/@superfaceai/one-sdk-node');
 
 async function main() {
   const superface = new Client({ assetsPath: process.argv[2] });

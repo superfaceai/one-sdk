@@ -1,15 +1,9 @@
 {
-  "name": "host_js",
+  "name": "@superfaceai/host",
   "version": "0.1.0",
-  "main": "dist/index.js",
-  "license": "MIT",
-  "dependencies": {},
-  "devDependencies": {
-    "@types/node": "^18.15.11",
-    "rimraf": "^4.4.0",
-    "typescript": "^5.0.2"
-  },
-  "scripts": {
-    "build": "rimraf dist; tsc -p tsconfig.json"
-  }
+  "private": true,
+  "workspaces": [
+    "common",
+    "node"
+  ]
 }
