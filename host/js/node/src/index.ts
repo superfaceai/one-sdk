@@ -2,7 +2,7 @@ import fs, { FileHandle } from 'fs/promises';
 import { resolve } from 'path';
 import { WASI } from 'wasi';
 
-import { App, HandleMap } from '@superfaceai/one-sdk-common';
+import { App, HandleMap, coreModule as corePath } from '@superfaceai/one-sdk-common';
 import type { TextCoder, FileSystem, Timers, Network } from '@superfaceai/one-sdk-common';
 
 class NodeTextCoder implements TextCoder {
@@ -109,8 +109,7 @@ export class Client {
       this.assetsPath = options.assetsPath;
     }
 
-    // this.corePath = `${__dirname}/../assets/core-async.wasm`;
-    this.corePath = require.resolve('@superfaceai/one-sdk-common/assets/core-async.wasm');
+    this.corePath = require.resolve(corePath);
 
     this.wasi = new WASI({
       env: process.env

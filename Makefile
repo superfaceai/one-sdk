@@ -94,6 +94,8 @@ build_host_js_common: ${HOST_JS_ASSETS_WASM_CORE}
 	cd host/js && yarn install && yarn workspace @superfaceai/one-sdk-common build	
 build_host_node: build_host_js_common
 	cd host/js && yarn workspace @superfaceai/one-sdk-node build
+build_host_cloudflare: build_host_js_common
+	cd host/js && yarn workspace @superfaceai/one-sdk-cloudflare build
 
 ${HOST_JS_ASSETS_WASM_CORE}: ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${HOST_JS_ASSETS}

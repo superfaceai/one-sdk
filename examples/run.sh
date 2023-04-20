@@ -20,6 +20,14 @@ case $1 in
 		node --experimental-wasi-unstable-preview1 ./node_example.js "$ASSETS_PATH" $USECASE $INPUT $VARS $SECRETS
 	;;
 
+	cloudflare)
+		cd ..
+		make build_host_cloudflare
+		cd "$base/cloudflare_worker"
+		yarn install
+		yarn dev
+	;;
+
 	python|py)
 		# FIXME
 		python3 ./python "$CORE" "$MAP" $USECASE
