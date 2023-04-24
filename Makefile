@@ -37,6 +37,7 @@ HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/core-async.wasm
 all: clean build
 
 .DEFAULT: all
+.PHONY: ${CORE_BUILD} ${MAP_STD} ${PROFILE_VALIDATOR}
 
 deps: deps_core deps_integration deps_hosts
 build: build_core build_integration build_hosts
@@ -86,7 +87,7 @@ ${PROFILE_VALIDATOR}:
 clean_integration:
 	rm -rf integration/map-std/dist integration/profile-validator/dist
 
-build_hosts: build_host_node
+build_hosts: build_host_node build_host_cloudflare
 clean_hosts:
 	rm -rf ${HOST_JS_ASSETS} host/js/dist
 

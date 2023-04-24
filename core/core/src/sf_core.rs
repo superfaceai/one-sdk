@@ -17,7 +17,7 @@ use interpreter_js::JsInterpreter;
 use map_std::{unstable::MapValue, MapInterpreter};
 use tracing::instrument;
 
-use crate::profile_validator::ProfileValidator;
+// use crate::profile_validator::ProfileValidator;
 
 struct DocumentCacheEntry {
     store_time: Instant,
@@ -39,6 +39,7 @@ pub struct SuperfaceCore {
 impl SuperfaceCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
 
+    // TODO: this is only illustrative - should be configurable from the host and possbily separately for each document
     const MAX_CACHE_TIME: Duration = Duration::from_secs(3);
 
     // TODO: Use thiserror and define specific errors
@@ -49,10 +50,15 @@ impl SuperfaceCore {
     }
 
     fn cache_document(&mut self, url: &str) -> anyhow::Result<()> {
+        let span = tracing::span!(tracing::Level::DEBUG, "cache_document");
+        let _guard = span.enter();
+        
+        tracing::debug!(url);
         match self.document_cache.get(url) {
             Some(DocumentCacheEntry { store_time, .. })
                 if store_time.elapsed() <= Self::MAX_CACHE_TIME =>
             {
+                tracing::debug!("already cached");
                 return Ok(())
             }
             _ => (),
@@ -96,6 +102,14 @@ impl SuperfaceCore {
                 .body()
                 .read_to_end(&mut data)
                 .context("Failed to read response body")?;
+        }
+        match std::str::from_utf8(&data) {
+            Err(_) => {
+                tracing::debug!("bytes: {:?}", data);
+            }
+            Ok(data_str) => {
+                tracing::debug!(data_str);
+            }
         }
 
         self.document_cache.insert(

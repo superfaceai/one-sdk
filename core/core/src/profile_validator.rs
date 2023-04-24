@@ -1,3 +1,5 @@
+#![allow(dead_code)] // TODO: validator broken? always has been
+
 use std::collections::BTreeMap;
 
 use thiserror::Error;
