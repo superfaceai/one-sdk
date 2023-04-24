@@ -9,8 +9,9 @@ CORE_ASYNC="$base/../core/dist/core-async.wasm"
 ASSETS_PATH="$base/../examples/Basic"
 USECASE=Example
 INPUT='{"id":1}'
-VARS='{"MY_VAR":"variable_value"}'
-SECRETS='{"SECRET_NAME":"supersecret","USER":"superuser","PASSWORD":"superpassword"}'
+PROVIDER=localhost
+PARAMETERS='{"PARAM":"parameter_value"}'
+SECURITY='{"basic_auth":{"user":"username","password":"password"}}'
 
 mode=${2:-debug}
 
@@ -19,7 +20,7 @@ case $1 in
 		cd ..
 		make build_host_node mode=$mode
 		cd "$base"
-		node --experimental-wasi-unstable-preview1 ./node_example.js "$ASSETS_PATH" $USECASE $INPUT $VARS $SECRETS
+		node --experimental-wasi-unstable-preview1 ./node_example.js $ASSETS_PATH $PROFILE $USECASE $INPUT $PROVIDER $PARAMETERS $SECURITY
 	;;
 
 	cloudflare)
