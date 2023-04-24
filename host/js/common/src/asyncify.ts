@@ -3,7 +3,7 @@
 // We can affort to be less defensive against the code that uses this (since we control it), so we don't use Proxies nor WeakMaps.
 // We also add support for our extension to asyncify - unwind stack allocation with the help of the core.
 
-enum AsyncifyState {
+export enum AsyncifyState {
   Normal = 0,
   Unwinding = 1,
   Rewinding = 2
@@ -72,7 +72,7 @@ export class Asyncify {
         // -> export[rewinding] -> wasm[rewinding] -> import[rewinding]
         case AsyncifyState.Rewinding: {
           // we just rewound into this import, resolved value is ready and we will return it
-          this.exports!!.asyncify_stop_rewind();
+          this.exports!.asyncify_stop_rewind();
           const value = this.storedValue as R;
           this.storedValue = undefined;
           return value; // -> wasm[normal]
@@ -83,7 +83,7 @@ export class Asyncify {
           // we entered this import from host call
           // we will store this value in `pendingValue` and unwind
           this.storedValue = fn(...args);
-          this.exports!!.asyncify_start_unwind(this.dataAddress);
+          this.exports!.asyncify_start_unwind(this.dataAddress);
 
           return dummyValue; // -> wasm[unwinding] -> export[unwinding]
         };
@@ -106,14 +106,14 @@ export class Asyncify {
         switch (state) {
           // -> export[normal] -> wasm[normal] -> import[normal] -> wasm[unwinding] -> export[unwinding]
           case AsyncifyState.Unwinding: {
-            this.exports!!.asyncify_stop_unwind(); // in theory, another export could be called while wait for this one, but that requires careful synchronization
+            this.exports!.asyncify_stop_unwind(); // in theory, another export could be called while wait for this one, but that requires careful synchronization
             this.storedValue = await this.storedValue;
 
             state = this.getState();
             if (state !== AsyncifyState.Normal) {
               throw new Error(`Invalid state ${state} after awaiting value in export`);
             }
-            this.exports!!.asyncify_start_rewind(this.dataAddress);
+            this.exports!.asyncify_start_rewind(this.dataAddress);
             result = fn(...args); // -> wasm[rewinding] -> import[rewinding]
           } break;
 
@@ -128,7 +128,7 @@ export class Asyncify {
     }
   }
 
-  private getState(): AsyncifyState {
-    return this.exports!!.asyncify_get_state() as AsyncifyState;
+  public getState(): AsyncifyState {
+    return this.exports!.asyncify_get_state() as AsyncifyState;
   }
 }

@@ -1,32 +1,30 @@
 import type { TextCoder, AppContext } from './app';
 import { HandleMap } from './handle_map';
-import { Asyncify } from './asyncify';
+import { Asyncify, AsyncifyState } from './asyncify';
 
 type AbiResult = number;
 type Ptr<T> = number;
 type Size = number;
 
 type Fn<A extends unknown[], R> = (...args: A) => R;
-function strace<A extends unknown[], R>(name: string, fn: Fn<A, R>): Fn<A, R> {
+function strace<A extends unknown[], R>(name: string, fn: Fn<A, R>, asyncify: Asyncify): Fn<A, R> {
   return (...args: A): R => {
     const result: any = fn(...args);
 
-    if ((fn as any)[Symbol.toStringTag] === 'AsyncFunction') {
-      return result.then((result: any) => {
-        console.debug(`host: [strace] ${name}(${args}) = ${result}`);
-        return result;
-      });
+    if (asyncify.getState() === AsyncifyState.Normal) {
+      console.debug(`host: [strace] ${name}(${args}) = ${result}`);
+    } else {
+      console.debug(`host: [strace] ${name}(${args}) = <async suspended (${result})>`);
     }
-    console.debug(`host: [strace] ${name}(${args}) = ${result}`);
 
     return result;
   }
 }
-function strace_module(moduleName: string, module: WebAssembly.ModuleImports): WebAssembly.ModuleImports {
+function strace_module(moduleName: string, module: WebAssembly.ModuleImports, asyncify: Asyncify): WebAssembly.ModuleImports {
   for (const fnName of Object.keys(module)) {
     const fn: any = module[fnName];
     const name = `${moduleName}::${fnName}`;
-    module[fnName] = strace(name, fn);
+    module[fnName] = strace(name, fn, asyncify);
   }
 
   return module;
@@ -66,6 +64,7 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
       app.memoryBytes.subarray(msg_ptr, msg_ptr + msg_len)
     ));
     const response = await app.handleMessage(msg);
+    console.log('host: message-response:', response);
   
     let messageHandle = 0;
     const responseBytes = textCoder.encodeUtf8(JSON.stringify(response));
@@ -117,6 +116,6 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
       stream_read: asyncify.wrapImport(__export_stream_read, 0),
       stream_write: asyncify.wrapImport(__export_stream_write, 0),
       stream_close: asyncify.wrapImport(__export_stream_close, 0)
-    })
+    }, asyncify)
   }
 }

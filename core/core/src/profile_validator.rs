@@ -1,3 +1,5 @@
+#![allow(dead_code)] // TODO: validator broken? always has been
+
 use std::collections::BTreeMap;
 
 use thiserror::Error;
@@ -73,6 +75,7 @@ impl ProfileValidator {
     }
 
     pub fn validate_input(&mut self, input: MapValue) -> Result<(), ProfileValidatorError> {
+        tracing::trace!("ProfileValidator::validate_input: {:?}", input);
         self.interpreter.set_input(
             MapValue::Object(BTreeMap::from_iter([
                 ("input".into(), input),
@@ -97,6 +100,8 @@ impl ProfileValidator {
         &mut self,
         result: Result<MapValue, MapValue>,
     ) -> Result<(), ProfileValidatorError> {
+        tracing::trace!("ProfileValidator::validate_output: {:?}", result);
+
         match result {
             Ok(res) => {
                 let val = MapValue::Object(BTreeMap::from_iter([

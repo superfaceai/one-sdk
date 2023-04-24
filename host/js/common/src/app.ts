@@ -199,6 +199,10 @@ export class App implements AppContext {
 
   async loadCore(wasm: BufferSource) {
     const module = await WebAssembly.compile(wasm);
+    await this.loadCoreModule(module);
+  }
+
+  async loadCoreModule(module: WebAssembly.Module) {
     const [instance, asyncify] = await Asyncify.instantiate(module, (asyncify) => this.importObject(asyncify));
 
     this.wasi.initialize(instance);
@@ -263,7 +267,7 @@ export class App implements AppContext {
       case 'perform-input':
         return {
           kind: 'ok',
-          profile_url: this.performState!!.profileUrl,
+          profile_url: this.performState!.profileUrl,
           map_url: this.performState!.mapUrl,
           usecase: this.performState!.usecase,
           map_input: this.performState!.input,

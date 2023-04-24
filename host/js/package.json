@@ -4,6 +4,7 @@
   "private": true,
   "workspaces": [
     "common",
-    "node"
+    "node",
+    "cloudflare"
   ]
 }

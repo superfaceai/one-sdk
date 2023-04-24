@@ -1,0 +1,13 @@
+{
+  "name": "@superfaceai/one-sdk-cloudflare",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-wasi": "^0.0.5",
+    "@superfaceai/one-sdk-common": "*"
+  },
+  "scripts": {
+    "build": "rimraf dist; esbuild src/index.ts --bundle --loader:.wasm=copy --outdir=dist --format=esm"
+  }
+}
