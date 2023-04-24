@@ -91,7 +91,7 @@ impl InterpreterState {
 
     fn resolve_security(&self, params: &mut MapHttpRequest) -> Result<(), HttpCallError> {
         match &params.security {
-            Security::Http(HttpSecurity::Basic { user, password }) => {
+            Some(Security::Http(HttpSecurity::Basic { user, password })) => {
                 let user = self.resolve_secret(&user)?;
                 let password = self.resolve_secret(&password)?;
 
@@ -103,10 +103,10 @@ impl InterpreterState {
                     .headers
                     .insert("Authorization".to_string(), basic_auth);
             }
-            Security::Http(HttpSecurity::Bearer {
+            Some(Security::Http(HttpSecurity::Bearer {
                 bearer_format: _,
                 token,
-            }) => {
+            })) => {
                 let token = self.resolve_secret(token)?;
                 let digest_auth = vec![format!("Bearer {}", token)];
 
@@ -114,12 +114,12 @@ impl InterpreterState {
                     .headers
                     .insert("Authorization".to_string(), digest_auth);
             }
-            Security::ApiKey {
+            Some(Security::ApiKey {
                 r#in,
                 name,
                 apikey,
                 body_type,
-            } => {
+            }) => {
                 let apikey = self.resolve_secret(apikey)?;
 
                 match (r#in, body_type) {
@@ -191,7 +191,8 @@ impl InterpreterState {
                         ));
                     }
                 }
-            }
+            },
+            None => ()
         }
 
         Ok(())

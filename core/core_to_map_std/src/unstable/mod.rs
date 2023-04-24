@@ -163,7 +163,7 @@ pub struct HttpRequest {
     /// Body as bytes.
     pub body: Option<Vec<u8>>,
     /// Security configuration
-    pub security: Security, // TODO: make it optional
+    pub security: Option<Security>
 }
 pub struct HttpResponse {
     /// Status code of the response.
@@ -237,7 +237,7 @@ define_exchange_map_to_core! {
             url: String,
             headers: HeadersMultiMap,
             query: MultiMap,
-            security: Security,
+            security: Option<Security>,
             body: Option<Vec<u8>>,
         } -> enum Response {
             Ok {

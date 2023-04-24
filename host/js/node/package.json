@@ -1,0 +1,15 @@
+{
+  "name": "@superfaceai/one-sdk-node",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@superfaceai/one-sdk-common": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.11"
+  },
+  "scripts": {
+    "build": "rimraf dist; tsc -p tsconfig.json"
+  }
+}
