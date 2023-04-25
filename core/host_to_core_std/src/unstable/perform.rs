@@ -15,10 +15,10 @@ define_exchange_core_to_host! {
             usecase: String,
             /// Input passed into the map.
             map_input: HostValue,
-            /// Variables passed to map.
-            map_vars: HostValue,
-            /// Secrets used to resolve security values.
-            map_secrets: HostValue
+            /// Integrations parameters.
+            map_parameters: HostValue,
+            /// Security values
+            map_security: HostValue
         },
         Err {
             error: String
@@ -44,8 +44,8 @@ pub struct PerformInput {
     pub map_url: String,
     pub usecase: String,
     pub map_input: HostValue,
-    pub map_vars: HostValue,
-    pub map_secrets: HostValue,
+    pub map_parameters: HostValue,
+    pub map_security: HostValue,
 }
 pub fn perform_input() -> PerformInput {
     let response = PerformInputRequest::new()
@@ -58,15 +58,15 @@ pub fn perform_input() -> PerformInput {
             map_url,
             usecase,
             map_input,
-            map_vars,
-            map_secrets,
+            map_parameters,
+            map_security,
         } => PerformInput {
             profile_url,
             map_url,
             usecase,
             map_input,
-            map_vars,
-            map_secrets,
+            map_parameters,
+            map_security,
         },
         PerformInputResponse::Err { error } => panic!("perform-input error: {}", error),
     }
@@ -120,9 +120,12 @@ mod test {
             "map_url": "foo",
             "usecase": "bar",
             "map_input": true,
-            "map_vars": null,
-            "map_secrets": {
-                "TOKEN": "banana"
+            "map_parameters": null,
+            "map_security": {
+                "basic": {
+                    "user": "username",
+                    "password": "pass"
+                }
             }
         });
 
@@ -132,19 +135,28 @@ mod test {
                 map_url,
                 usecase,
                 map_input,
-                map_vars,
-                map_secrets,
+                map_parameters,
+                map_security,
             } => {
                 assert_eq!(profile_url, "quz");
                 assert_eq!(map_url, "foo");
                 assert_eq!(usecase, "bar");
                 assert_eq!(map_input, HostValue::Bool(true));
-                assert_eq!(map_vars, HostValue::None);
+                assert_eq!(map_parameters, HostValue::None);
                 assert_eq!(
-                    map_secrets,
+                    map_security,
                     HostValue::Object(BTreeMap::from([(
-                        String::from("TOKEN"),
-                        HostValue::String(String::from("banana"))
+                        String::from("basic"),
+                        HostValue::Object(BTreeMap::from([
+                            (
+                                String::from("user"),
+                                HostValue::String(String::from("username"))
+                            ),
+                            (
+                                String::from("password"),
+                                HostValue::String(String::from("pass"))
+                            ),
+                        ]))
                     )]))
                 );
             }

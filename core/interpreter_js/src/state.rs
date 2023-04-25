@@ -50,7 +50,7 @@ impl<T> HandleMap<T> {
 pub(super) struct InterpreterState {
     http_requests: HandleMap<HttpRequest>,
     streams: HandleMap<IoStream>,
-    secrets: Option<HashMap<String, String>>,
+    security: Option<MapValue>,
     map_input: Option<MapValue>,
     map_output: Option<Result<MapValue, MapValue>>,
 }
@@ -59,37 +59,28 @@ impl InterpreterState {
         Self {
             http_requests: HandleMap::new(),
             streams: HandleMap::new(),
-            secrets: None,
+            security: None,
             map_input: None,
             map_output: None,
         }
     }
 
-    pub fn set_input(&mut self, input: MapValue, secrets: Option<HashMap<String, String>>) {
+    pub fn set_input(&mut self, input: MapValue, security: Option<MapValue>) {
         assert!(self.map_input.is_none());
-        assert!(self.secrets.is_none());
+        assert!(self.security.is_none());
 
         self.map_input = Some(input);
-        self.secrets = secrets;
+        self.security = security;
     }
 
     pub fn take_output(&mut self) -> Option<Result<MapValue, MapValue>> {
         self.map_output.take()
     }
 
-    fn resolve_secret(&self, secret_name: &str) -> Result<String, HttpCallError> {
-        if let Some(secrets) = &self.secrets {
-            if let Some(name) = secret_name.strip_prefix('$') {
-                if let Some(secret) = secrets.get(name) {
-                    return Ok(secret.clone());
-                }
-            }
-        }
-
-        Err(HttpCallError::MissingSecret(secret_name.to_string()))
-    }
-
     fn resolve_security(&self, params: &mut MapHttpRequest) -> Result<(), HttpCallError> {
+        // TODO
+
+        /*
         match &params.security {
             Some(Security::Http(HttpSecurity::Basic { user, password })) => {
                 let user = self.resolve_secret(&user)?;
@@ -191,9 +182,10 @@ impl InterpreterState {
                         ));
                     }
                 }
-            },
-            None => ()
+            }
+            None => (),
         }
+         */
 
         Ok(())
     }

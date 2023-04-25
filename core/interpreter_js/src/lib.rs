@@ -44,8 +44,8 @@ impl JsInterpreter {
         Ok(Self { context, state })
     }
 
-    pub fn set_input(&mut self, input: MapValue, secrets: Option<HashMap<String, String>>) {
-        self.state.borrow_mut().set_input(input, secrets);
+    pub fn set_input(&mut self, input: MapValue, security: Option<MapValue>) {
+        self.state.borrow_mut().set_input(input, security);
     }
 
     pub fn take_output(&mut self) -> Result<MapValue, MapValue> {
@@ -89,15 +89,15 @@ impl MapInterpreter for JsInterpreter {
         code: &[u8],
         entry: &str,
         input: MapValue,
-        vars: MapValue,
-        secrets: HashMap<String, String>,
+        parameters: MapValue,
+        security: MapValue,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError> {
         self.set_input(
             MapValue::Object(BTreeMap::from_iter([
                 ("input".to_string(), input),
-                ("vars".to_string(), vars),
+                ("parameters".to_string(), parameters),
             ])),
-            Some(secrets),
+            Some(security),
         );
 
         let map_code = std::str::from_utf8(code)
