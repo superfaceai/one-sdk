@@ -17,34 +17,34 @@ function _start(usecaseName) {
 }
 
 function sendSms(input, vars) {
-  const url = 'https://api.tyntec.com/messaging/v1/sms';
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${vars.TWILIO_ACCOUNT_SID}/Messages.json`;
   const options = {
     method: 'POST',
     headers: {
       'Accept': 'application/json',
-      'Content-type': 'application/json'
+      'Content-type': 'application/x-www-form-urlencoded'
     },
     body: {
-      to: input.to,
-      from: vars.from,
-      message: input.text
+      To: input.to,
+      From: vars.from,
+      Body: input.text
     },
     security: {
-      type: 'apikey',
-      in: 'header',
-      name: 'ApiKey',
-      apikey: '$TYNTEC_API_KEY'
+      type: 'http',
+      scheme: 'basic',
+      user: '$TWILIO_ACCOUNT_SID',
+      password: '$TWILIO_AUTH_TOKEN'
     }
   };
 
   const response = std.unstable.fetch(url, options).response();
   const body = response.bodyAuto() ?? {};
-  if (response.status !== 202) {
+  if (response.status !== 201) {
     throw {
-      title: `Unexpected response status ${response.status}`,
-      detail: `HTTP status ${response.status}, expected 202: ${body}`
+      title: 'Unexpected response',
+      detail: `${JSON.stringify(response)} - ${JSON.stringify(body)}`
     };
   }
 
-  return { messageId: body.messageId };
+  return { messageId: body.sid };
 }
