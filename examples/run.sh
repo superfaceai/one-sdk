@@ -4,9 +4,8 @@ base=$(dirname "$0")
 base=$(realpath "$base")
 cd "$base"
 
-CORE="$base/../core/dist/core.wasm"
-CORE_ASYNC="$base/../core/dist/core-async.wasm"
 ASSETS_PATH="$base/../examples/Basic"
+PROFILE="wasm-sdk/example"
 USECASE=Example
 INPUT='{"id":1}'
 PROVIDER=localhost

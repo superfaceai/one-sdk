@@ -4,6 +4,7 @@ import { WASI } from 'wasi';
 
 import { App, HandleMap, coreModule as corePath } from '@superfaceai/one-sdk-common';
 import type { TextCoder, FileSystem, Timers, Network } from '@superfaceai/one-sdk-common';
+import { SecurityValuesMap } from '@superfaceai/one-sdk-common/src/security';
 
 class NodeTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -92,11 +93,12 @@ export type ClientOptions = {
 };
 
 export type ClientPerformOptions = {
-  vars?: Record<string, string>;
-  secrets?: Record<string, string>;
+  provider: string; // TODO: is there a way to make it optional?
+  parameters?: Record<string, string>;
+  security?: SecurityValuesMap;
 };
 
-export class Client {
+class InternalClient {
   public assetsPath: string = process.cwd();
 
   private corePath: string;
@@ -129,25 +131,21 @@ export class Client {
     void this.teardown();
   }
 
-  public async perform(usecase: string, input?: any, options?: ClientPerformOptions): Promise<any> {
+  public async perform(
+    profile: string,
+    provider: string,
+    usecase: string,
+    input?: unknown,
+    parameters: Record<string, string> = {},
+    security: SecurityValuesMap = {}
+  ): Promise<unknown> {
     await this.setup();
 
-    const profileUrl = this.resolveProfileUrl();
-    const mapUrl = this.resolveMapUrl(usecase);
+    const profileUrl = this.resolveProfileUrl(profile);
+    const providerUrl = this.resolveProviderUrl(provider);
+    const mapUrl = this.resolveMapUrl(profile, provider);
 
-    // TODO resolve variables
-    const vars = options?.vars ?? {};
-
-    // TODO resolve secrets
-    const secrets = options?.secrets ?? {};
-
-    return await this.app.perform(profileUrl, mapUrl, usecase, input, vars, secrets);
-  }
-
-  private initProcessHooks() {
-    process.on('beforeExit', async () => {
-      await this.teardown();
-    });
+    return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
   }
 
   private async setup() {
@@ -163,28 +161,85 @@ export class Client {
     this.ready = true;
   }
 
+  public resolveProfileUrl(profile: string): string {
+    const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
+    const path = resolve(this.assetsPath, `${resolvedProfile}.supr`);
+
+    if (fs.stat(path) === undefined) {
+      throw new Error(`Profile file does not exist, path: ${path}`);
+    }
+
+    return `file://${path}`;
+  }
+
+  public resolveMapUrl(profile: string, provider?: string): string {
+    const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
+    const path = resolve(this.assetsPath, `${resolvedProfile}.${provider}.js`);
+
+    if (fs.stat(path) === undefined) {
+      throw new Error(`Map file does not exist, path: ${path}`);
+    }
+
+    return `file://${path}`;
+  }
+
+  public resolveProviderUrl(provider: string): string {
+    const path = resolve(this.assetsPath, `${provider}.provider.json`);
+
+    if (fs.stat(path) === undefined) {
+      throw new Error(`Provider file does not exist, path: ${path}`);
+    }
+
+    return `file://${path}`;
+  }
+
+  private initProcessHooks() {
+    process.on('beforeExit', async () => {
+      await this.teardown();
+    });
+  }
+
   private async teardown() {
     await this.app.teardown();
     this.ready = false;
   }
+}
 
-  private resolveProfileUrl(): string {
-    const path = resolve(this.assetsPath, 'profile.supr');
+export class Client {
+  private internal: InternalClient;
 
-    if (fs.stat(path) === undefined) {
-      throw new Error('Profile file does not exist');
-    }
-
-    return `file://${path}`;
+  constructor(readonly options: ClientOptions = {}) {
+    this.internal = new InternalClient(options);
   }
 
-  private resolveMapUrl(usecase: string): string {
-    const path = resolve(this.assetsPath, `${usecase}.js`);
+  public destroy() {
+    this.internal.destroy();
+  }
 
-    if (fs.stat(path) === undefined) {
-      throw new Error(`Map file does not exist, usecase: ${usecase}`);
-    }
+  public async getProfile(name: string): Promise<Profile> {
+    return await Profile.loadLocal(this.internal, name);
+  }
+}
 
-    return `file://${path}`;
+export class Profile {
+  private constructor(private readonly internal: InternalClient, public readonly name: string, public readonly url: string) {
+  }
+
+  public static async loadLocal(internal: InternalClient, name: string): Promise<Profile> {
+    const profileUrl = internal.resolveProfileUrl(name);
+    return new Profile(internal, name, profileUrl);
+  }
+
+  public getUseCase(usecaseName: string): UseCase {
+    return new UseCase(this.internal, this, usecaseName);
+  }
+}
+
+export class UseCase {
+  constructor(private readonly internal: InternalClient, private readonly profile: Profile, public readonly name: string) {
+  }
+
+  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<TResult> {
+    return await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security) as TResult;
   }
 }

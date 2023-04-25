@@ -1,7 +1,7 @@
 const { Client } = require('../host/js/node_modules/@superfaceai/one-sdk-node');
 
 async function main() {
-  const superface = new Client({ assetsPath: process.argv[2] });
+  const client = new Client({ assetsPath: process.argv[2] });
 
   for (let i = 0; i < 3; i += 1) {
     const profile = await client.getProfile(process.argv[3]);
