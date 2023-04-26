@@ -6,9 +6,12 @@ use crate::abi::{AbiResultRepr, Handle, MessageFn, Ptr, Size, StreamFn};
 pub mod fs;
 pub mod http;
 pub mod perform;
+pub mod provider;
 
 mod value;
 pub use value::HostValue;
+pub use value::SecurityValue;
+pub use value::SecurityValuesMap;
 mod stream;
 pub use stream::IoStream;
 

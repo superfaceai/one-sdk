@@ -1,14 +1,13 @@
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashMap},
-    rc::Rc,
-};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
 use quickjs_wasm_rs::Context;
 use thiserror::Error;
 
-use map_std::{unstable::MapValue, MapInterpreter, MapInterpreterRunError};
+use map_std::{
+    unstable::{security::SecurityMap, MapValue},
+    MapInterpreter, MapInterpreterRunError,
+};
 
 mod state;
 use state::InterpreterState;
@@ -44,7 +43,7 @@ impl JsInterpreter {
         Ok(Self { context, state })
     }
 
-    pub fn set_input(&mut self, input: MapValue, security: Option<MapValue>) {
+    pub fn set_input(&mut self, input: MapValue, security: Option<SecurityMap>) {
         self.state.borrow_mut().set_input(input, security);
     }
 
@@ -87,15 +86,16 @@ impl MapInterpreter for JsInterpreter {
     fn run(
         &mut self,
         code: &[u8],
-        entry: &str,
+        usecase: &str,
         input: MapValue,
         parameters: MapValue,
-        security: MapValue,
+        security: SecurityMap,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError> {
         self.set_input(
             MapValue::Object(BTreeMap::from_iter([
                 ("input".to_string(), input),
                 ("parameters".to_string(), parameters),
+                // TODO: resolved provider
             ])),
             Some(security),
         );
@@ -103,10 +103,12 @@ impl MapInterpreter for JsInterpreter {
         let map_code = std::str::from_utf8(code)
             .context("Code must be valid utf8 text")
             .map_err(fmt_error)?;
+
         if map_code.len() == 0 {
             return Err(MapInterpreterRunError::MapCodeEmpty);
         }
-        let bundle = format!("{}\n\n_start('{}');", map_code, entry);
+
+        let bundle = format!("{}\n\n_start('{}');", map_code, usecase);
 
         self.eval_code("map.js", &bundle)
             .context("Failed to run map bundle")

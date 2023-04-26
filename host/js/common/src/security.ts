@@ -16,4 +16,4 @@ export type BearerTokenSecurityValues = IdBase & {
 };
 
 export type SecurityValues = ApiKeySecurityValues | BasicAuthSecurityValues | BearerTokenSecurityValues;
-export type SecurityValuesMap = { [key: string]: SecurityValues };
+export type SecurityValuesMap = { [key: string]: Omit<SecurityValues, 'id'> };

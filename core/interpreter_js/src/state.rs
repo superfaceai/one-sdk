@@ -1,14 +1,11 @@
-use std::{
-    collections::HashMap,
-    io::{Read, Write},
-};
+use std::io::{Read, Write};
 
 use base64::Engine;
 use serde_json::Value;
 use slab::Slab;
 
 use map_std::unstable::{
-    security::{ApiKeyBodyType, ApiKeyPlacement, HttpSecurity, Security},
+    security::{ApiKeyBodyType, ApiKeyPlacement, HttpSecurity, Security, SecurityMap},
     HttpCallError, HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
     HttpResponse as MapHttpResponse, MapStdUnstable, MapValue, SetOutputError, TakeInputError,
 };
@@ -50,7 +47,7 @@ impl<T> HandleMap<T> {
 pub(super) struct InterpreterState {
     http_requests: HandleMap<HttpRequest>,
     streams: HandleMap<IoStream>,
-    security: Option<MapValue>,
+    security: Option<SecurityMap>,
     map_input: Option<MapValue>,
     map_output: Option<Result<MapValue, MapValue>>,
 }
@@ -65,7 +62,7 @@ impl InterpreterState {
         }
     }
 
-    pub fn set_input(&mut self, input: MapValue, security: Option<MapValue>) {
+    pub fn set_input(&mut self, input: MapValue, security: Option<SecurityMap>) {
         assert!(self.map_input.is_none());
         assert!(self.security.is_none());
 
@@ -78,14 +75,25 @@ impl InterpreterState {
     }
 
     fn resolve_security(&self, params: &mut MapHttpRequest) -> Result<(), HttpCallError> {
-        // TODO
+        let security = match params.security {
+            None => return Ok(()),
+            Some(ref security) => security,
+        };
 
-        /*
-        match &params.security {
+        let security_config = self
+            .security
+            .as_ref()
+            .expect(format!("Security configuration for {} is missing", security).as_str())
+            .get(security.as_str());
+
+        match security_config {
+            None => {
+                return Err(HttpCallError::InvalidSecurityConfiguration(format!(
+                    "Security configuration '{}' is missing",
+                    security
+                )));
+            }
             Some(Security::Http(HttpSecurity::Basic { user, password })) => {
-                let user = self.resolve_secret(&user)?;
-                let password = self.resolve_secret(&password)?;
-
                 let encoded_crendentials = base64::engine::general_purpose::STANDARD
                     .encode(format!("{}:{}", user, password).as_bytes());
                 let basic_auth = vec![format!("Basic {}", encoded_crendentials)];
@@ -98,7 +106,6 @@ impl InterpreterState {
                 bearer_format: _,
                 token,
             })) => {
-                let token = self.resolve_secret(token)?;
                 let digest_auth = vec![format!("Bearer {}", token)];
 
                 params
@@ -110,82 +117,78 @@ impl InterpreterState {
                 name,
                 apikey,
                 body_type,
-            }) => {
-                let apikey = self.resolve_secret(apikey)?;
+            }) => match (r#in, body_type) {
+                (ApiKeyPlacement::Header, _) => {
+                    params
+                        .headers
+                        .insert(name.to_string(), vec![apikey.to_string()]);
+                }
+                (ApiKeyPlacement::Path, _) => {
+                    params.url = params.url.replace(&format!("{{{}}}", name), &apikey);
+                }
+                (ApiKeyPlacement::Query, _) => {
+                    params
+                        .query
+                        .insert(name.to_string(), vec![apikey.to_string()]);
+                }
+                (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json)) => {
+                    if let Some(body) = &params.body {
+                        let mut body =
+                            serde_json::from_slice::<serde_json::Value>(&body).map_err(|e| {
+                                HttpCallError::InvalidSecurityConfiguration(format!(
+                                    "Failed to parse body: {}",
+                                    e
+                                ))
+                            })?;
 
-                match (r#in, body_type) {
-                    (ApiKeyPlacement::Header, _) => {
-                        params.headers.insert(name.to_string(), vec![apikey]);
-                    }
-                    (ApiKeyPlacement::Path, _) => {
-                        params.url = params.url.replace(&format!("{{{}}}", name), &apikey);
-                    }
-                    (ApiKeyPlacement::Query, _) => {
-                        params.query.insert(name.to_string(), vec![apikey]);
-                    }
-                    (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json)) => {
-                        if let Some(body) = &params.body {
-                            let mut body = serde_json::from_slice::<serde_json::Value>(&body)
-                                .map_err(|e| {
-                                    HttpCallError::InvalidSecurityConfiguration(format!(
-                                        "Failed to parse body: {}",
-                                        e
-                                    ))
-                                })?;
+                        let keys = if name.starts_with('/') {
+                            name.split('/').filter(|p| !p.is_empty()).collect()
+                        } else {
+                            vec![name.as_str()]
+                        };
 
-                            let keys = if name.starts_with('/') {
-                                name.split('/').filter(|p| !p.is_empty()).collect()
-                            } else {
-                                vec![name.as_str()]
-                            };
+                        if keys.len() == 0 {
+                            return Err(HttpCallError::InvalidSecurityConfiguration(format!(
+                                "Invalid field name '{}'",
+                                name
+                            )));
+                        }
 
-                            if keys.len() == 0 {
+                        let mut key_idx: usize = 0;
+                        let mut nested = &mut body;
+
+                        while key_idx < keys.len() - 1 {
+                            nested = &mut nested[keys[key_idx]];
+
+                            if !nested.is_object() {
                                 return Err(HttpCallError::InvalidSecurityConfiguration(format!(
-                                    "Invalid field name '{}'",
-                                    name
+                                    "Field values on path '/{}' isn't object",
+                                    &keys[0..key_idx + 1].join("/")
                                 )));
                             }
 
-                            let mut key_idx: usize = 0;
-                            let mut nested = &mut body;
-
-                            while key_idx < keys.len() - 1 {
-                                nested = &mut nested[keys[key_idx]];
-
-                                if !nested.is_object() {
-                                    return Err(HttpCallError::InvalidSecurityConfiguration(
-                                        format!(
-                                            "Field values on path '/{}' isn't object",
-                                            &keys[0..key_idx + 1].join("/")
-                                        ),
-                                    ));
-                                }
-
-                                key_idx += 1;
-                            }
-
-                            nested[keys[key_idx]] = Value::from(apikey);
-
-                            params.body = Some(serde_json::to_vec(&body).map_err(|e| {
-                                HttpCallError::InvalidSecurityConfiguration(format!(
-                                    "Failed to serialize body: {}",
-                                    e
-                                ))
-                            })?);
-                        } else {
-                            return Err(HttpCallError::Failed("Body is empty".to_string()));
+                            key_idx += 1;
                         }
-                    }
-                    (ApiKeyPlacement::Body, None) => {
-                        return Err(HttpCallError::InvalidSecurityConfiguration(
-                            "Missing body type".to_string(),
-                        ));
+
+                        nested[keys[key_idx]] = Value::from(apikey.to_string());
+
+                        params.body = Some(serde_json::to_vec(&body).map_err(|e| {
+                            HttpCallError::InvalidSecurityConfiguration(format!(
+                                "Failed to serialize body: {}",
+                                e
+                            ))
+                        })?);
+                    } else {
+                        return Err(HttpCallError::Failed("Body is empty".to_string()));
                     }
                 }
-            }
-            None => (),
+                (ApiKeyPlacement::Body, None) => {
+                    return Err(HttpCallError::InvalidSecurityConfiguration(
+                        "Missing body type".to_string(),
+                    ));
+                }
+            },
         }
-         */
 
         Ok(())
     }

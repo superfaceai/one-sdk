@@ -1,75 +1,66 @@
-use std::collections::BTreeMap;
-
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum SecurityValues {
-    ApiKey { apikey: String },
-    BasicAuth { username: String, password: String },
-    BearerToken { token: String },
+use std::collections::HashMap;
+pub enum ApiKeyPlacement {
+    Header,
+    Body,
+    Path,
+    Query,
 }
-
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum SecurityValuesMap {
-    None,
-    Object(BTreeMap<String, SecurityValues>),
-}
-
-#[cfg(test)]
-mod test {
-    use super::SecurityValuesMap;
-
-    #[test]
-    fn test_all_values() {
-        let security_values_map: SecurityValuesMap = serde_json::from_value(serde_json::json!({
-            "apikey": {
-                "apikey": "foo"
-            },
-            "basic": {
-                "username": "foo",
-                "password": "bar"
-            },
-            "bearer": {
-                "token": "foo"
-            }
-        }))
-        .unwrap();
-
-        match security_values_map {
-            SecurityValuesMap::None => panic!("should not be none"),
-            SecurityValuesMap::Object(map) => {
-                assert_eq!(map.len(), 3);
-                assert!(map.contains_key("apikey"));
-                assert!(map.contains_key("basic"));
-                assert!(map.contains_key("bearer"));
-
-                let api_key = map.get("apikey").unwrap();
-                match api_key {
-                    super::SecurityValues::ApiKey { apikey } => {
-                        assert_eq!(apikey, "foo");
-                    }
-                    _ => panic!("should be apikey"),
-                }
-
-                let basic = map.get("basic").unwrap();
-                match basic {
-                    super::SecurityValues::BasicAuth { username, password } => {
-                        assert_eq!(username, "foo");
-                        assert_eq!(password, "bar");
-                    }
-                    _ => panic!("should be basic"),
-                }
-
-                let bearer = map.get("bearer").unwrap();
-                match bearer {
-                    super::SecurityValues::BearerToken { token } => {
-                        assert_eq!(token, "foo");
-                    }
-                    _ => panic!("should be bearer"),
-                }
-            }
+impl From<sf_std::unstable::provider::ApiKeyPlacement> for ApiKeyPlacement {
+    fn from(value: sf_std::unstable::provider::ApiKeyPlacement) -> Self {
+        match value {
+            sf_std::unstable::provider::ApiKeyPlacement::Header => ApiKeyPlacement::Header,
+            sf_std::unstable::provider::ApiKeyPlacement::Body => ApiKeyPlacement::Body,
+            sf_std::unstable::provider::ApiKeyPlacement::Path => ApiKeyPlacement::Path,
+            sf_std::unstable::provider::ApiKeyPlacement::Query => ApiKeyPlacement::Query,
         }
     }
 }
+
+pub enum ApiKeyBodyType {
+    Json,
+}
+impl From<sf_std::unstable::provider::ApiKeyBodyType> for ApiKeyBodyType {
+    fn from(value: sf_std::unstable::provider::ApiKeyBodyType) -> Self {
+        match value {
+            sf_std::unstable::provider::ApiKeyBodyType::Json => ApiKeyBodyType::Json,
+        }
+    }
+}
+
+pub enum HttpScheme {
+    Basic,
+    Bearer,
+    Digest,
+}
+impl From<sf_std::unstable::provider::HttpScheme> for HttpScheme {
+    fn from(value: sf_std::unstable::provider::HttpScheme) -> Self {
+        match value {
+            sf_std::unstable::provider::HttpScheme::Basic => HttpScheme::Basic,
+            sf_std::unstable::provider::HttpScheme::Bearer => HttpScheme::Bearer,
+            sf_std::unstable::provider::HttpScheme::Digest => HttpScheme::Digest,
+        }
+    }
+}
+
+pub enum HttpSecurity {
+    Basic {
+        user: String,
+        password: String,
+    },
+    Bearer {
+        bearer_format: Option<String>,
+        token: String,
+    },
+}
+
+pub enum Security {
+    ApiKey {
+        r#in: ApiKeyPlacement,
+        name: String,
+        apikey: String,
+        body_type: Option<ApiKeyBodyType>,
+    },
+    Http(HttpSecurity),
+}
+
+pub type SecurityMap = HashMap<String, Security>;

@@ -10,11 +10,18 @@ use sf_std::unstable::{
     fs::{self, OpenOptions},
     http::HttpRequest,
     perform::{perform_input, perform_output, PerformOutput},
-    HostValue,
+    provider::{HttpSecurity, ProviderJson, SecurityScheme},
+    HostValue, SecurityValue, SecurityValuesMap,
 };
 
 use interpreter_js::JsInterpreter;
-use map_std::{unstable::MapValue, MapInterpreter};
+use map_std::{
+    unstable::{
+        security::{Security, SecurityMap},
+        MapValue,
+    },
+    MapInterpreter,
+};
 use tracing::instrument;
 
 // use crate::profile_validator::ProfileValidator;
@@ -168,6 +175,78 @@ impl SuperfaceCore {
         }
     }
 
+    fn prepare_security_map(
+        provider_json: ProviderJson,
+        security_values: SecurityValuesMap,
+    ) -> SecurityMap {
+        let security_schemes = match provider_json.security_schemes {
+            Some(security_schemes) => security_schemes,
+            None => return SecurityMap::new(),
+        };
+
+        let mut security_map = SecurityMap::new();
+
+        for security_scheme in security_schemes {
+            match security_scheme {
+                SecurityScheme::ApiKey {
+                    id,
+                    r#in,
+                    name,
+                    body_type,
+                } => {
+                    let apikey = match security_values.get(&id) {
+                        Some(SecurityValue::ApiKey { apikey }) => apikey,
+                        Some(_) => continue, // TODO Error wrong value type
+                        None => continue, // TODO sentinel type to return error later in resolve_security
+                    };
+
+                    security_map.insert(
+                        id,
+                        Security::ApiKey {
+                            name,
+                            apikey: apikey.to_string(),
+                            r#in: map_std::unstable::security::ApiKeyPlacement::from(r#in),
+                            body_type: body_type
+                                .map(|bt| map_std::unstable::security::ApiKeyBodyType::from(bt)),
+                        },
+                    );
+                }
+                SecurityScheme::Http(HttpSecurity::Basic { id }) => {
+                    let (user, password) = match security_values.get(&id) {
+                        Some(SecurityValue::Basic { user, password }) => (user, password),
+                        Some(_) => continue, // TODO
+                        None => continue,    // TODO
+                    };
+
+                    security_map.insert(
+                        id,
+                        Security::Http(map_std::unstable::security::HttpSecurity::Basic {
+                            user: user.to_string(),
+                            password: password.to_string(),
+                        }),
+                    );
+                }
+                SecurityScheme::Http(HttpSecurity::Bearer { id, bearer_format }) => {
+                    let token = match security_values.get(&id) {
+                        Some(SecurityValue::Bearer { token }) => token,
+                        Some(_) => continue, // TODO
+                        None => continue,    // TODO
+                    };
+
+                    security_map.insert(
+                        id,
+                        Security::Http(map_std::unstable::security::HttpSecurity::Bearer {
+                            token: token.to_string(),
+                            bearer_format: bearer_format,
+                        }),
+                    );
+                }
+            }
+        }
+
+        security_map
+    }
+
     // TODO: use thiserror
     #[instrument(level = "Trace")]
     pub fn send_metrics(&mut self) -> anyhow::Result<()> {
@@ -181,12 +260,25 @@ impl SuperfaceCore {
 
         self.cache_document(&perform_input.profile_url)
             .context("Failed to cache profile")?;
+        self.cache_document(&perform_input.provider_url)
+            .context("Failed to cache provider")?;
         self.cache_document(&perform_input.map_url)
             .context("Failed to cache map")?;
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
         let map_parameters = self.host_value_to_map_value(perform_input.map_parameters); // TODO yes MapValue but limited to None and Object
-        let map_security = self.host_value_to_map_value(perform_input.map_security); // TODO yes MapValue but limited to None and Object
+
+        // TODO resolve provider and services
+        let provider_json = &self
+            .document_cache
+            .get(&perform_input.provider_url)
+            .unwrap()
+            .data;
+
+        let provider_json = serde_json::from_slice::<ProviderJson>(provider_json)
+            .context("Failed to deserialize provider JSON")?;
+
+        let map_security = Self::prepare_security_map(provider_json, perform_input.map_security); // TODO SecurityMap
 
         // let mut profile_validator = ProfileValidator::new(
         //     std::str::from_utf8(
@@ -226,6 +318,7 @@ impl SuperfaceCore {
             .unwrap()
             .data
             .as_slice();
+
         let map_result = interpreter
             .run(
                 map_code,
