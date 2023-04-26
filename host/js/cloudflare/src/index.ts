@@ -210,7 +210,7 @@ export class Client {
     const secrets = options?.secrets ?? {};
 
     return await this.app.perform(
-      'file://grid/profile.supr',
+      `file://grid/${usecase}.supr`,
       `file://grid/${usecase}.suma.js`,
       usecase,
       input,

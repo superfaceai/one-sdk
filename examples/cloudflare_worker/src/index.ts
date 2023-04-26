@@ -2,7 +2,9 @@ import { Client } from '@superfaceai/one-sdk-cloudflare';
 
 // imports as ArrayBuffer - configured in wrangler.toml
 // @ts-ignore
-import profileData from '../grid/profile.supr';
+import profileDataSms from '../grid/send-sms.supr'; // https://superface.ai/communication/send-sms@2.0.1
+// @ts-ignore
+import profileDataEmail from '../grid/send-email.supr'; // https://superface.ai/communication/send-email@2.1.0
 // @ts-ignore
 import mapDataSms from '../grid/send-sms.twilio.suma.js';
 // @ts-ignore
@@ -10,7 +12,8 @@ import mapDataEmail from '../grid/send-email.mailchimp.suma.js';
 
 const client = new Client({
   preopens: {
-    'grid/profile.supr': new Uint8Array(profileData),
+    'grid/send-sms.supr': new Uint8Array(profileDataSms),
+    'grid/send-email.supr': new Uint8Array(profileDataEmail),
     'grid/send-sms.suma.js': new Uint8Array(mapDataSms),
     'grid/send-email.suma.js': new Uint8Array(mapDataEmail),
   }
@@ -69,7 +72,8 @@ export default {
   },
 };
 
-// https://example.super-ela.workers.dev/sms?to=%2B421914261973&text=hi+from+demo
+// https://example.super-ela.workers.dev/sms?to=%2B421914261973&text=hi+from+edge
+// https://console.twilio.com/us1/monitor/logs/sms
 
 // https://example.super-ela.workers.dev/email?to=demo@demo.superface.org&text=well+hello+there
 // https://mandrillapp.com/activity

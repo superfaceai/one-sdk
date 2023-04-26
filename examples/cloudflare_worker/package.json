@@ -5,7 +5,6 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "@cloudflare/workers-wasi": "^0.0.5",
     "@superfaceai/one-sdk-cloudflare": "../../host/js/cloudflare"
   },
   "devDependencies": {
