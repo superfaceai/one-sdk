@@ -13,9 +13,9 @@ pub struct ProviderJson {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ProviderService {
-    id: String,
+    pub id: String,
     #[serde(rename = "baseUrl")]
-    base_url: String,
+    pub base_url: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -25,7 +25,7 @@ pub struct IntegrationParameter {
     default: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum ApiKeyPlacement {
     /// Example:
@@ -68,13 +68,13 @@ pub enum ApiKeyPlacement {
     Query,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum ApiKeyBodyType {
     Json,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum HttpScheme {
     Basic,

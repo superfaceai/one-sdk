@@ -73,10 +73,10 @@ pub enum Security {
 pub type SecurityMap = HashMap<String, Security>;
 
 pub fn prepare_security_map(
-    provider_json: ProviderJson,
-    security_values: SecurityValuesMap,
+    provider_json: &ProviderJson,
+    security_values: &SecurityValuesMap,
 ) -> SecurityMap {
-    let security_schemes = match provider_json.security_schemes {
+    let security_schemes = match &provider_json.security_schemes {
         Some(security_schemes) => security_schemes,
         None => return SecurityMap::new(),
     };
@@ -91,18 +91,18 @@ pub fn prepare_security_map(
                 name,
                 body_type,
             } => {
-                let apikey = match security_values.get(&id) {
+                let apikey = match security_values.get(id) {
                     Some(SecurityValue::ApiKey { apikey }) => apikey,
                     Some(_) => continue, // TODO Error wrong value type
                     None => continue, // TODO sentinel type to return error later in resolve_security
                 };
 
                 security_map.insert(
-                    id,
+                    id.to_owned(),
                     Security::ApiKey {
-                        name,
-                        apikey: apikey.to_string(),
-                        r#in: ApiKeyPlacement::from(r#in),
+                        name: name.to_owned(),
+                        apikey: apikey.to_owned(),
+                        r#in: ApiKeyPlacement::from(*r#in),
                         body_type: body_type.map(|bt| ApiKeyBodyType::from(bt)),
                     },
                 );
@@ -110,34 +110,34 @@ pub fn prepare_security_map(
             sf_std::unstable::provider::SecurityScheme::Http(
                 sf_std::unstable::provider::HttpSecurity::Basic { id },
             ) => {
-                let (user, password) = match security_values.get(&id) {
+                let (user, password) = match security_values.get(id) {
                     Some(SecurityValue::Basic { user, password }) => (user, password),
                     Some(_) => continue, // TODO
                     None => continue,    // TODO
                 };
 
                 security_map.insert(
-                    id,
+                    id.to_owned(),
                     Security::Http(HttpSecurity::Basic {
-                        user: user.to_string(),
-                        password: password.to_string(),
+                        user: user.to_owned(),
+                        password: password.to_owned(),
                     }),
                 );
             }
             sf_std::unstable::provider::SecurityScheme::Http(
                 sf_std::unstable::provider::HttpSecurity::Bearer { id, bearer_format },
             ) => {
-                let token = match security_values.get(&id) {
+                let token = match security_values.get(id) {
                     Some(SecurityValue::Bearer { token }) => token,
                     Some(_) => continue, // TODO
                     None => continue,    // TODO
                 };
 
                 security_map.insert(
-                    id,
+                    id.to_string(),
                     Security::Http(HttpSecurity::Bearer {
                         token: token.to_string(),
-                        bearer_format: bearer_format,
+                        bearer_format: bearer_format.to_owned(),
                     }),
                 );
             }

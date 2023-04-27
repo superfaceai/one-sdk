@@ -89,13 +89,14 @@ impl MapInterpreter for JsInterpreter {
         usecase: &str,
         input: MapValue,
         parameters: MapValue,
+        services: MapValue,
         security: SecurityMap,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError> {
         self.set_input(
             MapValue::Object(BTreeMap::from_iter([
                 ("input".to_string(), input),
                 ("parameters".to_string(), parameters),
-                // TODO: resolved provider
+                ("services".to_string(), services),
             ])),
             Some(security),
         );

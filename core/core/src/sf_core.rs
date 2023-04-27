@@ -16,7 +16,7 @@ use sf_std::unstable::{
 
 use interpreter_js::JsInterpreter;
 use map_std::{
-    unstable::{security::prepare_security_map, MapValue},
+    unstable::{security::prepare_security_map, services::prepare_services_map, MapValue},
     MapInterpreter,
 };
 use tracing::instrument;
@@ -203,7 +203,15 @@ impl SuperfaceCore {
         let provider_json = serde_json::from_slice::<ProviderJson>(provider_json)
             .context("Failed to deserialize provider JSON")?;
 
-        let map_security = prepare_security_map(provider_json, perform_input.map_security); // TODO SecurityMap
+        let map_security = prepare_security_map(&provider_json, &perform_input.map_security); // TODO SecurityMap
+
+        // TODO resolve parameters default values
+        let map_services = match &map_parameters {
+            MapValue::Object(map_parameters) => {
+                prepare_services_map(&provider_json, map_parameters)
+            }
+            _ => anyhow::bail!("Parameters must be an Object"),
+        };
 
         // let mut profile_validator = ProfileValidator::new(
         //     std::str::from_utf8(
@@ -250,6 +258,7 @@ impl SuperfaceCore {
                 &perform_input.usecase,
                 map_input,
                 map_parameters,
+                map_services,
                 map_security,
             )
             .context(format!(

@@ -125,6 +125,7 @@ pub trait MapInterpreter {
         usecase: &str,
         input: MapValue,
         parameters: MapValue,
+        services: MapValue,
         security: SecurityMap,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError>;
 }
