@@ -129,6 +129,7 @@ dependencies = [
 name = "core_to_map_std"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "host_to_core_std",
  "serde",
  "serde_json",

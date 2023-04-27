@@ -12,5 +12,7 @@ serde_json = { workspace = true }
 
 sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
 
+base64 = { workspace = true }
+
 [dev-dependencies]
 sf_std = { path = "../host_to_core_std", package = "host_to_core_std", features = ["stub_ffi"] }
