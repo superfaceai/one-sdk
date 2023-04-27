@@ -16,7 +16,11 @@ use sf_std::unstable::{
 
 use interpreter_js::JsInterpreter;
 use map_std::{
-    unstable::{security::prepare_security_map, services::prepare_services_map, MapValue},
+    unstable::{
+        security::{prepare_provider_parameters, prepare_security_map},
+        services::prepare_services_map,
+        MapValue, MapValueObject,
+    },
     MapInterpreter,
 };
 use tracing::instrument;
@@ -191,27 +195,29 @@ impl SuperfaceCore {
             .context("Failed to cache map")?;
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
-        let map_parameters = self.host_value_to_map_value(perform_input.map_parameters); // TODO yes MapValue but limited to None and Object
+        let mut map_parameters = match perform_input.map_parameters {
+            HostValue::Object(o) => MapValueObject::from_iter(
+                o.into_iter()
+                    .map(|(k, v)| (k, self.host_value_to_map_value(v))),
+            ),
+            HostValue::None => MapValueObject::new(),
+            _ => anyhow::bail!("Parameters must be an Object or None"),
+        };
 
-        // TODO resolve provider and services
         let provider_json = &self
             .document_cache
             .get(&perform_input.provider_url)
             .unwrap()
             .data;
-
         let provider_json = serde_json::from_slice::<ProviderJson>(provider_json)
             .context("Failed to deserialize provider JSON")?;
 
-        let map_security = prepare_security_map(&provider_json, &perform_input.map_security); // TODO SecurityMap
+        let mut provider_parameters = prepare_provider_parameters(&provider_json);
+        provider_parameters.append(&mut map_parameters);
+        map_parameters = provider_parameters;
 
-        // TODO resolve parameters default values
-        let map_services = match &map_parameters {
-            MapValue::Object(map_parameters) => {
-                prepare_services_map(&provider_json, map_parameters)
-            }
-            _ => anyhow::bail!("Parameters must be an Object"),
-        };
+        let map_security = prepare_security_map(&provider_json, &perform_input.map_security); // TODO SecurityMap
+        let map_services = prepare_services_map(&provider_json, &map_parameters);
 
         // let mut profile_validator = ProfileValidator::new(
         //     std::str::from_utf8(
@@ -257,7 +263,7 @@ impl SuperfaceCore {
                 map_code,
                 &perform_input.usecase,
                 map_input,
-                map_parameters,
+                MapValue::Object(map_parameters),
                 map_services,
                 map_security,
             )

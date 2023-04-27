@@ -4,7 +4,7 @@ use base64::Engine;
 
 use sf_std::unstable::{provider::ProviderJson, SecurityValue, SecurityValuesMap};
 
-use super::{HttpCallError, HttpRequest};
+use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
 
 pub enum ApiKeyPlacement {
     Header,
@@ -263,4 +263,18 @@ pub fn resolve_security(
     }
 
     Ok(())
+}
+
+pub fn prepare_provider_parameters(provider_json: &ProviderJson) -> MapValueObject {
+    return provider_json
+        .parameters
+        .as_ref()
+        .map_or(MapValueObject::new(), |params| {
+            MapValueObject::from_iter(params.into_iter().filter(|p| p.default.is_some()).map(
+                |ref i| match &i.default {
+                    Some(default) => (i.name.to_owned(), MapValue::String(default.to_owned())),
+                    None => panic!("None is filtered out"),
+                },
+            ))
+        });
 }

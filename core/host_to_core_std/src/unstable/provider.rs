@@ -20,9 +20,9 @@ pub struct ProviderService {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IntegrationParameter {
-    name: String,
-    description: Option<String>,
-    default: Option<String>,
+    pub name: String,
+    pub description: Option<String>,
+    pub default: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
