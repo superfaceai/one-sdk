@@ -3,9 +3,9 @@ const manifest = {
   provider: 'localhost'
 };
 
-function Example(input, provider, services) {
+function Example({ input, parameters, services }) {
   __ffi.unstable.printDebug('Input:', input);
-  __ffi.unstable.printDebug('Provider:', provider);
+  __ffi.unstable.printDebug('Parameters:', parameters);
   __ffi.unstable.printDebug('Services:', services);
 
   const url = `${services.default}/api/people/${input.id}`;

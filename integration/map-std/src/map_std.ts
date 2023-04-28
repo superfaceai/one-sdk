@@ -13,12 +13,16 @@ globalThis.std = {
 };
 globalThis.Buffer = Buffer;
 
-export type UsecaseFn = (input: unstable.AnyValue, parameters: Record<string, unstable.AnyValue>, services: Record<string, string>) => unstable.AnyValue;
+export type UsecaseFn = (context: {input: unstable.AnyValue, parameters: Record<string, unstable.AnyValue>, services: Record<string, string> }) => unstable.AnyValue;
 globalThis._start = (usecaseName: string): void => {
-  const { input, parameters, services } = globalThis.std.unstable.takeInput() as any;
+  const context = globalThis.std.unstable.takeContext() as Record<string, unstable.AnyValue>;
 
   try {
-    const result = (globalThis[usecaseName] as UsecaseFn)(input, parameters, services);
+    const result = (globalThis[usecaseName] as UsecaseFn)({
+      input: context.input,
+      parameters: context.parameters as Record<string, unstable.AnyValue>,
+      services: context.services as Record<string, string>
+    });
     globalThis.std.unstable.setOutputSuccess(result);
   } catch (e) {
     if (e instanceof unstable.MapError) {

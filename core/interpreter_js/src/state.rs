@@ -5,7 +5,7 @@ use slab::Slab;
 use map_std::unstable::{
     security::{resolve_security, SecurityMap},
     HttpCallError, HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
-    HttpResponse as MapHttpResponse, MapStdUnstable, MapValue, SetOutputError, TakeInputError,
+    HttpResponse as MapHttpResponse, MapStdUnstable, MapValue, SetOutputError, TakeContextError,
 };
 use sf_std::{
     abi::Handle,
@@ -46,7 +46,7 @@ pub(super) struct InterpreterState {
     http_requests: HandleMap<HttpRequest>,
     streams: HandleMap<IoStream>,
     security: Option<SecurityMap>,
-    map_input: Option<MapValue>,
+    map_context: Option<MapValue>,
     map_output: Option<Result<MapValue, MapValue>>,
 }
 impl InterpreterState {
@@ -55,16 +55,16 @@ impl InterpreterState {
             http_requests: HandleMap::new(),
             streams: HandleMap::new(),
             security: None,
-            map_input: None,
+            map_context: None,
             map_output: None,
         }
     }
 
-    pub fn set_input(&mut self, input: MapValue, security: Option<SecurityMap>) {
-        assert!(self.map_input.is_none());
+    pub fn set_context(&mut self, context: MapValue, security: Option<SecurityMap>) {
+        assert!(self.map_context.is_none());
         assert!(self.security.is_none());
 
-        self.map_input = Some(input);
+        self.map_context = Some(context);
         self.security = security;
     }
 
@@ -132,8 +132,10 @@ impl MapStdUnstable for InterpreterState {
         }
     }
 
-    fn take_input(&mut self) -> Result<MapValue, TakeInputError> {
-        self.map_input.take().ok_or(TakeInputError::AlreadyTaken)
+    fn take_context(&mut self) -> Result<MapValue, TakeContextError> {
+        self.map_context
+            .take()
+            .ok_or(TakeContextError::AlreadyTaken)
     }
 
     fn set_output_success(&mut self, output: MapValue) -> Result<(), SetOutputError> {

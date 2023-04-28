@@ -41,6 +41,7 @@ all: clean build
 
 deps: deps_core deps_integration deps_hosts
 build: build_core build_integration build_hosts
+test: test_core
 clean: clean_core clean_integration clean_hosts
 
 deps_core: ${WASI_SDK_FOLDER}
@@ -50,6 +51,9 @@ ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xvf - -C core
 
 build_core: ${WASI_SDK_FOLDER} ${CORE_BUILD} ${CORE_WASM} ${CORE_ASYNCIFY_WASM}
+
+test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
+	cd core && cargo test
 
 ${CORE_BUILD}: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
 	cd core && cargo build --package superface_core --target wasm32-wasi ${FLAGS}

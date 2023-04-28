@@ -57,7 +57,7 @@ impl ProfileValidator {
 
     fn set_profile(&mut self, profile: String) -> Result<(), ProfileValidatorError> {
         tracing::trace!("ProfileValidator::set_profile: {}", profile);
-        self.interpreter.set_input(
+        self.interpreter.set_context(
             MapValue::Object(BTreeMap::from_iter([
                 ("profile".into(), MapValue::String(profile)),
                 ("usecase".into(), MapValue::String(self.usecase.clone())),
@@ -76,7 +76,7 @@ impl ProfileValidator {
 
     pub fn validate_input(&mut self, input: MapValue) -> Result<(), ProfileValidatorError> {
         tracing::trace!("ProfileValidator::validate_input: {:?}", input);
-        self.interpreter.set_input(
+        self.interpreter.set_context(
             MapValue::Object(BTreeMap::from_iter([
                 ("input".into(), input),
                 ("usecase".into(), MapValue::String(self.usecase.clone())),
@@ -108,7 +108,7 @@ impl ProfileValidator {
                     ("result".into(), res),
                     ("usecase".into(), MapValue::String(self.usecase.clone())),
                 ]));
-                self.interpreter.set_input(val, None);
+                self.interpreter.set_context(val, None);
 
                 self.interpreter.eval_bytecode(&self.validator_bytecode)?;
 
@@ -128,7 +128,7 @@ impl ProfileValidator {
                     ("error".into(), err),
                     ("usecase".into(), MapValue::String(self.usecase.clone())),
                 ]));
-                self.interpreter.set_input(val, None);
+                self.interpreter.set_context(val, None);
 
                 self.interpreter.eval_bytecode(&self.validator_bytecode)?;
 
