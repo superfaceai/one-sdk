@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{HostValue, MessageExchange, EXCHANGE_MESSAGE};
+use super::{value::SecurityValuesMap, HostValue, MessageExchange, EXCHANGE_MESSAGE};
 
 define_exchange_core_to_host! {
     struct PerformInputRequest {
@@ -9,16 +9,18 @@ define_exchange_core_to_host! {
         Ok {
             /// Url of the profile.
             profile_url: String,
+            /// Url of the provider.
+            provider_url: String,
             /// Url of the map (e.g. `file://<path>`).
             map_url: String,
             /// Usecase defined in the profile.
             usecase: String,
             /// Input passed into the map.
             map_input: HostValue,
-            /// Variables passed to map.
-            map_vars: HostValue,
-            /// Secrets used to resolve security values.
-            map_secrets: HostValue
+            /// Integrations parameters.
+            map_parameters: HostValue,
+            /// Security values
+            map_security: SecurityValuesMap
         },
         Err {
             error: String
@@ -41,11 +43,12 @@ define_exchange_core_to_host! {
 
 pub struct PerformInput {
     pub profile_url: String,
+    pub provider_url: String,
     pub map_url: String,
     pub usecase: String,
     pub map_input: HostValue,
-    pub map_vars: HostValue,
-    pub map_secrets: HostValue,
+    pub map_parameters: HostValue,
+    pub map_security: SecurityValuesMap,
 }
 pub fn perform_input() -> PerformInput {
     let response = PerformInputRequest::new()
@@ -55,18 +58,20 @@ pub fn perform_input() -> PerformInput {
     match response {
         PerformInputResponse::Ok {
             profile_url,
+            provider_url,
             map_url,
             usecase,
             map_input,
-            map_vars,
-            map_secrets,
+            map_parameters,
+            map_security,
         } => PerformInput {
             profile_url,
+            provider_url,
             map_url,
             usecase,
             map_input,
-            map_vars,
-            map_secrets,
+            map_parameters,
+            map_security,
         },
         PerformInputResponse::Err { error } => panic!("perform-input error: {}", error),
     }
@@ -88,8 +93,6 @@ pub fn perform_output(output: PerformOutput) {
 
 #[cfg(test)]
 mod test {
-    use std::collections::BTreeMap;
-
     use serde_json::json;
 
     use super::{
@@ -117,36 +120,36 @@ mod test {
         let actual = json!({
             "kind": "ok",
             "profile_url": "quz",
+            "provider_url": "baz",
             "map_url": "foo",
             "usecase": "bar",
             "map_input": true,
-            "map_vars": null,
-            "map_secrets": {
-                "TOKEN": "banana"
+            "map_parameters": null,
+            "map_security": {
+                "basic": {
+                    "user": "username",
+                    "password": "pass"
+                }
             }
         });
 
         match serde_json::from_value::<PerformInputResponse>(actual).unwrap() {
             PerformInputResponse::Ok {
                 profile_url,
+                provider_url,
                 map_url,
                 usecase,
                 map_input,
-                map_vars,
-                map_secrets,
+                map_parameters,
+                map_security,
             } => {
                 assert_eq!(profile_url, "quz");
+                assert_eq!(provider_url, "baz");
                 assert_eq!(map_url, "foo");
                 assert_eq!(usecase, "bar");
                 assert_eq!(map_input, HostValue::Bool(true));
-                assert_eq!(map_vars, HostValue::None);
-                assert_eq!(
-                    map_secrets,
-                    HostValue::Object(BTreeMap::from([(
-                        String::from("TOKEN"),
-                        HostValue::String(String::from("banana"))
-                    )]))
-                );
+                assert_eq!(map_parameters, HostValue::None);
+                assert_eq!(map_security.len(), 1);
             }
             PerformInputResponse::Err { .. } => unreachable!(),
         }

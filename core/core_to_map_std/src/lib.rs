@@ -108,9 +108,7 @@ pub mod unstable;
 
 pub trait CoreToMapStd: unstable::MapStdUnstable {}
 
-use std::collections::HashMap;
-
-use unstable::MapValue;
+use unstable::{security::SecurityMap, MapValue};
 
 #[derive(Debug, thiserror::Error)]
 pub enum MapInterpreterRunError {
@@ -124,9 +122,10 @@ pub trait MapInterpreter {
     fn run(
         &mut self,
         code: &[u8],
-        entry: &str,
+        usecase: &str,
         input: MapValue,
-        vars: MapValue,
-        secrets: HashMap<String, String>,
+        parameters: MapValue,
+        services: MapValue,
+        security: SecurityMap,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError>;
 }

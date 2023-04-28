@@ -10,11 +10,19 @@ use sf_std::unstable::{
     fs::{self, OpenOptions},
     http::HttpRequest,
     perform::{perform_input, perform_output, PerformOutput},
+    provider::ProviderJson,
     HostValue,
 };
 
 use interpreter_js::JsInterpreter;
-use map_std::{unstable::MapValue, MapInterpreter};
+use map_std::{
+    unstable::{
+        security::{prepare_provider_parameters, prepare_security_map},
+        services::prepare_services_map,
+        MapValue, MapValueObject,
+    },
+    MapInterpreter,
+};
 use tracing::instrument;
 
 // use crate::profile_validator::ProfileValidator;
@@ -52,14 +60,14 @@ impl SuperfaceCore {
     fn cache_document(&mut self, url: &str) -> anyhow::Result<()> {
         let span = tracing::span!(tracing::Level::DEBUG, "cache_document");
         let _guard = span.enter();
-        
+
         tracing::debug!(url);
         match self.document_cache.get(url) {
             Some(DocumentCacheEntry { store_time, .. })
                 if store_time.elapsed() <= Self::MAX_CACHE_TIME =>
             {
                 tracing::debug!("already cached");
-                return Ok(())
+                return Ok(());
             }
             _ => (),
         }
@@ -67,12 +75,12 @@ impl SuperfaceCore {
         let mut data = Vec::with_capacity(16 * 1024);
         if let Some(path) = url.strip_prefix("file://") {
             let mut file = OpenOptions::new()
-                    .read(true)
-                    .open(&path)
-                    .context("Failed to open map file")?;
+                .read(true)
+                .open(&path)
+                .context("Failed to open map file")?;
 
-                file.read_to_end(&mut data)
-                    .context("Failed to read map file")?;
+            file.read_to_end(&mut data)
+                .context("Failed to read map file")?;
         } else if url.starts_with("https://") || url.starts_with("http://") {
             let mut response =
                 HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
@@ -86,7 +94,9 @@ impl SuperfaceCore {
         } else if let Some(data_base64) = url.strip_prefix("data:;base64,") {
             // TODO: just hacking it in here
             use base64::Engine;
-            data = base64::engine::general_purpose::STANDARD.decode(data_base64).unwrap();
+            data = base64::engine::general_purpose::STANDARD
+                .decode(data_base64)
+                .unwrap();
         } else {
             // TODO: better url join
             let url_base =
@@ -145,20 +155,6 @@ impl SuperfaceCore {
         }
     }
 
-    fn host_value_to_hash_map(value: HostValue) -> HashMap<String, String> {
-        match value {
-            HostValue::None => HashMap::new(),
-            HostValue::Object(o) => o
-                .into_iter()
-                .map(|(k, v)| match v {
-                    HostValue::String(s) => (k, String::from(s)),
-                    _ => panic!("Expected HostValue::String"),
-                })
-                .collect(),
-            _ => panic!("Expected HostValue::Object or HostValue::None"),
-        }
-    }
-
     /// Converts MapValue into HostValue.
     ///
     /// This is the opposite action to [host_value_to_map_value].
@@ -193,12 +189,35 @@ impl SuperfaceCore {
 
         self.cache_document(&perform_input.profile_url)
             .context("Failed to cache profile")?;
+        self.cache_document(&perform_input.provider_url)
+            .context("Failed to cache provider")?;
         self.cache_document(&perform_input.map_url)
             .context("Failed to cache map")?;
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
-        let map_vars = self.host_value_to_map_value(perform_input.map_vars); // TODO yes MapValue but limited to None and Object
-        let map_secrets = Self::host_value_to_hash_map(perform_input.map_secrets);
+        let mut map_parameters = match perform_input.map_parameters {
+            HostValue::Object(o) => MapValueObject::from_iter(
+                o.into_iter()
+                    .map(|(k, v)| (k, self.host_value_to_map_value(v))),
+            ),
+            HostValue::None => MapValueObject::new(),
+            _ => anyhow::bail!("Parameters must be an Object or None"),
+        };
+
+        let provider_json = &self
+            .document_cache
+            .get(&perform_input.provider_url)
+            .unwrap()
+            .data;
+        let provider_json = serde_json::from_slice::<ProviderJson>(provider_json)
+            .context("Failed to deserialize provider JSON")?;
+
+        let mut provider_parameters = prepare_provider_parameters(&provider_json);
+        provider_parameters.append(&mut map_parameters);
+        map_parameters = provider_parameters;
+
+        let map_security = prepare_security_map(&provider_json, &perform_input.map_security); // TODO SecurityMap
+        let map_services = prepare_services_map(&provider_json, &map_parameters);
 
         // let mut profile_validator = ProfileValidator::new(
         //     std::str::from_utf8(
@@ -238,13 +257,15 @@ impl SuperfaceCore {
             .unwrap()
             .data
             .as_slice();
+
         let map_result = interpreter
             .run(
                 map_code,
                 &perform_input.usecase,
                 map_input,
-                map_vars,
-                map_secrets,
+                MapValue::Object(map_parameters),
+                map_services,
+                map_security,
             )
             .context(format!(
                 "Failed to run map \"{}::{}\"",

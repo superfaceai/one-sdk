@@ -129,7 +129,9 @@ dependencies = [
 name = "core_to_map_std"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "host_to_core_std",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",
@@ -505,6 +507,8 @@ dependencies = [
  "core_to_map_std",
  "host_to_core_std",
  "interpreter_js",
+ "serde",
+ "serde_json",
  "thiserror",
  "tracing",
  "tracing-subscriber",

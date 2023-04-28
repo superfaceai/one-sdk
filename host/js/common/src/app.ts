@@ -2,6 +2,7 @@ import { HandleMap } from './handle_map';
 import { Asyncify } from './asyncify';
 
 import * as sf_host from './sf_host';
+import { SecurityValuesMap } from './security';
 
 export interface WasiContext {
   wasiImport: WebAssembly.ModuleImports;
@@ -162,11 +163,12 @@ export class App implements AppContext {
   private core: AsyncMutex<AppCore> | undefined = undefined;
   private performState: {
     profileUrl: string,
+    providerUrl: string,
     mapUrl: string,
     usecase: string,
     input: unknown,
-    vars: Record<string, string>,
-    secrets: Record<string, string>,
+    parameters: Record<string, string>,
+    security: SecurityValuesMap,
     output?: unknown
   } | undefined = undefined;
 
@@ -240,17 +242,19 @@ export class App implements AppContext {
 
   public async perform(
     profileUrl: string,
+    providerUrl: string,
     mapUrl: string,
     usecase: string,
     input: unknown,
-    vars: Record<string, string>,
-    secrets: Record<string, string>
+    parameters: Record<string, string>,
+    security: SecurityValuesMap,
   ): Promise<unknown> {
     this.setSendMetricsTimeout();
 
+
     return this.core!.withLock(
       async (core) => {
-        this.performState = { profileUrl, mapUrl, usecase, input, vars, secrets };
+        this.performState = { profileUrl, providerUrl, mapUrl, usecase, input, parameters, security };
         await core.performFn();
 
         const output = this.performState.output;
@@ -268,11 +272,12 @@ export class App implements AppContext {
         return {
           kind: 'ok',
           profile_url: this.performState!.profileUrl,
+          provider_url: this.performState!.providerUrl,
           map_url: this.performState!.mapUrl,
           usecase: this.performState!.usecase,
           map_input: this.performState!.input,
-          map_vars: this.performState!.vars,
-          map_secrets: this.performState!.secrets,
+          map_parameters: this.performState!.parameters,
+          map_security: this.performState!.security,
         };
 
       case 'perform-output':
