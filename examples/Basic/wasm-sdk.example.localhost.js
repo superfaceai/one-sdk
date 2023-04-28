@@ -3,12 +3,12 @@ const manifest = {
   provider: 'localhost'
 };
 
-function Example(input, provider, parameters) {
+function Example(input, provider, services) {
   __ffi.unstable.printDebug('Input:', input);
   __ffi.unstable.printDebug('Provider:', provider);
-  __ffi.unstable.printDebug('Parameters:', parameters);
+  __ffi.unstable.printDebug('Services:', services);
 
-  const url = `${provider.services.default}/api/people/${input.id}`;
+  const url = `${services.default}/api/people/${input.id}`;
 
   const options = {
     method: 'GET',
@@ -23,7 +23,7 @@ function Example(input, provider, parameters) {
   const body = response.bodyAuto() ?? {};
 
   if (std.unstable.random() > 0.5) {
-    throw new MapError('Random error');
+    throw new std.unstable.MapError('Random error');
   }
 
   return {
