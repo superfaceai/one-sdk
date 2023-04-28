@@ -195,8 +195,8 @@ pub enum HttpCallHeadError {
 }
 
 #[derive(Debug, Error)]
-pub enum TakeInputError {
-    #[error("Input has already been taken")]
+pub enum TakeContextError {
+    #[error("Context has already been taken")]
     AlreadyTaken,
 }
 #[derive(Debug, Error)]
@@ -220,7 +220,7 @@ pub trait MapStdUnstable {
     fn http_call_head(&mut self, handle: Handle) -> Result<HttpResponse, HttpCallHeadError>;
 
     // input and output
-    fn take_input(&mut self) -> Result<MapValue, TakeInputError>;
+    fn take_context(&mut self) -> Result<MapValue, TakeContextError>;
     fn set_output_success(&mut self, output: MapValue) -> Result<(), SetOutputError>;
     fn set_output_failure(&mut self, output: MapValue) -> Result<(), SetOutputError>;
 }
@@ -282,12 +282,12 @@ define_exchange_map_to_core! {
             }) => Response::Ok { status, headers, body_stream, }
         },
         // input and output
-        TakeInput -> enum Response {
-            Ok { input: MapValue },
+        TakeContext -> enum Response {
+            Ok { context: MapValue },
             Err { error: String }
-        } => match state.take_input() {
+        } => match state.take_context() {
             Err(err) => Response::Err { error: err.to_string() },
-            Ok(input) => Response::Ok { input },
+            Ok(context) => Response::Ok { context },
         },
         SetOutputSuccess { output: MapValue } -> enum Response {
             Ok,

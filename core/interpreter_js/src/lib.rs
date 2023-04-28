@@ -43,8 +43,8 @@ impl JsInterpreter {
         Ok(Self { context, state })
     }
 
-    pub fn set_input(&mut self, input: MapValue, security: Option<SecurityMap>) {
-        self.state.borrow_mut().set_input(input, security);
+    pub fn set_context(&mut self, context: MapValue, security: Option<SecurityMap>) {
+        self.state.borrow_mut().set_context(context, security);
     }
 
     pub fn take_output(&mut self) -> Result<MapValue, MapValue> {
@@ -92,7 +92,7 @@ impl MapInterpreter for JsInterpreter {
         services: MapValue,
         security: SecurityMap,
     ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError> {
-        self.set_input(
+        self.set_context(
             MapValue::Object(BTreeMap::from_iter([
                 ("input".to_string(), input),
                 ("parameters".to_string(), parameters),

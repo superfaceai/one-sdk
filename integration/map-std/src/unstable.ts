@@ -110,13 +110,13 @@ export function print(message: unknown) {
 }
 
 // input and output
-export function takeInput(): AnyValue {
+export function takeContext(): AnyValue {
   const response = messageExchange({
-    kind: 'take-input'
+    kind: 'take-context'
   }, undefined, jsonReviverMapValue);
 
   if (response.kind === 'ok') {
-    return response.input;
+    return response.context;
   } else {
     throw new Error(response.error);
   }

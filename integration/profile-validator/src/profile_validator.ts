@@ -10,22 +10,22 @@ declare const globalThis: { profileValidator?: ProfileParameterValidator };
 function _start() {
   let result;
   try {
-    result = main(unstable.takeInput() as any);
+    result = main(unstable.takeContext() as any);
     unstable.setOutputSuccess(result);
   } catch (e) {
     unstable.setOutputFailure((e as Error).message);
   }
 }
 
-function main(input: {
+function main(ctx: {
   profile?: string,
   usecase?: string,
   input?: AnyValue,
   result?: AnyValue,
   error?: AnyValue
 }): AnyValue {
-  if (input.profile) {
-    const ast = parseRuleResult(profileRules.PROFILE_DOCUMENT, new Source(input.profile));
+  if (ctx.profile) {
+    const ast = parseRuleResult(profileRules.PROFILE_DOCUMENT, new Source(ctx.profile));
     if (ast.kind !== 'success') {
       throw ast.error;
     }
@@ -37,23 +37,23 @@ function main(input: {
   if (globalThis.profileValidator === undefined) {
     throw new Error('Profile not set');
   }
-  if (!input.usecase) {
+  if (!ctx.usecase) {
     throw new Error('Usecase not set');
   }
 
-  if (input.input) {
-    return globalThis.profileValidator.validate(input.input, 'input', input.usecase).match(
+  if (ctx.input) {
+    return globalThis.profileValidator.validate(ctx.input, 'input', ctx.usecase).match(
       _ok => null,
       err => err.message
     );
   }
-  if (input.result) {
-    return globalThis.profileValidator.validate(input.input, 'result', input.usecase).match(
+  if (ctx.result) {
+    return globalThis.profileValidator.validate(ctx.input, 'result', ctx.usecase).match(
       _ok => null,
       err => err.message
     );
   }
-  if (input.error) {
+  if (ctx.error) {
     // TODO: not supported by current validator
     throw new Error('Error validation not supported');
   }

@@ -270,11 +270,11 @@ pub fn prepare_provider_parameters(provider_json: &ProviderJson) -> MapValueObje
         .parameters
         .as_ref()
         .map_or(MapValueObject::new(), |params| {
-            MapValueObject::from_iter(params.into_iter().filter(|p| p.default.is_some()).map(
-                |ref i| match &i.default {
+            MapValueObject::from_iter(params.into_iter().filter(|p| p.default.is_some()).map(|i| {
+                match &i.default {
                     Some(default) => (i.name.to_owned(), MapValue::String(default.to_owned())),
                     None => panic!("None is filtered out"),
-                },
-            ))
+                }
+            }))
         });
 }
