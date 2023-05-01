@@ -1,10 +1,10 @@
 OS=$(shell uname -s)
 
 ifeq ($(mode),release)
-   FLAGS=--release
+	FLAGS=--release
 else
-   mode=debug
-   FLAGS=
+	mode=debug
+	FLAGS=
 endif
 
 # WASI SDK
@@ -37,6 +37,9 @@ HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/core-async.wasm
 all: clean build
 
 .DEFAULT: all
+# phony these to ensure we get a fresh build of core whenever map-std changes
+# sadly neither yarn nor make can just diff the map-std code and figure out if it needs a rebuild
+# but maybe later we could hash (docker actually does it out of the box) or possibly use git?
 .PHONY: ${CORE_BUILD} ${MAP_STD} ${PROFILE_VALIDATOR}
 
 deps: deps_core deps_integration deps_hosts
@@ -44,19 +47,33 @@ build: build_core build_integration build_hosts
 test: test_core
 clean: clean_core clean_integration clean_hosts
 
+##########
+## CORE ##
+##########
+ifdef CORE_DOCKER
+build_core_docker: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_DIST_FOLDER}
+	docker build ./core -o ${CORE_DIST_FOLDER}
+${CORE_WASM}: build_core_docker
+${CORE_ASYNCIFY_WASM}: build_core_docker
+else
 deps_core: ${WASI_SDK_FOLDER}
-	rustup target add wasm32-wasi	
+	rustup target add wasm32-wasi
 
+${CORE_BUILD}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
+	cd core && cargo build --package superface_core --target wasm32-wasi ${FLAGS}
+${CORE_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
+	@echo 'Optimizing wasm...'
+	wasm-opt -O2 ${CORE_BUILD} --output ${CORE_WASM}
+${CORE_ASYNCIFY_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
+	@echo 'Running asyncify...'
+	wasm-opt -O2 --asyncify --pass-arg=asyncify-asserts ${CORE_BUILD} --output ${CORE_ASYNCIFY_WASM}
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xvf - -C core
 
-build_core: ${WASI_SDK_FOLDER} ${CORE_BUILD} ${CORE_WASM} ${CORE_ASYNCIFY_WASM}
-
 test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
 	cd core && cargo test
-
-${CORE_BUILD}: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
-	cd core && cargo build --package superface_core --target wasm32-wasi ${FLAGS}
+endif
+build_core: ${CORE_WASM} ${CORE_ASYNCIFY_WASM}
 
 ${CORE_JS_ASSETS_MAP_STD}: ${MAP_STD}
 	mkdir -p ${CORE_JS_ASSETS}
@@ -69,17 +86,12 @@ ${CORE_JS_ASSETS_PROFILE_VALIDATOR}: ${PROFILE_VALIDATOR}
 ${CORE_DIST_FOLDER}:
 	mkdir -p ${CORE_DIST_FOLDER}
 
-${CORE_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
-	@echo 'Optimizing wasm...'
-	wasm-opt -O2 ${CORE_BUILD} --output ${CORE_WASM}
-
-${CORE_ASYNCIFY_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
-	@echo 'Running asyncify...'
-	wasm-opt -O2 --asyncify --pass-arg=asyncify-asserts ${CORE_BUILD} --output ${CORE_ASYNCIFY_WASM}
-
 clean_core:
-	rm -rf core/dist core/target
+	rm -rf ${CORE_DIST_FOLDER} core/target
 
+#################
+## INTEGRATION ##
+#################
 build_integration: ${MAP_STD} ${PROFILE_VALIDATOR}
 
 ${MAP_STD}:
@@ -91,6 +103,9 @@ ${PROFILE_VALIDATOR}:
 clean_integration:
 	rm -rf integration/map-std/dist integration/profile-validator/dist
 
+##########
+## HOST ##
+##########
 build_hosts: build_host_node build_host_cloudflare
 clean_hosts:
 	rm -rf ${HOST_JS_ASSETS} host/js/dist

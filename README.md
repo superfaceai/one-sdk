@@ -1,8 +1,8 @@
 # ¯\\_(ツ)_/¯
 
-A simple demenonstration can be run with `./examples/run.sh js`. It builds entire projects and Node.js host, then runs the example.
+A simple demenonstration can be run with `./examples/run.sh node [CORE_DOCKER=1]`. It builds entire projects and Node.js host, then runs the example.
 
-This will require to have Development requirements installed.
+This will require to have Development requirements installed. In case of building the core in Docker `node` and `yarn` are still required.
 
 ## Development requirements
 
@@ -16,14 +16,16 @@ brew install binaryen # for wasm-opt
 python3 -m pip install wasmtime requests
 
 # JS host dependencies
-brew install node
+brew install node yarn
 ```
 
 For development build with `make` from root. To create release build run `make mode=release`.
 
 ### Docker
 
-Core can be built in docker to avoid installing compiler dependencies. Run `docker build core -o core/dist` (or on arm64 `docker build core -f core/Dockerfile-arm64 -o core/dist`, but beware that this takes a really long time as it builds wasi-sdk, including clang).
+Core can be built in docker to avoid installing compiler dependencies. Run `make CORE_DOCKER=1`.
+
+It is also possible (but not required) to build the wasi-sdk in docker `docker build -f core/Dockerfile-wasi-sdk -o core/`, but beware that this takes a really long time.
 
 ## Monorepo structure
 
@@ -34,10 +36,21 @@ Core can be built in docker to avoid installing compiler dependencies. Run `dock
       __main__.py
       [python files]
     js/
-      package.json
-      tsconfig.json
-      src/
-        [ts files]
+      package.json # yarn workspace
+      tsconfig.json # parent tsconfig
+      common/ # common code shared between JS hosts
+        package.json
+        tsconfig.json
+        src/
+          [ts files]
+      node/ # NodeJS host
+        package.json
+        tsconfig.json
+        src/
+      cloudflare/ # Cloudflare workers host
+        package.json
+        tsconfig.json
+        src/
   core/
     .cargo/
       config

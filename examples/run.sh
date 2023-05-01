@@ -12,19 +12,19 @@ PROVIDER=localhost
 PARAMETERS='{"PARAM":"parameter_value"}'
 SECURITY='{"basic_auth":{"user":"username","password":"password"}}'
 
-mode=${2:-debug}
+MAKE_FLAGS=${2:-mode=debug}
 
 case $1 in
 	node)
 		cd ..
-		make build_host_node mode=$mode
+		make build_host_node $MAKE_FLAGS
 		cd "$base"
 		node --experimental-wasi-unstable-preview1 ./node_example.js $ASSETS_PATH $PROFILE $USECASE $INPUT $PROVIDER $PARAMETERS $SECURITY
 	;;
 
 	cloudflare)
 		cd ..
-		make build_host_cloudflare mode=$mode
+		make build_host_cloudflare $MAKE_FLAGS
 		cd "$base/cloudflare_worker"
 		yarn install
 		yarn dev
