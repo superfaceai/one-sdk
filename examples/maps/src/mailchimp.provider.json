@@ -12,7 +12,8 @@
       "id": "api_key",
       "type": "apiKey",
       "in": "body",
-      "name": "key"
+      "name": "key",
+      "bodyType": "json"
     }
   ]
 }

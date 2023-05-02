@@ -206,8 +206,7 @@ pub fn resolve_security(
                     .query
                     .insert(name.to_string(), vec![apikey.to_string()]);
             }
-            (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json) | None) => {
-                // TODO: bodyType is NOT specified in provider.json and needs to come from the map
+            (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json)) => {
                 if let Some(body) = &params.body {
                     let mut body =
                         serde_json::from_slice::<serde_json::Value>(&body).map_err(|e| {

@@ -26,7 +26,7 @@ case $1 in
 		cd ..
 		make build_host_cloudflare $MAKE_FLAGS
 		cd "$base/cloudflare_worker"
-		yarn install
+		yarn install --force
 		yarn dev
 	;;
 
