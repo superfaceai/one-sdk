@@ -51,7 +51,7 @@ impl From<sf_std::unstable::provider::HttpScheme> for HttpScheme {
 
 pub enum HttpSecurity {
     Basic {
-        user: String,
+        username: String,
         password: String,
     },
     Bearer {
@@ -111,7 +111,7 @@ pub fn prepare_security_map(
                 sf_std::unstable::provider::HttpSecurity::Basic { id },
             ) => {
                 let (user, password) = match security_values.get(id) {
-                    Some(SecurityValue::Basic { user, password }) => (user, password),
+                    Some(SecurityValue::Basic { username: user, password }) => (user, password),
                     Some(_) => continue, // TODO
                     None => continue,    // TODO
                 };
@@ -119,7 +119,7 @@ pub fn prepare_security_map(
                 security_map.insert(
                     id.to_owned(),
                     Security::Http(HttpSecurity::Basic {
-                        user: user.to_owned(),
+                        username: user.to_owned(),
                         password: password.to_owned(),
                     }),
                 );
@@ -165,9 +165,9 @@ pub fn resolve_security(
                 security
             )));
         }
-        Some(Security::Http(HttpSecurity::Basic { user, password })) => {
+        Some(Security::Http(HttpSecurity::Basic { username, password })) => {
             let encoded_crendentials = base64::engine::general_purpose::STANDARD
-                .encode(format!("{}:{}", user, password).as_bytes());
+                .encode(format!("{}:{}", username, password).as_bytes());
             let basic_auth = vec![format!("Basic {}", encoded_crendentials)];
 
             params
@@ -203,7 +203,7 @@ pub fn resolve_security(
                     .query
                     .insert(name.to_string(), vec![apikey.to_string()]);
             }
-            (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json)) => {
+            (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json) | None) => { // TODO: bodyType is NOT specified in provider.json and needs to come from the map
                 if let Some(body) = &params.body {
                     let mut body =
                         serde_json::from_slice::<serde_json::Value>(&body).map_err(|e| {

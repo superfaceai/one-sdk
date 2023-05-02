@@ -10,7 +10,7 @@ USECASE=Example
 INPUT='{"id":1}'
 PROVIDER=localhost
 PARAMETERS='{"PARAM":"parameter_value"}'
-SECURITY='{"basic_auth":{"user":"username","password":"password"}}'
+SECURITY='{"basic_auth":{"username":"username","password":"password"}}'
 
 MAKE_FLAGS=${2:-mode=debug}
 
