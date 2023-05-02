@@ -111,7 +111,10 @@ pub fn prepare_security_map(
                 sf_std::unstable::provider::HttpSecurity::Basic { id },
             ) => {
                 let (user, password) = match security_values.get(id) {
-                    Some(SecurityValue::Basic { username: user, password }) => (user, password),
+                    Some(SecurityValue::Basic {
+                        username: user,
+                        password,
+                    }) => (user, password),
                     Some(_) => continue, // TODO
                     None => continue,    // TODO
                 };
@@ -203,7 +206,8 @@ pub fn resolve_security(
                     .query
                     .insert(name.to_string(), vec![apikey.to_string()]);
             }
-            (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json) | None) => { // TODO: bodyType is NOT specified in provider.json and needs to come from the map
+            (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json) | None) => {
+                // TODO: bodyType is NOT specified in provider.json and needs to come from the map
                 if let Some(body) = &params.body {
                     let mut body =
                         serde_json::from_slice::<serde_json::Value>(&body).map_err(|e| {

@@ -33,7 +33,12 @@ struct DocumentCacheEntry {
 }
 impl std::fmt::Debug for DocumentCacheEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "MapCacheEntry(<{} bytes>, {}s old)", self.data.len(), self.store_time.elapsed().as_secs())
+        write!(
+            f,
+            "MapCacheEntry(<{} bytes>, {}s old)",
+            self.data.len(),
+            self.store_time.elapsed().as_secs()
+        )
     }
 }
 
@@ -210,7 +215,7 @@ impl SuperfaceCore {
                 tracing::error!("Failed to deserialize provider JSON: {:#}", err);
                 panic!("Failed to deserialize provider JSON: {}", err);
             }
-            Ok(v) => v
+            Ok(v) => v,
         };
 
         let mut provider_parameters = prepare_provider_parameters(&provider_json);

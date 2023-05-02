@@ -111,9 +111,7 @@ impl MessageFn {
 
         let response = self.invoke(json_message.as_bytes());
 
-        tracing::trace!(
-            response = std::str::from_utf8(response.as_slice()).unwrap()
-        );
+        tracing::trace!(response = std::str::from_utf8(response.as_slice()).unwrap());
 
         let response = serde_json::from_slice(response.as_slice())
             .map_err(JsonMessageError::DeserializeError)?;

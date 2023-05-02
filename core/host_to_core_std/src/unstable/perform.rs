@@ -56,7 +56,7 @@ pub fn perform_input() -> PerformInput {
             tracing::error!("Failed to receive perform_input response: {:#}", err);
             panic!("Failed to receive perform_input response: {}", err);
         }
-        Ok(r) => r
+        Ok(r) => r,
     };
 
     match response {
