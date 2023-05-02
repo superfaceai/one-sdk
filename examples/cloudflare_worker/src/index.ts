@@ -1,22 +1,9 @@
 import { Client } from '@superfaceai/one-sdk-cloudflare';
 
-// imports as ArrayBuffer - configured in wrangler.toml
-// @ts-ignore
-import profileDataSms from '../grid/send-sms.supr'; // https://superface.ai/communication/send-sms@2.0.1
-// @ts-ignore
-import profileDataEmail from '../grid/send-email.supr'; // https://superface.ai/communication/send-email@2.1.0
-// @ts-ignore
-import mapDataSms from '../grid/send-sms.twilio.suma.js';
-// @ts-ignore
-import mapDataEmail from '../grid/send-email.mailchimp.suma.js';
+import { GRID_IMPORTS } from './grid';
 
 const client = new Client({
-  preopens: {
-    'grid/send-sms.supr': new Uint8Array(profileDataSms),
-    'grid/send-email.supr': new Uint8Array(profileDataEmail),
-    'grid/send-sms.suma.js': new Uint8Array(mapDataSms),
-    'grid/send-email.suma.js': new Uint8Array(mapDataEmail),
-  }
+  preopens: { ...GRID_IMPORTS }
 });
 
 type Env = {
@@ -39,21 +26,31 @@ export default {
     switch (url.pathname) {
       case '/sms':
         result = await client.perform(
-          'send-sms',
+          'communication/send-sms',
+          'twilio',
+          'sendSms',
           { to, text },
+          { from: '+16813666656', TWILIO_ACCOUNT_SID: env.TWILIO_ACCOUNT_SID },
           {
-            vars: { from: '+16813666656', TWILIO_ACCOUNT_SID: env.TWILIO_ACCOUNT_SID },
-            secrets: { TWILIO_ACCOUNT_SID: env.TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN: env.TWILIO_AUTH_TOKEN }
+            basic: {
+              username: env.TWILIO_ACCOUNT_SID,
+              password: env.TWILIO_AUTH_TOKEN
+            }
           }
         );
         break
       
       case '/email':
         result = await client.perform(
-          'send-email',
+          'communication/send-email',
+          'mailchimp',
+          'sendEmail',
           { from: 'cfw@demo.superface.org', to, text, subject: 'Superface on Cloudflare Workers' },
+          {},
           {
-            secrets: { MAILCHIMP_API_KEY: env.MAILCHIMP_API_KEY }
+            api_key: {
+              apikey: env.MAILCHIMP_API_KEY
+            }
           }
         );
         break;
@@ -71,9 +68,3 @@ export default {
     return new Response(`Result: ${JSON.stringify(ok)}`);
   },
 };
-
-// https://example.super-ela.workers.dev/sms?to=%2B421914261973&text=hi+from+edge
-// https://console.twilio.com/us1/monitor/logs/sms
-
-// https://example.super-ela.workers.dev/email?to=demo@demo.superface.org&text=well+hello+there
-// https://mandrillapp.com/activity

@@ -5,6 +5,8 @@
     "moduleResolution": "bundler",
     "rootDir": "./src",
     "outDir": "./dist",
+    "declaration": true,
+    "declarationDir": "./types"
   },
   "include": [
     "src/**/*.ts"

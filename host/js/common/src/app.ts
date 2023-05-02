@@ -79,7 +79,7 @@ class ReadableStreamAdapter implements Stream {
     throw new Error('not implemented');
   }
   async close(): Promise<void> {
-    // TODO: what?
+    // TODO: what to do here?
   }
 }
 

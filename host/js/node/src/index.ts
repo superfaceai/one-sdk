@@ -4,7 +4,7 @@ import { WASI } from 'wasi';
 
 import { App, HandleMap, coreModule as corePath } from '@superfaceai/one-sdk-common';
 import type { TextCoder, FileSystem, Timers, Network } from '@superfaceai/one-sdk-common';
-import { SecurityValuesMap } from '@superfaceai/one-sdk-common/src/security';
+import { SecurityValuesMap } from '@superfaceai/one-sdk-common';
 
 class NodeTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();

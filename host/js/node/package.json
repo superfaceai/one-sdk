@@ -8,6 +8,7 @@
     "@superfaceai/one-sdk-common": "*"
   },
   "scripts": {
-    "build": "rimraf dist; esbuild src/index.ts --bundle --platform=node --loader:.wasm=file --outdir=dist"
+    "build:types": "rimraf types && tsc -p tsconfig.json --emitDeclarationOnly",
+    "build": "yarn build:types && rimraf dist && esbuild src/index.ts --bundle --platform=node --loader:.wasm=file --outdir=dist"
   }
 }

@@ -1,24 +1,22 @@
-import { Buffer } from './internal/node_compat';
+import { Buffer as NodeBuffer } from './internal/node_compat';
 import * as unstable from './unstable';
 
-export declare const globalThis: {
-  Buffer: typeof Buffer,
-  std: {
+declare global {
+  type UsecaseFn = (context: {input: unstable.AnyValue, parameters: Record<string, unstable.AnyValue>, services: Record<string, string> }) => unstable.AnyValue;
+  var std: {
     unstable: typeof unstable
-  },
-  _start(usecaseName: string): void
+  };
+  function _start(usecaseName: string): void;
+  var Buffer: typeof NodeBuffer;
 };
-globalThis.std = {
-  unstable
-};
-globalThis.Buffer = Buffer;
+globalThis.std = { unstable };
+globalThis.Buffer = NodeBuffer;
 
-export type UsecaseFn = (context: {input: unstable.AnyValue, parameters: Record<string, unstable.AnyValue>, services: Record<string, string> }) => unstable.AnyValue;
 globalThis._start = (usecaseName: string): void => {
   const context = globalThis.std.unstable.takeContext() as Record<string, unstable.AnyValue>;
 
   try {
-    const result = (globalThis[usecaseName] as UsecaseFn)({
+    const result = ((globalThis as unknown as Record<string, UsecaseFn>)[usecaseName])({
       input: context.input,
       parameters: context.parameters as Record<string, unstable.AnyValue>,
       services: context.services as Record<string, string>

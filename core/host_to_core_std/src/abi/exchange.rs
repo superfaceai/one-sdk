@@ -101,18 +101,18 @@ impl MessageFn {
         &self,
         message: &M,
     ) -> Result<R, JsonMessageError> {
-        let __span = tracing::span!(tracing::Level::TRACE, "message_exchange");
+        let _span = tracing::span!(tracing::Level::TRACE, "message_exchange");
+        let _span = _span.enter();
 
         let json_message =
             serde_json::to_string(message).map_err(JsonMessageError::SerializeError)?;
 
-        tracing::trace!("request: {}", json_message);
+        tracing::trace!(request = json_message);
 
         let response = self.invoke(json_message.as_bytes());
 
         tracing::trace!(
-            "response: {}",
-            std::str::from_utf8(response.as_slice()).unwrap()
+            response = std::str::from_utf8(response.as_slice()).unwrap()
         );
 
         let response = serde_json::from_slice(response.as_slice())

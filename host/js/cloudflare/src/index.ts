@@ -3,6 +3,7 @@ import { WASI } from '@cloudflare/workers-wasi';
 import { App, HandleMap, coreModule } from '@superfaceai/one-sdk-common';
 import type { TextCoder, FileSystem, Timers, Network } from '@superfaceai/one-sdk-common';
 import { WasiContext } from "@superfaceai/one-sdk-common/src/app";
+import { SecurityValuesMap } from '@superfaceai/one-sdk-common';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -163,10 +164,6 @@ export type ClientOptions = {
   env?: Record<string, string>;
   preopens?: Record<string, Uint8Array>;
 };
-export type ClientPerformOptions = {
-  vars?: Record<string, string>;
-  secrets?: Record<string, string>;
-};
 
 export class Client {
   private readonly wasi: WASI;
@@ -203,19 +200,26 @@ export class Client {
     this.ready = false;
   }
 
-  public async perform(usecase: string, input?: any, options?: ClientPerformOptions): Promise<any> {
+  public async perform(
+    profile: string,
+    provider: string,
+    usecase: string,
+    input?: unknown,
+    parameters: Record<string, string> = {},
+    security: SecurityValuesMap = {}
+  ): Promise<any> {
     await this.setup();
 
-    const vars = options?.vars ?? {};
-    const secrets = options?.secrets ?? {};
+    const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
 
     return await this.app.perform(
-      `file://grid/${usecase}.supr`,
-      `file://grid/${usecase}.suma.js`,
+      `file://grid/${resolvedProfile}.supr`,
+      `file://grid/${provider}.provider.json`,
+      `file://grid/${resolvedProfile}.${provider}.suma.js`,
       usecase,
       input,
-      vars,
-      secrets
+      parameters,
+      security
     );
   }
 }
