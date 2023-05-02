@@ -165,7 +165,13 @@ export type ClientOptions = {
   preopens?: Record<string, Uint8Array>;
 };
 
-export class Client {
+export type ClientPerformOptions = {
+  provider: string;
+  parameters?: Record<string, string>;
+  security?: SecurityValuesMap;
+};
+
+class InternalClient {
   private readonly wasi: WASI;
   private readonly app: App;
   private ready = false;
@@ -182,6 +188,10 @@ export class Client {
       timers: new CfwTimers(),
       network: new CfwNetwork()
     }, { metricsTimeout: 0 });
+  }
+
+  public destroy() {
+    void this.teardown();
   }
 
   private async setup() {
@@ -221,5 +231,43 @@ export class Client {
       parameters,
       security
     );
+  }
+}
+
+export class Client {
+  private internal: InternalClient;
+
+  constructor(readonly options: ClientOptions = {}) {
+    this.internal = new InternalClient(options);
+  }
+
+  public destroy() {
+    this.internal.destroy();
+  }
+
+  public async getProfile(name: string): Promise<Profile> {
+    return await Profile.loadLocal(this.internal, name);
+  }
+}
+
+export class Profile {
+  private constructor(private readonly internal: InternalClient, public readonly name: string, public readonly url: string) {
+  }
+
+  public static async loadLocal(internal: InternalClient, name: string): Promise<Profile> {
+    return new Profile(internal, name, ''); // TODO: why do we need the url here?
+  }
+
+  public getUseCase(usecaseName: string): UseCase {
+    return new UseCase(this.internal, this, usecaseName);
+  }
+}
+
+export class UseCase {
+  constructor(private readonly internal: InternalClient, private readonly profile: Profile, public readonly name: string) {
+  }
+
+  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<TResult> {
+    return await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security) as TResult;
   }
 }

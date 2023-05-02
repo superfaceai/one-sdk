@@ -25,31 +25,30 @@ export default {
     let result: { Err: { title: string, detail?: string } } | { Ok: { messageId: string } };
     switch (url.pathname) {
       case '/sms':
-        result = await client.perform(
-          'communication/send-sms',
-          'twilio',
-          'sendSms',
+        result = await (await client.getProfile('communication/send-sms')).getUseCase('sendSms').perform(
           { to, text },
-          { from: '+16813666656', TWILIO_ACCOUNT_SID: env.TWILIO_ACCOUNT_SID },
           {
-            basic: {
-              username: env.TWILIO_ACCOUNT_SID,
-              password: env.TWILIO_AUTH_TOKEN
+            provider: 'twilio',
+            parameters: { from: '+16813666656', TWILIO_ACCOUNT_SID: env.TWILIO_ACCOUNT_SID },
+            security: {
+              basic: {
+                username: env.TWILIO_ACCOUNT_SID,
+                password: env.TWILIO_AUTH_TOKEN
+              }
             }
           }
         );
         break
       
       case '/email':
-        result = await client.perform(
-          'communication/send-email',
-          'mailchimp',
-          'sendEmail',
+        result = await (await client.getProfile('communication/send-email')).getUseCase('sendEmail').perform(
           { from: 'cfw@demo.superface.org', to, text, subject: 'Superface on Cloudflare Workers' },
-          {},
           {
-            api_key: {
-              apikey: env.MAILCHIMP_API_KEY
+            provider: 'mailchimp',
+            security: {
+              api_key: {
+                apikey: env.MAILCHIMP_API_KEY
+              }
             }
           }
         );
