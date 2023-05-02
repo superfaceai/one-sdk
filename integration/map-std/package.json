@@ -6,16 +6,18 @@
   "types": "types/map_std",
   "license": "MIT",
   "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.0",
     "@types/core-ffi": "*",
-    "esbuild": "^0.17.15",
     "rimraf": "^4.4.1",
+    "rollup": "^3.21.3",
+    "rollup-plugin-dts": "^5.3.0",
+    "tslib": "^2.5.0",
     "typescript": "^5.0.2"
   },
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
     "build:std": "tsc -p tsconfig.json",
-    "build:map_std:types": "tsc -p tsconfig.json --emitDeclarationOnly",
-    "build:map_std": "esbuild src/map_std.ts --bundle --target=es2022 --platform=neutral --format=iife --tree-shaking=true --outfile=dist/map_std.js",
-    "build": "yarn check && rimraf types/ dist/ && yarn build:map_std && yarn build:map_std:types"
+    "build:map_std": "rollup --config --bundleConfigAsCjs",
+    "build": "yarn check && rimraf types/ dist/ && yarn build:map_std"
   }
 }
