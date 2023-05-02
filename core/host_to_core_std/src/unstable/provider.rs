@@ -107,7 +107,7 @@ pub enum HttpSecurity {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(tag = "type", rename_all = "lowercase")]
+#[serde(tag = "type", rename_all = "camelCase")] // camelCase - the spec has spoken *internal screaming*
 pub enum SecurityScheme {
     ApiKey {
         id: String,

@@ -1,4 +1,4 @@
-# ¯\\_(ツ)_/¯
+# ¯\\\_(ツ)\_/¯
 
 A simple demenonstration can be run with `./examples/run.sh node [CORE_DOCKER=1]`. It builds entire projects and Node.js host, then runs the example.
 

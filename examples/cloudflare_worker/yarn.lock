@@ -9,11 +9,6 @@
   dependencies:
     mime "^3.0.0"
 
-"@cloudflare/workers-wasi@^0.0.5":
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/@cloudflare/workers-wasi/-/workers-wasi-0.0.5.tgz#1d9a69c668fd9e240f929dfd5ca802447f31d911"
-  integrity sha512-Gxu2tt2YY8tRgN7vfY8mSW0Md5wUj5+gb5eYrqsGRM+qJn9jx+ButL6BteLluDe5vlEkxQ69LagEMHjE58O7iQ==
-
 "@esbuild-plugins/node-globals-polyfill@^0.1.1":
   version "0.1.1"
   resolved "https://registry.yarnpkg.com/@esbuild-plugins/node-globals-polyfill/-/node-globals-polyfill-0.1.1.tgz#a313ab3efbb2c17c8ce376aa216c627c9b40f9d7"

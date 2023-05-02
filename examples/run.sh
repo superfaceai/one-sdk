@@ -10,7 +10,7 @@ USECASE=Example
 INPUT='{"id":1}'
 PROVIDER=localhost
 PARAMETERS='{"PARAM":"parameter_value"}'
-SECURITY='{"basic_auth":{"user":"username","password":"password"}}'
+SECURITY='{"basic_auth":{"username":"username","password":"password"}}'
 
 MAKE_FLAGS=${2:-mode=debug}
 
@@ -26,7 +26,7 @@ case $1 in
 		cd ..
 		make build_host_cloudflare $MAKE_FLAGS
 		cd "$base/cloudflare_worker"
-		yarn install
+		yarn install --force
 		yarn dev
 	;;
 

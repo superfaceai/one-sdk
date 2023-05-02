@@ -8,7 +8,6 @@
     "forceConsistentCasingInFileNames": true,
     "lib": ["ESNext", "DOM"],
     "noFallthroughCasesInSwitch": true,
-    "resolveJsonModule": true,
     "sourceMap": true,
     "skipLibCheck": true,
     "strict": true,

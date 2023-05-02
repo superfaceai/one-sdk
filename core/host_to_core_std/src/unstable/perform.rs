@@ -51,9 +51,13 @@ pub struct PerformInput {
     pub map_security: SecurityValuesMap,
 }
 pub fn perform_input() -> PerformInput {
-    let response = PerformInputRequest::new()
-        .send_json(&EXCHANGE_MESSAGE)
-        .unwrap();
+    let response = match PerformInputRequest::new().send_json(&EXCHANGE_MESSAGE) {
+        Err(err) => {
+            tracing::error!("Failed to receive perform_input response: {:#}", err);
+            panic!("Failed to receive perform_input response: {}", err);
+        }
+        Ok(r) => r,
+    };
 
     match response {
         PerformInputResponse::Ok {
@@ -127,7 +131,7 @@ mod test {
             "map_parameters": null,
             "map_security": {
                 "basic": {
-                    "user": "username",
+                    "username": "username",
                     "password": "pass"
                 }
             }

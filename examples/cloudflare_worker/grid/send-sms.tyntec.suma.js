@@ -1,1 +1,0 @@
-../../communication/send-sms/send-sms.tyntec.suma.js

@@ -3,6 +3,7 @@ import { WASI } from '@cloudflare/workers-wasi';
 import { App, HandleMap, coreModule } from '@superfaceai/one-sdk-common';
 import type { TextCoder, FileSystem, Timers, Network } from '@superfaceai/one-sdk-common';
 import { WasiContext } from "@superfaceai/one-sdk-common/src/app";
+import { SecurityValuesMap } from '@superfaceai/one-sdk-common';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -163,12 +164,14 @@ export type ClientOptions = {
   env?: Record<string, string>;
   preopens?: Record<string, Uint8Array>;
 };
+
 export type ClientPerformOptions = {
-  vars?: Record<string, string>;
-  secrets?: Record<string, string>;
+  provider: string;
+  parameters?: Record<string, string>;
+  security?: SecurityValuesMap;
 };
 
-export class Client {
+class InternalClient {
   private readonly wasi: WASI;
   private readonly app: App;
   private ready = false;
@@ -187,6 +190,10 @@ export class Client {
     }, { metricsTimeout: 0 });
   }
 
+  public destroy() {
+    void this.teardown();
+  }
+
   private async setup() {
     if (this.ready) {
       return;
@@ -203,19 +210,64 @@ export class Client {
     this.ready = false;
   }
 
-  public async perform(usecase: string, input?: any, options?: ClientPerformOptions): Promise<any> {
+  public async perform(
+    profile: string,
+    provider: string,
+    usecase: string,
+    input?: unknown,
+    parameters: Record<string, string> = {},
+    security: SecurityValuesMap = {}
+  ): Promise<any> {
     await this.setup();
 
-    const vars = options?.vars ?? {};
-    const secrets = options?.secrets ?? {};
+    const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
 
     return await this.app.perform(
-      'file://grid/profile.supr',
-      `file://grid/${usecase}.suma.js`,
+      `file://grid/${resolvedProfile}.supr`,
+      `file://grid/${provider}.provider.json`,
+      `file://grid/${resolvedProfile}.${provider}.suma.js`,
       usecase,
       input,
-      vars,
-      secrets
+      parameters,
+      security
     );
+  }
+}
+
+export class Client {
+  private internal: InternalClient;
+
+  constructor(readonly options: ClientOptions = {}) {
+    this.internal = new InternalClient(options);
+  }
+
+  public destroy() {
+    this.internal.destroy();
+  }
+
+  public async getProfile(name: string): Promise<Profile> {
+    return await Profile.loadLocal(this.internal, name);
+  }
+}
+
+export class Profile {
+  private constructor(private readonly internal: InternalClient, public readonly name: string, public readonly url: string) {
+  }
+
+  public static async loadLocal(internal: InternalClient, name: string): Promise<Profile> {
+    return new Profile(internal, name, ''); // TODO: why do we need the url here?
+  }
+
+  public getUseCase(usecaseName: string): UseCase {
+    return new UseCase(this.internal, this, usecaseName);
+  }
+}
+
+export class UseCase {
+  constructor(private readonly internal: InternalClient, private readonly profile: Profile, public readonly name: string) {
+  }
+
+  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<TResult> {
+    return await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security) as TResult;
   }
 }

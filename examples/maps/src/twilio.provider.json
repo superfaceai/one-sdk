@@ -1,0 +1,23 @@
+{
+  "name": "twilio",
+  "services": [
+    {
+      "id": "default",
+      "baseUrl": "https://api.twilio.com"
+    }
+  ],
+  "defaultService": "default",
+  "securitySchemes": [
+    {
+      "id": "basic",
+      "type": "http",
+      "scheme": "basic"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "accountSid",
+      "description": "Account security identifier"
+    }
+  ]
+}

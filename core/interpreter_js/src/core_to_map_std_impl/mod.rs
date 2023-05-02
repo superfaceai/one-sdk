@@ -112,7 +112,7 @@ impl std::fmt::Debug for JsValueDebug<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
             x if x.is_str() => {
-                const MAX_SHOWN: usize = 30 - 2;
+                const MAX_SHOWN: usize = 300 - 2;
 
                 let string = x.as_str().unwrap();
 

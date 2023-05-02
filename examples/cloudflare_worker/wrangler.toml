@@ -6,5 +6,5 @@ workers_dev = true
 
 rules = [
   # TODO: figure out the glob from grid folder only - not working for some reason
-  { type = "Data", globs = ["**/*.suma.js", "**/*.supr"], fallthrough = true }
+  { type = "Data", globs = ["**/*.suma.js", "**/*.supr", "**/*.provider.json"], fallthrough = true }
 ]

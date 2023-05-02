@@ -57,10 +57,63 @@ usecase SendMessage unsafe {
 }
 
 "
+Message Status
+
+Retrieve status of a sent SMS message
+"
+usecase RetrieveMessageStatus safe {
+  input {
+    messageId
+  }
+
+  result {
+    deliveryStatus
+  }
+
+  error {
+    title!
+    detail
+  }
+
+  example Successful {
+    input {
+      messageId = '150000003351F9D7',
+    }
+
+    result {
+      deliveryStatus = 'delivered',
+    }
+  }
+
+  example Failed {
+    input {
+      messageId = '',
+    }
+
+    error {
+      title = 'Not Found',
+      detail = "We don't recognize this message",
+    }
+  }
+}
+
+"
 Identifier of Message
 The identifier is provider-specific and not unique. It should be treated as an opaque value and only used in subsequent calls
 "
 field messageId string
+
+"
+Delivery Status of Message
+Status of a sent message. Harmonized across different providers.
+"
+field deliveryStatus enum {
+  accepted
+  delivered
+  seen
+  unknown
+  failed
+}
 
 """
 Title

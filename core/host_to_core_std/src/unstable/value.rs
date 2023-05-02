@@ -154,7 +154,7 @@ impl<'de> Deserialize<'de> for HostValue {
 #[serde(untagged)]
 pub enum SecurityValue {
     ApiKey { apikey: String },
-    Basic { user: String, password: String },
+    Basic { username: String, password: String },
     Bearer { token: String },
 }
 

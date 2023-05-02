@@ -33,10 +33,12 @@ struct DocumentCacheEntry {
 }
 impl std::fmt::Debug for DocumentCacheEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MapCacheEntry")
-            .field("store_time", &self.store_time)
-            .field("data", &format!("<{} bytes>", self.data.len()))
-            .finish()
+        write!(
+            f,
+            "MapCacheEntry(<{} bytes>, {}s old)",
+            self.data.len(),
+            self.store_time.elapsed().as_secs()
+        )
     }
 }
 
@@ -58,8 +60,8 @@ impl SuperfaceCore {
     }
 
     fn cache_document(&mut self, url: &str) -> anyhow::Result<()> {
-        let span = tracing::span!(tracing::Level::DEBUG, "cache_document");
-        let _guard = span.enter();
+        let _span = tracing::span!(tracing::Level::DEBUG, "cache_document");
+        let _span = _span.enter();
 
         tracing::debug!(url);
         match self.document_cache.get(url) {
@@ -113,12 +115,11 @@ impl SuperfaceCore {
                 .read_to_end(&mut data)
                 .context("Failed to read response body")?;
         }
-        match std::str::from_utf8(&data) {
-            Err(_) => {
-                tracing::debug!("bytes: {:?}", data);
-            }
-            Ok(data_str) => {
-                tracing::debug!(data_str);
+
+        tracing::trace!("bytes: {:?}", data);
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            if let Ok(utf8) = std::str::from_utf8(&data) {
+                tracing::debug!(utf8);
             }
         }
 
@@ -209,8 +210,13 @@ impl SuperfaceCore {
             .get(&perform_input.provider_url)
             .unwrap()
             .data;
-        let provider_json = serde_json::from_slice::<ProviderJson>(provider_json)
-            .context("Failed to deserialize provider JSON")?;
+        let provider_json = match serde_json::from_slice::<ProviderJson>(provider_json) {
+            Err(err) => {
+                tracing::error!("Failed to deserialize provider JSON: {:#}", err);
+                panic!("Failed to deserialize provider JSON: {}", err);
+            }
+            Ok(v) => v,
+        };
 
         let mut provider_parameters = prepare_provider_parameters(&provider_json);
         provider_parameters.append(&mut map_parameters);
