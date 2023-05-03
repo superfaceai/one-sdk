@@ -1,4 +1,16 @@
-# ¯\\\_(ツ)\_/¯
+[Website](https://superface.ai) | [Get Started](https://superface.ai/docs/getting-started) | [Documentation](https://superface.ai/docs) | [Discord](https://sfc.is/discord) | [Twitter](https://twitter.com/superfaceai) | [Support](https://superface.ai/support)
+
+<img src="https://github.com/superfaceai/poc-webassembly/raw/main/docs/LogoGreen.png" alt="Superface" width="100" height="100">
+
+# Superface OneSDK
+
+**One SDK for all the APIs you want to integrate with.**
+
+This is a new implementation of [OneSDK for Node.js](https://github.com/superfaceai/one-sdk-js) using WebAssembly under the hood. Which allows us to give users OneSDK in their favorite language.
+
+For more details about Superface, visit [How it Works](https://superface.ai/how-it-works) and [Get Started](https://superface.ai/docs/getting-started).
+
+## Try it out
 
 A simple demenonstration can be run with `./examples/run.sh node [CORE_DOCKER=1]`. It builds entire projects and Node.js host, then runs the example.
 
@@ -9,6 +21,8 @@ This will require to have Development requirements installed. In case of buildin
 macOS:
 ```
 # Core dependencies
+brew install docker
+# or dependencies locally
 brew install rustup-init
 brew install binaryen # for wasm-opt
 
@@ -76,20 +90,9 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
     run.sh # script to run examples
     node_example.mjs # js code to run example
     Basic/ # Basic integration to demenostrate how the SDK works
-      package.json # for stdlib type declarations, optional
-      profile.supr # Application profile definining use-cases
-      Example.js
     cloudflare_worker/ # example of cloudflare worker
     maps/ # example of how map authoring can look
       package.json # pulls in map-std types
       src/
         [.suma.js files]
 ```
-
-## Proposal: CI pipeline flow
-
-1. Build + test core -> cache core.wasm + core-async.wasm
-2. Hosts
-  - load core.wasm -> build + test python -> cache dist
-  - load core-async.wasm -> build + test js -> cache dist
-3. Upload artifacts and create a release
