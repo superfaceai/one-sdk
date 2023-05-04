@@ -104,6 +104,8 @@ macro_rules! define_exchange_map_to_core {
     };
 }
 
+use std::fmt::Write;
+
 pub mod unstable;
 
 pub trait CoreToMapStd: unstable::MapStdUnstable {}
@@ -117,7 +119,32 @@ pub enum MapInterpreterRunError {
     Error(String),
     #[error("Map code cannot be an empty string")]
     MapCodeEmpty,
+    #[error("Security is misconfigured:\n{}", MapInterpreterSecurityMisconfiguredError::format_errors(.0.as_slice()))]
+    SecurityMisconfigured(Vec<MapInterpreterSecurityMisconfiguredError>),
 }
+
+#[derive(Debug)]
+pub struct MapInterpreterSecurityMisconfiguredError {
+    pub id: String,
+    pub expected: String,
+}
+impl MapInterpreterSecurityMisconfiguredError {
+    fn format_errors(errors: &[MapInterpreterSecurityMisconfiguredError]) -> String {
+        let mut res = String::new();
+
+        for err in errors {
+            writeln!(
+                &mut res,
+                "Value for {} is misconfigured. Expected {}",
+                err.id, err.expected
+            )
+            .unwrap();
+        }
+
+        res
+    }
+}
+
 pub trait MapInterpreter {
     fn run(
         &mut self,

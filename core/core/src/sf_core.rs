@@ -222,7 +222,7 @@ impl SuperfaceCore {
         provider_parameters.append(&mut map_parameters);
         map_parameters = provider_parameters;
 
-        let map_security = prepare_security_map(&provider_json, &perform_input.map_security); // TODO SecurityMap
+        let map_security = prepare_security_map(&provider_json, &perform_input.map_security)?;
         let map_services = prepare_services_map(&provider_json, &map_parameters);
 
         // let mut profile_validator = ProfileValidator::new(

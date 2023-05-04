@@ -4,6 +4,8 @@ use base64::Engine;
 
 use sf_std::unstable::{provider::ProviderJson, SecurityValue, SecurityValuesMap};
 
+use crate::{MapInterpreterRunError, MapInterpreterSecurityMisconfiguredError};
+
 use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
 
 pub enum ApiKeyPlacement {
@@ -70,18 +72,25 @@ pub enum Security {
     Http(HttpSecurity),
 }
 
-pub type SecurityMap = HashMap<String, Security>;
+pub type SecurityMapKey = String;
+pub enum SecurityMapValue {
+    Security(Security),
+    Error(MapInterpreterSecurityMisconfiguredError),
+}
+
+pub type SecurityMap = HashMap<SecurityMapKey, SecurityMapValue>;
 
 pub fn prepare_security_map(
     provider_json: &ProviderJson,
     security_values: &SecurityValuesMap,
-) -> SecurityMap {
+) -> Result<SecurityMap, MapInterpreterRunError> {
     let security_schemes = match &provider_json.security_schemes {
         Some(security_schemes) => security_schemes,
-        None => return SecurityMap::new(),
+        None => return Ok(SecurityMap::new()),
     };
 
     let mut security_map = SecurityMap::new();
+    let mut errors: Vec<MapInterpreterSecurityMisconfiguredError> = Vec::new();
 
     for security_scheme in security_schemes {
         match security_scheme {
@@ -93,38 +102,65 @@ pub fn prepare_security_map(
             } => {
                 let apikey = match security_values.get(id) {
                     Some(SecurityValue::ApiKey { apikey }) => apikey,
-                    Some(_) => continue, // TODO Error wrong value type
-                    None => continue, // TODO sentinel type to return error later in resolve_security
+                    Some(_) => {
+                        errors.push(MapInterpreterSecurityMisconfiguredError {
+                            id: id.to_owned(),
+                            expected: "{ apikey: String }".to_string(),
+                        });
+                        continue;
+                    }
+                    None => {
+                        security_map.insert(
+                            id.to_owned(),
+                            SecurityMapValue::Error(MapInterpreterSecurityMisconfiguredError {
+                                id: id.to_owned(),
+                                expected: "not empty value".to_string(),
+                            }),
+                        );
+                        continue;
+                    }
                 };
 
                 security_map.insert(
                     id.to_owned(),
-                    Security::ApiKey {
+                    SecurityMapValue::Security(Security::ApiKey {
                         name: name.to_owned(),
                         apikey: apikey.to_owned(),
                         r#in: ApiKeyPlacement::from(*r#in),
                         body_type: body_type.map(|bt| ApiKeyBodyType::from(bt)),
-                    },
+                    }),
                 );
             }
             sf_std::unstable::provider::SecurityScheme::Http(
                 sf_std::unstable::provider::HttpSecurity::Basic { id },
             ) => {
                 let (user, password) = match security_values.get(id) {
-                    Some(SecurityValue::Basic {
-                        username: user,
-                        password,
-                    }) => (user, password),
-                    Some(_) => continue, // TODO
-                    None => continue,    // TODO
+                    Some(SecurityValue::Basic { username, password }) => (username, password),
+                    Some(_) => {
+                        errors.push(MapInterpreterSecurityMisconfiguredError {
+                            id: id.to_owned(),
+                            expected: "{ username: String, password: String }".to_string(),
+                        });
+                        continue;
+                    }
+                    None => {
+                        security_map.insert(
+                            id.to_owned(),
+                            SecurityMapValue::Error(MapInterpreterSecurityMisconfiguredError {
+                                id: id.to_owned(),
+                                expected: "not empty value".to_string(),
+                            }),
+                        );
+                        continue;
+                    }
                 };
 
                 security_map.insert(
                     id.to_owned(),
-                    Security::Http(HttpSecurity::Basic {
+                    SecurityMapValue::Security(Security::Http(HttpSecurity::Basic {
                         username: user.to_owned(),
                         password: password.to_owned(),
-                    }),
+                    })),
                 );
             }
             sf_std::unstable::provider::SecurityScheme::Http(
@@ -132,22 +168,41 @@ pub fn prepare_security_map(
             ) => {
                 let token = match security_values.get(id) {
                     Some(SecurityValue::Bearer { token }) => token,
-                    Some(_) => continue, // TODO
-                    None => continue,    // TODO
+                    Some(_) => {
+                        errors.push(MapInterpreterSecurityMisconfiguredError {
+                            id: id.to_owned(),
+                            expected: "{ token: String }".to_string(),
+                        });
+                        continue;
+                    }
+                    None => {
+                        security_map.insert(
+                            id.to_owned(),
+                            SecurityMapValue::Error(MapInterpreterSecurityMisconfiguredError {
+                                id: id.to_owned(),
+                                expected: "not None".to_string(),
+                            }),
+                        );
+                        continue;
+                    }
                 };
 
                 security_map.insert(
                     id.to_string(),
-                    Security::Http(HttpSecurity::Bearer {
+                    SecurityMapValue::Security(Security::Http(HttpSecurity::Bearer {
                         token: token.to_string(),
                         bearer_format: bearer_format.to_owned(),
-                    }),
+                    })),
                 );
             }
         }
     }
 
-    security_map
+    if errors.len() > 0 {
+        return Err(MapInterpreterRunError::SecurityMisconfigured(errors));
+    }
+
+    Ok(security_map)
 }
 
 pub fn resolve_security(
@@ -164,11 +219,19 @@ pub fn resolve_security(
     match security_config {
         None => {
             return Err(HttpCallError::InvalidSecurityConfiguration(format!(
-                "Security configuration '{}' is missing",
+                "Security configuration for {} is missing",
                 security
             )));
         }
-        Some(Security::Http(HttpSecurity::Basic { username, password })) => {
+        Some(SecurityMapValue::Error(err)) => {
+            return Err(HttpCallError::InvalidSecurityConfiguration(
+                MapInterpreterSecurityMisconfiguredError::format_errors(std::slice::from_ref(err)),
+            ));
+        }
+        Some(SecurityMapValue::Security(Security::Http(HttpSecurity::Basic {
+            username,
+            password,
+        }))) => {
             let encoded_crendentials = base64::engine::general_purpose::STANDARD
                 .encode(format!("{}:{}", username, password).as_bytes());
             let basic_auth = vec![format!("Basic {}", encoded_crendentials)];
@@ -177,22 +240,22 @@ pub fn resolve_security(
                 .headers
                 .insert("Authorization".to_string(), basic_auth);
         }
-        Some(Security::Http(HttpSecurity::Bearer {
+        Some(SecurityMapValue::Security(Security::Http(HttpSecurity::Bearer {
             bearer_format: _,
             token,
-        })) => {
+        }))) => {
             let digest_auth = vec![format!("Bearer {}", token)];
 
             params
                 .headers
                 .insert("Authorization".to_string(), digest_auth);
         }
-        Some(Security::ApiKey {
+        Some(SecurityMapValue::Security(Security::ApiKey {
             r#in,
             name,
             apikey,
             body_type,
-        }) => match (r#in, body_type) {
+        })) => match (r#in, body_type) {
             (ApiKeyPlacement::Header, _) => {
                 params
                     .headers
