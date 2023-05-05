@@ -1,6 +1,7 @@
 {
   "name": "@superfaceai/one-sdk",
   "version": "3.0.0-rc.1",
+  "main": "node/index.js",
   "type": "module",
   "license": "MIT",
   "devDependencies": {
@@ -12,7 +13,8 @@
     "@cloudflare/workers-wasi": "^0.0.5"
   },
   "scripts": {
-    "build": "rimraf common cloudflare node && tsc -p tsconfig.json"
+    "clean": "rimraf common cloudflare node",
+    "build": "yarn clean && tsc -p tsconfig.json"
   },
   "files": [
     "assets/**/*",

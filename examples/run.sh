@@ -17,16 +17,15 @@ MAKE_FLAGS=${2:-mode=debug}
 case $1 in
 	node)
 		cd ..
-		make build_host_node $MAKE_FLAGS
+		make build_host_js $MAKE_FLAGS
 		cd "$base"
 		node --experimental-wasi-unstable-preview1 ./node_example.mjs $ASSETS_PATH $PROFILE $USECASE $INPUT $PROVIDER $PARAMETERS $SECURITY
 	;;
 
 	cloudflare)
 		cd ..
-		make build_host_cloudflare $MAKE_FLAGS
+		make build_host_js $MAKE_FLAGS
 		cd "$base/cloudflare_worker"
-		yarn install --force
 		yarn dev
 	;;
 
