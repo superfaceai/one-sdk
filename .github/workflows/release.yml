@@ -6,16 +6,17 @@ on:
         description: "Release level"
         required: true
         type: choice
+        default: prerelease
         options:
+        - prerelease
         - patch
         - minor
         - major
-        - prerelease
       release-kind:
         description: "Release kind"
         required: false
         type: choice
-        default: "stable"
+        default: alpha
         options:
         - alpha
         - beta
@@ -75,13 +76,10 @@ jobs:
   host-js:
     needs: core
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: host/js
     steps:
     # input
     - name: Release level processing
-      run: ../../scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_ENV
+      run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_ENV
     # setup
     - name: Git configuration
       run: |
@@ -100,19 +98,24 @@ jobs:
         path: host/js/assets
     # build
     - name: Install dependencies
+      working-directory: host/js
       run: yarn install --frozen-lockfile
     - name: Build host
+      working-directory: host/js
       run: yarn build
     # version and (TODO) changelog
     - name: Bump release version
+      working-directory: host/js
       run: echo "NEW_VERSION=$(npm --no-git-tag-version --preid $RELEASE_PREID version $RELEASE_LEVEL)" >>$GITHUB_ENV
     - name: Commit CHANGELOG.md and package.json changes and create tag
+      working-directory: host/js
       run: |
         git add package.json
         git commit -m "chore: release host/js $NEW_VERSION"
         git tag $NEW_VERSION
     # publish and push git
     - name: Publish
+      working-directory: host/js
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
       run: yarn publish --verbose --access public --new-version $NEW_VERSION --tag $RELEASE_TAG
