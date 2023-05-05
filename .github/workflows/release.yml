@@ -31,8 +31,9 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           registry-url: https://registry.npmjs.org/
-          node-version: '18'
-          cache: 'yarn'
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: integration/yarn.lock
       - uses: actions/cache@v3
         with:
           path: |
@@ -40,7 +41,7 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/registry/index
             core/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles("**/Cargo.toml") }}
       - uses: actions/cache@v3
         with:
           path: core/wasi-sdk-*
@@ -80,8 +81,9 @@ jobs:
     - uses: actions/setup-node@v3
       with:
         registry-url: https://registry.npmjs.org/
-        node-version: '18'
-        cache: 'yarn'
+        node-version: "18"
+        cache: yarn
+        cache-dependency-path: host/js/yarn.lock
     - uses: actions/download-artifact@v3
       with:
         name: core-async-wasm
