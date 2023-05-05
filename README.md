@@ -19,7 +19,7 @@ python3 -m pip install wasmtime requests
 brew install node yarn
 ```
 
-For development build with `make` from root. To create release build run `make mode=release`.
+For development build with `make` from root. To create release build run `make MODE=release`.
 
 ### Docker
 

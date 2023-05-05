@@ -1,9 +1,9 @@
 OS=$(shell uname -s)
 
-ifeq ($(mode),release)
+ifeq ($(MODE),release)
 	FLAGS=--release
 else
-	mode=debug
+	MODE=debug
 	FLAGS=
 endif
 
@@ -18,7 +18,7 @@ WASI_SDK_FOLDER=core/wasi-sdk-${WASI_SDK_VERSION}.0
 WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-${WASI_SDK_OS}.tar.gz"
 
 # Core
-CORE_BUILD=core/target/wasm32-wasi/${mode}/superface_core.wasm
+CORE_BUILD=core/target/wasm32-wasi/${MODE}/superface_core.wasm
 CORE_DIST_FOLDER=core/dist
 CORE_WASM=${CORE_DIST_FOLDER}/core.wasm
 CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/core-async.wasm
