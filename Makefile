@@ -111,9 +111,8 @@ clean_hosts:
 	rm -rf ${HOST_JS_ASSETS}
 	cd host/js && yarn clean
 
-build_host_js: ${HOST_JS_ASSETS_WASM_CORE}
-	cd host/js && yarn install && yarn build
-
-${HOST_JS_ASSETS_WASM_CORE}: ${CORE_ASYNCIFY_WASM}
+# copy wasm always because cached docker artifacts can have older timestamp
+build_host_js: ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${HOST_JS_ASSETS}
 	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS_WASM_CORE}
+	cd host/js && yarn install && yarn build	
