@@ -68,7 +68,7 @@ ${CORE_ASYNCIFY_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
 	@echo 'Running asyncify...'
 	wasm-opt -O2 --asyncify --pass-arg=asyncify-asserts ${CORE_BUILD} --output ${CORE_ASYNCIFY_WASM}
 ${WASI_SDK_FOLDER}:
-	wget -qO - ${WASI_SDK_URL} | tar xvf - -C core
+	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
 
 test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
 	cd core && cargo test
