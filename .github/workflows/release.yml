@@ -43,12 +43,12 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/registry/index
             core/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}
       - name: Cache WASI SDK
         uses: actions/cache@v3
         with:
           path: core/wasi-sdk-*
-          key: ${{ runner.os }}-${{ runner.arch }}-wasisdk
+          key: wasisdk-${{ runner.os }}-${{ runner.arch }}
       - name: Install wasm-opt
         run: |
           sudo apt-get update
@@ -77,15 +77,15 @@ jobs:
     needs: core
     runs-on: ubuntu-latest
     steps:
-    # input
-    - name: Release level processing
-      run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_ENV
     # setup
     - name: Git configuration
       run: |
         git config --global user.email "bot@superface.ai"
         git config --global user.name "GitHub Actions release workflow"
     - uses: actions/checkout@v3
+    - name: Release level processing
+      run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_ENV
+
     - uses: actions/setup-node@v3
       with:
         registry-url: https://registry.npmjs.org/
