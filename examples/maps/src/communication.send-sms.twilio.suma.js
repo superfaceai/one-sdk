@@ -1,7 +1,7 @@
-/// <reference types="superface-map-std" />
+/// <reference types="@superface/map-std" />
 
 /** @type {UsecaseFn} */
-function sendSms({ input, parameters, services }) {
+function SendMessage({ input, parameters, services }) {
   const url = `${services.default}/2010-04-01/Accounts/${parameters.TWILIO_ACCOUNT_SID}/Messages.json`;
   const options = {
     method: 'POST',

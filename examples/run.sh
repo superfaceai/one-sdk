@@ -29,13 +29,14 @@ case $1 in
 		yarn dev
 	;;
 
-	python|py)
+	python)
+		echo "TODO: Python host is currenly not up to date with the rest of the codebase"
 		# FIXME
 		python3 ./python "$CORE" "$MAP" $USECASE
 	;;
 
 	*)
-		echo "usage: run.sh node|py"
+		echo "usage: run.sh node|cloudflare|python"
 		exit 1
 	;;
 esac

@@ -36,21 +36,16 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
       __main__.py
       [python files]
     js/
-      package.json # yarn workspace
-      tsconfig.json # parent tsconfig
-      common/ # common code shared between JS hosts
-        package.json
-        tsconfig.json
-        src/
+      package.json
+      tsconfig.json
+      assets/ # contains core wasm
+      src/
+        common/ # common code shared between JS hosts
           [ts files]
-      node/ # NodeJS host
-        package.json
-        tsconfig.json
-        src/
-      cloudflare/ # Cloudflare workers host
-        package.json
-        tsconfig.json
-        src/
+        node/ # NodeJS host
+          [ts files]
+        cloudflare/ # Cloudflare workers host
+          [ts files]
   core/
     .cargo/
       config
@@ -78,12 +73,17 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
     profile-validator/ # profile validator extracted from TS SDK
       src/
   examples/
-    run.sh # script to run example with Basic integration example
-    node_example.js # js code to run example
+    run.sh # script to run examples
+    node_example.mjs # js code to run example
     Basic/ # Basic integration to demenostrate how the SDK works
       package.json # for stdlib type declarations, optional
       profile.supr # Application profile definining use-cases
       Example.js
+    cloudflare_worker/ # example of cloudflare worker
+    maps/ # example of how map authoring can look
+      package.json # pulls in map-std types
+      src/
+        [.suma.js files]
 ```
 
 ## Proposal: CI pipeline flow

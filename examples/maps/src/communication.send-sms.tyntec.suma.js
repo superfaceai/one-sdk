@@ -1,7 +1,7 @@
-/// <reference types="superface-map-std" />
+/// <reference types="@superface/map-std" />
 
 /** @type {UsecaseFn} */
-function sendSms({ input, parameters, services }) {
+function SendMessage({ input, parameters, services }) {
   const url = `${services.default}/messaging/v1/sms`;
   const options = {
     method: 'POST',
