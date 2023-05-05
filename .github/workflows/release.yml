@@ -48,6 +48,10 @@ jobs:
         with:
           path: core/wasi-sdk-*
           key: ${{ runner.os }}-${{ runner.arch }}-wasisdk
+      - name: Install wasm-opt
+        run: |
+          sudo apt-get update
+          sudo apt-get install binaryen
       - name: Install rust target
         run: rustup target add wasm32-wasi
       # build and store
