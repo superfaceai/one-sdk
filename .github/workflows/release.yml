@@ -54,7 +54,7 @@ jobs:
       - name: Run make to build core
         env:
           CARGO_INCREMENTAL: "0" # disable incremental to reduce load on the cache
-        run: make build_core MODE=release OS=linux
+        run: make build_core MODE=release OS=${{ runner.os }}
       - name: Upload artifact core-async.wasm
         uses: actions/upload-artifact@v3
         with:
