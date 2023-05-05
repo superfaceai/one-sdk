@@ -1,7 +1,7 @@
-/// <reference types="superface-map-std" />
+/// <reference types="@superface/map-std" />
 
 /** @type {UsecaseFn} */
-function sendEmail({ input, services }) {
+function SendEmail({ input, services }) {
 	const url = `${services.mandrill}/api/1.0/messages/send`;
 	const options = {
 		method: 'POST',

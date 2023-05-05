@@ -2,6 +2,6 @@
   "name": "maps",
   "private": true,
   "devDependencies": {
-    "@types/superface-map-std": "../../integration/map-std"
+    "@types/superface__map-std": "../../integration/map-std"
   }
 }

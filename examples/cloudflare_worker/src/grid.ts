@@ -8,9 +8,9 @@ import mapSendEmail from '../grid/communication.send-email.mailchimp.suma.js';
 import providerMailchimp from '../grid/mailchimp.provider.json';
 
 // @ts-ignore
-import profileSendSms from '../grid/communication.send-email.supr'; // https://superface.ai/communication/send-sms@2.0.1
+import profileSendSms from '../grid/communication.send-sms.supr'; // https://superface.ai/communication/send-sms@2.0.1
 // @ts-ignore
-import mapSendSms from '../grid/communication.send-email.mailchimp.suma.js';
+import mapSendSms from '../grid/communication.send-sms.twilio.suma.js';
 // @ts-ignore
 import providerTwilio from '../grid/twilio.provider.json';
 

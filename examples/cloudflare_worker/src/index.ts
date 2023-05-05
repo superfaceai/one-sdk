@@ -25,7 +25,7 @@ export default {
     let result: { Err: { title: string, detail?: string } } | { Ok: { messageId: string } };
     switch (url.pathname) {
       case '/sms':
-        result = await (await client.getProfile('communication/send-sms')).getUseCase('sendSms').perform(
+        result = await (await client.getProfile('communication/send-sms')).getUseCase('SendMessage').perform(
           { to, text },
           {
             provider: 'twilio',
@@ -41,7 +41,7 @@ export default {
         break
       
       case '/email':
-        result = await (await client.getProfile('communication/send-email')).getUseCase('sendEmail').perform(
+        result = await (await client.getProfile('communication/send-email')).getUseCase('SendEmail').perform(
           { from: 'cfw@demo.superface.org', to, text, subject: 'Superface on Cloudflare Workers' },
           {
             provider: 'mailchimp',
