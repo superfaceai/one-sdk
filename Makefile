@@ -31,7 +31,7 @@ MAP_STD=integration/map-std/dist/map_std.js
 PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
 
 # Hosts
-HOST_JS_ASSETS=host/js/common/assets
+HOST_JS_ASSETS=host/js/assets
 HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/core-async.wasm
 
 all: clean build
@@ -106,17 +106,13 @@ clean_integration:
 ##########
 ## HOST ##
 ##########
-build_hosts: build_host_node build_host_cloudflare
+build_hosts: build_host_js
 clean_hosts:
-	rm -rf ${HOST_JS_ASSETS} host/js/dist
+	rm -rf ${HOST_JS_ASSETS}
+	cd host/js && yarn clean
 
-build_host_js_common: ${HOST_JS_ASSETS_WASM_CORE}
-	cd host/js && yarn install && yarn workspace @superfaceai/one-sdk-common build	
-build_host_node: build_host_js_common
-	cd host/js && yarn workspace @superfaceai/one-sdk-node build
-build_host_cloudflare: build_host_js_common
-	cd host/js && yarn workspace @superfaceai/one-sdk-cloudflare build
-
-${HOST_JS_ASSETS_WASM_CORE}: ${CORE_ASYNCIFY_WASM}
+# copy wasm always because cached docker artifacts can have older timestamp
+build_host_js: ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${HOST_JS_ASSETS}
 	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS_WASM_CORE}
+	cd host/js && yarn install && yarn build	

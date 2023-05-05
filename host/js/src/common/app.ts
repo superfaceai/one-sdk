@@ -1,8 +1,8 @@
-import { HandleMap } from './handle_map';
-import { Asyncify } from './asyncify';
+import { HandleMap } from './handle_map.js';
+import { Asyncify } from './asyncify.js';
 
-import * as sf_host from './sf_host';
-import { SecurityValuesMap } from './security';
+import * as sf_host from './sf_host.js';
+import { SecurityValuesMap } from './security.js';
 
 export interface WasiContext {
   wasiImport: WebAssembly.ModuleImports;

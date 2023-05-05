@@ -1,9 +1,10 @@
 import { WASI } from '@cloudflare/workers-wasi';
 
-import { App, HandleMap, coreModule } from '@superfaceai/one-sdk-common';
-import type { TextCoder, FileSystem, Timers, Network } from '@superfaceai/one-sdk-common';
-import { WasiContext } from "@superfaceai/one-sdk-common/src/app";
-import { SecurityValuesMap } from '@superfaceai/one-sdk-common';
+import { App, HandleMap } from '../common/index.js';
+import type { TextCoder, FileSystem, Timers, Network, WasiContext, SecurityValuesMap } from '../common/index.js';
+
+// @ts-ignore
+import coreModule from '../assets/core-async.wasm';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();

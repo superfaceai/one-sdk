@@ -1,4 +1,4 @@
-import { Client } from '@superfaceai/one-sdk-cloudflare';
+import { Client } from '@superfaceai/one-sdk/cloudflare';
 
 import { GRID_IMPORTS } from './grid';
 
