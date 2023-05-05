@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       release-level:
-        description: "Release level (prerelease bumps `x.y.z-tag.0` -> `x.y.z-tag.1`)"
+        description: "Release level"
         required: true
         type: choice
         options:
@@ -34,7 +34,8 @@ jobs:
           node-version: "18"
           cache: yarn
           cache-dependency-path: integration/yarn.lock
-      - uses: actions/cache@v3
+      - name: Cache cargo registry and build directory
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/git
@@ -42,20 +43,25 @@ jobs:
             ~/.cargo/registry/index
             core/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-      - uses: actions/cache@v3
+      - name: Cache WASI SDK
+        uses: actions/cache@v3
         with:
           path: core/wasi-sdk-*
           key: ${{ runner.os }}-${{ runner.arch }}-wasisdk
+      - name: Install rust target
+        run: rustup target add wasm32-wasi
       # build and store
       - name: Run make to build core
         env:
           CARGO_INCREMENTAL: "0" # disable incremental to reduce load on the cache
         run: make build_core MODE=release OS=linux
-      - uses: actions/upload-artifact@v3
+      - name: Upload artifact core-async.wasm
+        uses: actions/upload-artifact@v3
         with:
           name: core-async-wasm
           path: core/dist/core-async.wasm
-      - uses: actions/upload-artifact@v3
+      - name: Upload artifact core.wasm
+        uses: actions/upload-artifact@v3
         with:
           name: core-wasm
           path: core/dist/core.wasm
