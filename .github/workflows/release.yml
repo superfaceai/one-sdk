@@ -1,0 +1,112 @@
+name: Release package
+on:
+  workflow_dispatch:
+    inputs:
+      release-level:
+        description: "Release level (prerelease bumps `x.y.z-tag.0` -> `x.y.z-tag.1`)"
+        required: true
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+        - prerelease
+      release-kind:
+        description: "Release kind"
+        required: false
+        type: choice
+        default: "stable"
+        options:
+        - alpha
+        - beta
+        - rc
+        - stable
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      # setup
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: '18'
+          cache: 'yarn'
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            core/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+      - uses: actions/cache@v3
+        with:
+          path: core/wasi-sdk-*
+          key: ${{ runner.os }}-wasisdk
+      # build and store
+      - name: Run make to build core
+        env:
+          CARGO_INCREMENTAL: "0" # disable incremental to reduce load on the cache
+        run: make build_core MODE=release OS=linux
+      - uses: actions/upload-artifact@v3
+        with:
+          name: core-async-wasm
+          path: core/dist/core-async.wasm
+      - uses: actions/upload-artifact@v3
+        with:
+          name: core-wasm
+          path: core/dist/core.wasm
+  
+  # TODO: create github release?
+
+  host-js:
+    needs: core
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: host/js
+    steps:
+    # input
+    - name: Release level processing
+      run: ../../scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_ENV
+    # setup
+    - name: Git configuration
+      run: |
+        git config --global user.email "bot@superface.ai"
+        git config --global user.name "GitHub Actions release workflow"
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        registry-url: https://registry.npmjs.org/
+        node-version: '18'
+        cache: 'yarn'
+    - uses: actions/download-artifact@v3
+      with:
+        name: core-async-wasm
+        path: host/js/assets
+    # build
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+    - name: Build host
+      run: yarn build
+    # version and (TODO) changelog
+    - name: Bump release version
+      run: echo "NEW_VERSION=$(npm --no-git-tag-version --preid $RELEASE_PREID version $RELEASE_LEVEL)" >>$GITHUB_ENV
+    - name: Commit CHANGELOG.md and package.json changes and create tag
+      run: |
+        git add package.json
+        git commit -m "chore: release host/js $NEW_VERSION"
+        git tag $NEW_VERSION
+    # publish and push git
+    - name: Publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
+      run: yarn publish --verbose --access public --new-version $NEW_VERSION --tag $RELEASE_TAG
+    - name: Push changes to repository
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: git push origin && git push --tags
+
+  # TODO: additional hosts

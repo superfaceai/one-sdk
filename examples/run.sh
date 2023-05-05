@@ -12,7 +12,7 @@ PROVIDER=localhost
 PARAMETERS='{"PARAM":"parameter_value"}'
 SECURITY='{"basic_auth":{"username":"username","password":"password"}}'
 
-MAKE_FLAGS=${2:-mode=debug}
+MAKE_FLAGS=${2:-MODE=debug}
 
 case $1 in
 	node)
