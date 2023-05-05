@@ -1,6 +1,6 @@
 import type { TextCoder, AppContext } from './app';
-import { HandleMap } from './handle_map';
-import { Asyncify, AsyncifyState } from './asyncify';
+import { HandleMap } from './handle_map.js';
+import { Asyncify, AsyncifyState } from './asyncify.js';
 
 type AbiResult = number;
 type Ptr<T> = number;

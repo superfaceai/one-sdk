@@ -1,10 +1,23 @@
 {
-  "name": "@superfaceai/host",
-  "version": "0.1.0",
-  "private": true,
-  "workspaces": [
-    "common",
-    "node",
-    "cloudflare"
+  "name": "@superfaceai/one-sdk",
+  "version": "3.0.0-rc.1",
+  "type": "module",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^18.15.11",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.2"
+  },
+  "dependencies": {
+    "@cloudflare/workers-wasi": "^0.0.5"
+  },
+  "scripts": {
+    "build": "rimraf common cloudflare node && tsc -p tsconfig.json"
+  },
+  "files": [
+    "assets/**/*",
+    "common/**/*",
+    "node/**/*",
+    "cloudflare/**/*"
   ]
 }

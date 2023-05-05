@@ -19,7 +19,7 @@ case $1 in
 		cd ..
 		make build_host_node $MAKE_FLAGS
 		cd "$base"
-		node --experimental-wasi-unstable-preview1 ./node_example.js $ASSETS_PATH $PROFILE $USECASE $INPUT $PROVIDER $PARAMETERS $SECURITY
+		node --experimental-wasi-unstable-preview1 ./node_example.mjs $ASSETS_PATH $PROFILE $USECASE $INPUT $PROVIDER $PARAMETERS $SECURITY
 	;;
 
 	cloudflare)

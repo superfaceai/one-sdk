@@ -2,9 +2,12 @@ import fs, { FileHandle } from 'fs/promises';
 import { resolve } from 'path';
 import { WASI } from 'wasi';
 
-import { App, HandleMap, coreModule as corePath } from '@superfaceai/one-sdk-common';
-import type { TextCoder, FileSystem, Timers, Network } from '@superfaceai/one-sdk-common';
-import { SecurityValuesMap } from '@superfaceai/one-sdk-common';
+import { createRequire } from 'node:module';
+
+import { App, HandleMap } from '../common/index.js';
+import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
+
+const CORE_PATH = createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 
 class NodeTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -111,7 +114,7 @@ class InternalClient {
       this.assetsPath = options.assetsPath;
     }
 
-    this.corePath = require.resolve(corePath);
+    this.corePath = CORE_PATH;
 
     this.wasi = new WASI({
       env: process.env
