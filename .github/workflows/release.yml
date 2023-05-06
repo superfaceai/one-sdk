@@ -76,7 +76,7 @@ jobs:
         run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
       - name: Resolve release version
         id: release-version
-        run: scripts/release-level.sh ./VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+        run: scripts/release-version.sh ./VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
     outputs:
       RELEASE_LEVEL: ${{ steps.release-level.outputs.RELEASE_LEVEL }}
       RELEASE_PREID: ${{ steps.release-level.outputs.RELEASE_PREID }}
