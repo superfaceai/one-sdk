@@ -27,8 +27,9 @@ jobs:
   core:
     runs-on: ubuntu-latest
     steps:
-      # setup
+      # checkout
       - uses: actions/checkout@v3
+      # setup
       - uses: actions/setup-node@v3
         with:
           registry-url: https://registry.npmjs.org/
@@ -87,12 +88,13 @@ jobs:
     needs: [core]
     runs-on: ubuntu-latest
     steps:
-    # setup
+    # checkout
+    - uses: actions/checkout@v3
     - name: Git configuration
       run: |
         git config --global user.email "bot@superface.ai"
         git config --global user.name "GitHub Actions release workflow"
-    - uses: actions/checkout@v3
+    # setup
     - uses: actions/setup-node@v3
       with:
         registry-url: https://registry.npmjs.org/
@@ -130,6 +132,13 @@ jobs:
     needs: [core, host-js]
     runs-on: ubuntu-latest
     steps:
+    # checkout
+    - uses: actions/checkout@v3
+    - name: Git configuration
+      run: |
+        git config --global user.email "bot@superface.ai"
+        git config --global user.name "GitHub Actions release workflow"
+    # changelog
     - name: Update changelog (if stable)
       uses: superfaceai/release-changelog-action@v1
       if: needs.core.outputs.RELEASE_TAG == 'latest'
