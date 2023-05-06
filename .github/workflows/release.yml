@@ -134,6 +134,9 @@ jobs:
     steps:
     # checkout
     - uses: actions/checkout@v3
+      with:
+        # we set the ref here so that it does NOT get the commit hash from the context, which causes it to miss the commits pushed in host builds
+        ref: ${{ github.ref }}
     - name: Git configuration
       run: |
         git config --global user.email "bot@superface.ai"
