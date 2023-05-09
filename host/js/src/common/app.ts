@@ -169,7 +169,8 @@ export class App implements AppContext {
     input: unknown,
     parameters: Record<string, string>,
     security: SecurityValuesMap,
-    output?: unknown
+    output?: unknown,
+    exception?: { message: string }
   } | undefined = undefined;
 
   private metricsState: {
@@ -257,6 +258,12 @@ export class App implements AppContext {
         this.performState = { profileUrl, providerUrl, mapUrl, usecase, input, parameters, security };
         await core.performFn();
 
+        if (this.performState.exception) {
+          const err = new Error(this.performState.exception.message);
+          this.performState = undefined;
+          throw err;
+        }
+
         const output = this.performState.output;
         this.performState = undefined;
         return output;
@@ -280,8 +287,16 @@ export class App implements AppContext {
           map_security: this.performState!.security,
         };
 
-      case 'perform-output':
+      case 'perform-output-result':
         this.performState!.output = message.map_result;
+        return { kind: 'ok' };
+
+      case 'perform-output-error':
+        this.performState!.output = message.map_result;
+        return { kind: 'ok' };
+
+      case 'perform-output-exception':
+        this.performState!.exception = message;
         return { kind: 'ok' };
 
       case 'file-open': {
@@ -337,7 +352,7 @@ export class App implements AppContext {
       }
 
       default:
-        return { 'kind': 'err', 'error': 'Unknown message' }
+        return { 'kind': 'err', 'error': `Unknown message ${message['kind']}` }
     }
   }
 
