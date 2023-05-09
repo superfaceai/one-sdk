@@ -7,7 +7,9 @@ usecase Example {
   }
 
   result {
-    name!
     url!
+    method!
+    query!
+    headers!
   }
 }

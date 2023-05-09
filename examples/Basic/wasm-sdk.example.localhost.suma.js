@@ -8,7 +8,7 @@ function Example({ input, parameters, services }) {
   __ffi.unstable.printDebug('Parameters:', parameters);
   __ffi.unstable.printDebug('Services:', services);
 
-  const url = `${services.default}/api/people/${input.id}?foo=x`;
+  const url = `${services.default}/api/${input.id}`;
 
   const options = {
     method: 'GET',
@@ -23,16 +23,19 @@ function Example({ input, parameters, services }) {
   };
 
   const response = std.unstable.fetch(url, options).response();
-
   const body = response.bodyAuto() ?? {};
 
-  if (std.unstable.random() > 0.5) {
-    throw new std.unstable.MapError('Random error');
+  if (response.status !== 200) {
+    throw new std.unstable.MapError({
+      title: 'Error response',
+      detail: `${JSON.stringify(response)} - ${JSON.stringify(body)}`
+    });
   }
 
   return {
-    name: body.name,
-    height: body.height,
-    param: parameters.PARAM,
+    url: body.url,
+    method: body.method,
+    query: body.query,
+    headers: body.headers,
   };
 }

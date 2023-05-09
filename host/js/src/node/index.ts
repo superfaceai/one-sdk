@@ -177,11 +177,7 @@ class InternalClient {
 
   public resolveMapUrl(profile: string, provider?: string): string {
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
-    const path = resolve(this.assetsPath, `${resolvedProfile}.${provider}.js`);
-
-    if (fs.stat(path) === undefined) {
-      throw new Error(`Map file does not exist, path: ${path}`);
-    }
+    const path = resolve(this.assetsPath, `${resolvedProfile}.${provider}.suma.js`);
 
     return `file://${path}`;
   }
