@@ -2,9 +2,10 @@ use std::io::Read;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use url::Url;
 
 use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
-use crate::{abi::Handle, encode_query, lowercase_headers_multimap, HeadersMultiMap, MultiMap};
+use crate::{abi::Handle, lowercase_headers_multimap, HeadersMultiMap, MultiMap};
 
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
@@ -48,6 +49,8 @@ define_exchange_core_to_host! {
 
 #[derive(Debug, Error)]
 pub enum HttpCallError {
+    #[error("Invalid fetch url: {0}")]
+    InvalidUrl(#[from] url::ParseError),
     #[error("HttpCall error: {0}")]
     Request(String), // TODO: more granular
     #[error("OutHttpCallHead error: {0}")]
@@ -65,14 +68,18 @@ impl HttpRequest {
         query: &MultiMap,
         body: Option<&[u8]>,
     ) -> Result<Self, HttpCallError> {
-        let url = match encode_query(query) {
-            empty if empty.len() == 0 => url.to_string(),
-            query => format!("{}?{}", url, query),
-        };
+        let mut url = Url::parse(url)?;
+        // merge query params already in the URL with the params passed in query
+        // TODO: or we can assert here that the url doesn't contain any params - 
+        url.query_pairs_mut().extend_pairs(
+            query.iter().flat_map(
+                |(key, values)| values.iter().map(move |value| (key, value))
+            )
+        );
 
         let response = HttpCallRequest {
             kind: HttpCallRequest::KIND,
-            url: &url,
+            url: url.as_str(),
             method,
             headers,
             body,
