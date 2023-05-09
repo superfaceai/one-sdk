@@ -3,7 +3,7 @@ use std::io::{self, Read};
 use serde::{Deserialize, Serialize};
 
 use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
-use crate::abi::{err_from_wasi_errno, Size};
+use crate::abi::err_from_wasi_errno;
 
 // Initial idea was to use the file-open message to obtain a fd from the host
 // the use it with `std::fs::File::from_raw_fd`, but the ability to allocate/inject fds into
@@ -28,7 +28,7 @@ define_exchange_core_to_host! {
         Ok {
             stream: IoStream
         },
-        Err { errno: Size }
+        Err { errno: i32 }
     }
 }
 

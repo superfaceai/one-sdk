@@ -9,8 +9,8 @@ use map_std::{
     MapInterpreter, MapInterpreterRunError,
 };
 
-mod state;
-use state::InterpreterState;
+mod std_impl;
+use std_impl::InterpreterState;
 
 mod core_to_map_std_impl;
 
@@ -113,7 +113,7 @@ impl MapInterpreter for JsInterpreter {
 
         self.eval_code("map.js", &bundle)
             .context("Failed to run map bundle")
-            .map_err(fmt_error)?;
+            .map_err(fmt_error)?; // format anyhow to something
 
         Ok(self.take_output())
     }

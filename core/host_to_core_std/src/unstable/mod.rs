@@ -9,6 +9,8 @@ pub mod perform;
 pub mod provider;
 
 mod value;
+use serde::Deserialize;
+use serde::Serialize;
 pub use value::HostValue;
 pub use value::SecurityValue;
 pub use value::SecurityValuesMap;
@@ -64,8 +66,21 @@ extern "C" fn __import_message_exchange_retrieve(
     unreachable!()
 }
 
+////////////
+// ERRORS //
+////////////
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ErrorCode {
+    #[serde(rename = "http:unknown")]
+    HttpUnknown,
+
+    #[serde(rename = "http:invalid_url")]
+    HttpInvalidUrl,
+}
+
 /////////////
-// STREMAS //
+// STREAMS //
 /////////////
 
 // SAFETY: We choose to trust this FFI.

@@ -2,7 +2,7 @@
 //!
 //! This can be understood as the standard library provided by Host to the Core.
 
-/// Defines message exchanged initiated from core to the host.
+/// Defines message exchange initiated from core to the host.
 ///
 /// Defines a struct with given fields and possibly lifetimes. Allows attributes (including doc comments) on
 /// the struct and its fields. Defines a response enum with newtype or struct variants and kebab-case kind.
@@ -13,7 +13,7 @@
 /// For example, the following defines `InMessage` with kind `my-kind` and two fields and defines a response `OutMessage` enum with three
 /// variants with kinds `ok`, `try-again`, and `err`, each with different number of fields.
 /// ```
-/// define_exchange! {
+/// define_exchange_core_to_host! {
 ///     struct InMessage<'a> {
 ///         kind: "my-kind",
 ///         foo: &'a str,

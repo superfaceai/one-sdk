@@ -29,7 +29,7 @@ impl AbiResult {
     pub fn into_io_result(self) -> std::io::Result<Size> {
         match self {
             Self::Ok(value) => Ok(value),
-            Self::Err(err) => Err(err_from_wasi_errno(err)),
+            Self::Err(err) => Err(err_from_wasi_errno(i32::try_from(err).unwrap())),
         }
     }
 }
@@ -54,6 +54,6 @@ impl From<AbiResult> for AbiResultRepr {
     }
 }
 
-pub fn err_from_wasi_errno(errno: Size) -> std::io::Error {
+pub fn err_from_wasi_errno(errno: i32) -> std::io::Error {
     std::io::Error::from_raw_os_error(errno as i32)
 }

@@ -51,10 +51,8 @@ define_exchange_core_to_host! {
 pub enum HttpCallError {
     #[error("Invalid fetch url: {0}")]
     InvalidUrl(#[from] url::ParseError),
-    #[error("HttpCall error: {0}")]
-    Request(String), // TODO: more granular
-    #[error("OutHttpCallHead error: {0}")]
-    Response(String), // TODO: more granular
+    #[error("Unknown http error: {0}")]
+    Unknown(String), // TODO: more granular
 }
 pub struct HttpRequest {
     handle: Handle,
@@ -70,11 +68,11 @@ impl HttpRequest {
     ) -> Result<Self, HttpCallError> {
         let mut url = Url::parse(url)?;
         // merge query params already in the URL with the params passed in query
-        // TODO: or we can assert here that the url doesn't contain any params - 
+        // TODO: or we can assert here that the url doesn't contain any params -
         url.query_pairs_mut().extend_pairs(
-            query.iter().flat_map(
-                |(key, values)| values.iter().map(move |value| (key, value))
-            )
+            query
+                .iter()
+                .flat_map(|(key, values)| values.iter().map(move |value| (key, value))),
         );
 
         let response = HttpCallRequest {
@@ -95,7 +93,7 @@ impl HttpRequest {
                 assert!(request_body_stream.is_none());
                 Ok(Self { handle })
             }
-            HttpCallResponse::Err { error } => return Err(HttpCallError::Request(error)),
+            HttpCallResponse::Err { error } => return Err(HttpCallError::Unknown(error)),
         }
     }
 
@@ -106,7 +104,7 @@ impl HttpRequest {
             .unwrap();
 
         match exchange_response {
-            HttpCallHeadResponse::Err { error } => return Err(HttpCallError::Response(error)),
+            HttpCallHeadResponse::Err { error } => return Err(HttpCallError::Unknown(error)),
             HttpCallHeadResponse::Ok {
                 status,
                 headers,
