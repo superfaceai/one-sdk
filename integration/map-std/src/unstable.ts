@@ -95,7 +95,7 @@ export class HttpResponse {
 }
 
 export class MapError {
-  constructor(public readonly errorResult: AnyValue) {}
+  constructor(public readonly errorResult: AnyValue) { }
 }
 
 // env

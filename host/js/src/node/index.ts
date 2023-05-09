@@ -144,9 +144,9 @@ class InternalClient {
   ): Promise<unknown> {
     await this.setup();
 
-    const profileUrl = this.resolveProfileUrl(profile);
-    const providerUrl = this.resolveProviderUrl(provider);
-    const mapUrl = this.resolveMapUrl(profile, provider);
+    const profileUrl = await this.resolveProfileUrl(profile);
+    const providerUrl = await this.resolveProviderUrl(provider);
+    const mapUrl = await this.resolveMapUrl(profile, provider);
 
     return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
   }
@@ -164,30 +164,22 @@ class InternalClient {
     this.ready = true;
   }
 
-  public resolveProfileUrl(profile: string): string {
+  public async resolveProfileUrl(profile: string): Promise<string> {
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
     const path = resolve(this.assetsPath, `${resolvedProfile}.supr`);
-
-    if (fs.stat(path) === undefined) {
-      throw new Error(`Profile file does not exist, path: ${path}`);
-    }
 
     return `file://${path}`;
   }
 
-  public resolveMapUrl(profile: string, provider?: string): string {
+  public async resolveMapUrl(profile: string, provider?: string): Promise<string> {
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
     const path = resolve(this.assetsPath, `${resolvedProfile}.${provider}.suma.js`);
 
     return `file://${path}`;
   }
 
-  public resolveProviderUrl(provider: string): string {
+  public async resolveProviderUrl(provider: string): Promise<string> {
     const path = resolve(this.assetsPath, `${provider}.provider.json`);
-
-    if (fs.stat(path) === undefined) {
-      throw new Error(`Provider file does not exist, path: ${path}`);
-    }
 
     return `file://${path}`;
   }
@@ -225,7 +217,7 @@ export class Profile {
   }
 
   public static async loadLocal(internal: InternalClient, name: string): Promise<Profile> {
-    const profileUrl = internal.resolveProfileUrl(name);
+    const profileUrl = await internal.resolveProfileUrl(name);
     return new Profile(internal, name, profileUrl);
   }
 

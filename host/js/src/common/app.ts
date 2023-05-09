@@ -285,20 +285,24 @@ export class App implements AppContext {
         return { kind: 'ok' };
 
       case 'file-open': {
-        const handle = await this.fileSystem.open(message.path, {
-          createNew: message.create_new,
-          create: message.create,
-          truncate: message.truncate,
-          append: message.append,
-          write: message.write,
-          read: message.read
-        });
-        const res = this.streams.insert({
-          read: this.fileSystem.read.bind(this.fileSystem, handle),
-          write: this.fileSystem.write.bind(this.fileSystem, handle),
-          close: this.fileSystem.close.bind(this.fileSystem, handle)
-        });
-        return { kind: 'ok', stream: res };
+        try {
+          const handle = await this.fileSystem.open(message.path, {
+            createNew: message.create_new,
+            create: message.create,
+            truncate: message.truncate,
+            append: message.append,
+            write: message.write,
+            read: message.read
+          });
+          const res = this.streams.insert({
+            read: this.fileSystem.read.bind(this.fileSystem, handle),
+            write: this.fileSystem.write.bind(this.fileSystem, handle),
+            close: this.fileSystem.close.bind(this.fileSystem, handle)
+          });
+          return { kind: 'ok', stream: res };
+        } catch (error: any) {
+          return { kind: 'err', errno: error.errno };
+        }
       }
 
       case 'http-call': {
@@ -311,16 +315,25 @@ export class App implements AppContext {
           requestInit.body = new Uint8Array(message.body);
         }
 
-        const request = this.network.fetch(message.url, requestInit);
-
-        return { kind: 'ok', handle: this.requests.insert(request) };
+        try {
+          const request = this.network.fetch(message.url, requestInit);
+          return { kind: 'ok', handle: this.requests.insert(request) };
+        } catch (error: any) {
+          // TODO: map errors to ErrorCode
+          return { kind: 'err', error_code: 'http:unknown', message: `${error.name}: ${error.message}` };
+        }
       }
 
       case 'http-call-head': {
-        const response = await this.requests.remove(message.handle)!!;
-        const bodyStream = new ReadableStreamAdapter(response.body!!); // TODO: handle when they are missing
+        const response = await this.requests.remove(message.handle)!;
+        const bodyStream = new ReadableStreamAdapter(response.body!); // TODO: handle when they are missing
 
-        return { kind: 'ok', status: response.status, headers: headersToMultimap(response.headers), body_stream: this.streams.insert(bodyStream) };
+        try {
+          return { kind: 'ok', status: response.status, headers: headersToMultimap(response.headers), body_stream: this.streams.insert(bodyStream) };
+        } catch (err: any) {
+          // TODO: map errors to ErrorCode
+          return { kind: 'err', error_code: 'http:unknown', message: `${err.name}: ${err.message}` };
+        }
       }
 
       default:
