@@ -8,7 +8,7 @@ function Example({ input, parameters, services }) {
   __ffi.unstable.printDebug('Parameters:', parameters);
   __ffi.unstable.printDebug('Services:', services);
 
-  const url = `${services.default}/api/people/${input.id}`;
+  const url = `${services.default}/api/people/${input.id}?foo=x`;
 
   const options = {
     method: 'GET',
@@ -16,6 +16,10 @@ function Example({ input, parameters, services }) {
       'Accept': 'application/json',
     },
     security: 'basic_auth',
+    query: {
+      'foo': ['bar', 'baz'],
+      'qux': ['2']
+    }
   };
 
   const response = std.unstable.fetch(url, options).response();
