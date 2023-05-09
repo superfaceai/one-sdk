@@ -4,10 +4,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use sf_std::unstable::{
-    fs::OpenOptions,
-    http::{HttpCallError, HttpRequest},
-};
+use sf_std::unstable::http::HttpCallError;
+
+use super::{Fs, HttpRequest};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DocumentCacheError {
@@ -112,18 +111,8 @@ impl DocumentCache {
                 url.to_string(),
                 std::io::ErrorKind::NotFound.into(),
             )),
-            Some(path) => {
-                let mut file = OpenOptions::new()
-                    .read(true)
-                    .open(&path)
-                    .map_err(|err| DocumentCacheError::FileLoadFailed(path.to_string(), err))?;
-
-                let mut data = Vec::new();
-                file.read_to_end(&mut data)
-                    .map_err(|err| DocumentCacheError::FileLoadFailed(path.to_string(), err))?;
-
-                Ok(data)
-            }
+            Some(path) => Fs::read(path)
+                .map_err(|err| DocumentCacheError::FileLoadFailed(path.to_string(), err)),
         }
     }
 

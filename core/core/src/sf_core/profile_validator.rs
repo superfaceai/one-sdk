@@ -2,12 +2,10 @@
 
 use thiserror::Error;
 
-use sf_std::unstable::fs;
-
 use interpreter_js::{JsInterpreter, JsInterpreterError};
 use map_std::unstable::MapValue;
 
-use super::map_std_impl::MapStdImpl;
+use super::{map_std_impl::MapStdImpl, Fs};
 
 #[derive(Debug, Error)]
 pub enum ProfileValidatorError {
@@ -39,7 +37,7 @@ impl ProfileValidator {
         let validator_bytecode = match std::env::var("SF_REPLACE_PROFILE_VALIDATOR").ok() {
             None => interpreter.compile_code("profile_validator.js", Self::PROFILE_VALIDATOR_JS),
             Some(path) => {
-                let replacement = fs::read_to_string(&path)
+                let replacement = Fs::read_to_string(&path)
                     .expect("Failed to load replacement profile_validator");
                 interpreter.compile_code(&path, &replacement)
             }

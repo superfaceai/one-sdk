@@ -10,10 +10,9 @@ use map_std::{
     },
     MapStdFull,
 };
-use sf_std::{
-    abi::Handle,
-    unstable::{http::HttpRequest, IoStream},
-};
+use sf_std::abi::Handle;
+
+use super::{HttpRequest, IoStream};
 
 pub struct MapStdImpl {
     http_requests: HandleMap<HttpRequest>,

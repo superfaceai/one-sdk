@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use super::{value::SecurityValuesMap, ErrorCode, HostValue, MessageExchange, EXCHANGE_MESSAGE};
+use super::{value::SecurityValuesMap, ErrorCode, HostValue};
+use crate::abi::MessageExchange;
 
 define_exchange_core_to_host! {
     struct PerformInputRequest {
@@ -80,37 +81,39 @@ pub struct PerformInput {
     pub map_parameters: HostValue,
     pub map_security: SecurityValuesMap,
 }
-pub fn perform_input() -> PerformInput {
-    let response = match PerformInputRequest::new().send_json(&EXCHANGE_MESSAGE) {
-        Err(err) => {
-            tracing::error!("Failed to receive perform_input response: {:#}", err);
-            panic!("Failed to receive perform_input response: {}", err);
-        }
-        Ok(r) => r,
-    };
+impl PerformInput {
+    pub fn take_in<E: MessageExchange>(message_exchange: E) -> PerformInput {
+        let response = match PerformInputRequest::new().send_json_in(message_exchange) {
+            Err(err) => {
+                tracing::error!("Failed to receive perform_input response: {:#}", err);
+                panic!("Failed to receive perform_input response: {}", err);
+            }
+            Ok(r) => r,
+        };
 
-    match response {
-        PerformInputResponse::Ok {
-            profile_url,
-            provider_url,
-            map_url,
-            usecase,
-            map_input,
-            map_parameters,
-            map_security,
-        } => PerformInput {
-            profile_url,
-            provider_url,
-            map_url,
-            usecase,
-            map_input,
-            map_parameters,
-            map_security,
-        },
-        PerformInputResponse::Err {
-            error_code,
-            message,
-        } => panic!("perform-input error: {:?} {}", error_code, message),
+        match response {
+            PerformInputResponse::Ok {
+                profile_url,
+                provider_url,
+                map_url,
+                usecase,
+                map_input,
+                map_parameters,
+                map_security,
+            } => PerformInput {
+                profile_url,
+                provider_url,
+                map_url,
+                usecase,
+                map_input,
+                map_parameters,
+                map_security,
+            },
+            PerformInputResponse::Err {
+                error_code,
+                message,
+            } => panic!("perform-input error: {:?} {}", error_code, message),
+        }
     }
 }
 
@@ -119,9 +122,9 @@ pub struct PerformException {
     pub message: String,
 }
 
-pub fn set_perform_output_result(result: HostValue) {
+pub fn set_perform_output_result_in<E: MessageExchange>(result: HostValue, message_exchange: E) {
     let response = PerformOutputResultRequest::new(result)
-        .send_json(&EXCHANGE_MESSAGE)
+        .send_json_in(message_exchange)
         .unwrap();
 
     match response {
@@ -133,9 +136,9 @@ pub fn set_perform_output_result(result: HostValue) {
     }
 }
 
-pub fn set_perform_output_error(error: HostValue) {
+pub fn set_perform_output_error_in<E: MessageExchange>(error: HostValue, message_exchange: E) {
     let response = PerformOutputErrorRequest::new(error)
-        .send_json(&EXCHANGE_MESSAGE)
+        .send_json_in(message_exchange)
         .unwrap();
 
     match response {
@@ -147,9 +150,12 @@ pub fn set_perform_output_error(error: HostValue) {
     }
 }
 
-pub fn set_perform_output_exception(exception: PerformException) {
+pub fn set_perform_output_exception_in<E: MessageExchange>(
+    exception: PerformException,
+    message_exchange: E,
+) {
     let response = PerformOutputExceptionRequest::new(exception)
-        .send_json(&EXCHANGE_MESSAGE)
+        .send_json_in(message_exchange)
         .unwrap();
 
     match response {

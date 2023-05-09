@@ -4,8 +4,14 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
-use super::{ErrorCode, IoStream, MessageExchange, EXCHANGE_MESSAGE};
-use crate::{abi::Handle, lowercase_headers_multimap, HeadersMultiMap, MultiMap};
+use super::{ErrorCode, IoStream, IoStreamHandle};
+use crate::{
+    abi::{
+        Handle, MessageExchange, MessageExchangeFfiFn, StaticMessageExchange, StaticStreamExchange,
+        StreamExchange, StreamExchangeFfiFn,
+    },
+    lowercase_headers_multimap, HeadersMultiMap, MultiMap,
+};
 
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
@@ -22,7 +28,7 @@ define_exchange_core_to_host! {
     } -> enum HttpCallResponse {
         Ok {
             #[serde(default)]
-            request_body_stream: Option<IoStream>,
+            request_body_stream: Option<IoStreamHandle>,
             handle: Handle,
         },
         Err {
@@ -40,7 +46,7 @@ define_exchange_core_to_host! {
         Ok {
             status: u16,
             headers: HeadersMultiMap,
-            body_stream: IoStream, // TODO: optional? in case response doesn't have a body
+            body_stream: IoStreamHandle, // TODO: optional? in case response doesn't have a body
         },
         Err {
             error_code: ErrorCode,
@@ -60,16 +66,42 @@ pub enum HttpCallError {
     #[error("Unknown http error: {0}")]
     Unknown(String), // TODO: more granular
 }
-pub struct HttpRequest {
+pub struct HttpRequest<
+    Me: MessageExchange = MessageExchangeFfiFn,
+    Se: StreamExchange = StreamExchangeFfiFn,
+> {
     handle: Handle,
+    message_exchange: Me,
+    stream_exchange: Se,
 }
-impl HttpRequest {
+impl<Me: StaticMessageExchange, Se: StaticStreamExchange> HttpRequest<Me, Se> {
     pub fn fetch(
         method: &str,
         url: &str,
         headers: &HeadersMultiMap,
         query: &MultiMap,
         body: Option<&[u8]>,
+    ) -> Result<Self, HttpCallError> {
+        Self::fetch_in(
+            method,
+            url,
+            headers,
+            query,
+            body,
+            Me::instance(),
+            Se::instance(),
+        )
+    }
+}
+impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
+    fn fetch_in(
+        method: &str,
+        url: &str,
+        headers: &HeadersMultiMap,
+        query: &MultiMap,
+        body: Option<&[u8]>,
+        message_exchange: Me,
+        stream_exchange: Se,
     ) -> Result<Self, HttpCallError> {
         let mut url = Url::parse(url).map_err(|err| HttpCallError::InvalidUrl(err.to_string()))?;
         // merge query params already in the URL with the params passed in query
@@ -87,7 +119,7 @@ impl HttpRequest {
             headers,
             body,
         }
-        .send_json(&EXCHANGE_MESSAGE)
+        .send_json_in(&message_exchange)
         .unwrap();
 
         match response {
@@ -96,7 +128,11 @@ impl HttpRequest {
                 handle,
             } => {
                 assert!(request_body_stream.is_none());
-                Ok(Self { handle })
+                Ok(Self {
+                    handle,
+                    message_exchange,
+                    stream_exchange,
+                })
             }
             HttpCallResponse::Err {
                 error_code,
@@ -105,9 +141,9 @@ impl HttpRequest {
         }
     }
 
-    pub fn into_response(self) -> Result<HttpResponse, HttpCallError> {
+    pub fn into_response(self) -> Result<HttpResponse<Se>, HttpCallError> {
         let exchange_response = HttpCallHeadRequest::new(self.handle)
-            .send_json(&EXCHANGE_MESSAGE)
+            .send_json_in(&self.message_exchange)
             .unwrap();
 
         match exchange_response {
@@ -118,7 +154,7 @@ impl HttpRequest {
             } => Ok(HttpResponse {
                 status,
                 headers: lowercase_headers_multimap(headers),
-                body: body_stream,
+                body: IoStream::<Se>::from_handle_in(body_stream, self.stream_exchange),
             }),
             HttpCallHeadResponse::Err {
                 error_code,
@@ -139,12 +175,12 @@ impl HttpRequest {
     }
 }
 
-pub struct HttpResponse {
+pub struct HttpResponse<Se: StreamExchange = StreamExchangeFfiFn> {
     status: u16,
     headers: HeadersMultiMap,
-    body: IoStream,
+    body: IoStream<Se>,
 }
-impl HttpResponse {
+impl<Se: StreamExchange> HttpResponse<Se> {
     pub fn status(&self) -> u16 {
         self.status
     }
@@ -159,9 +195,49 @@ impl HttpResponse {
     }
 
     // like <https://docs.rs/hyper/latest/hyper/struct.Response.html#method.into_body>
-    pub fn into_body(self) -> IoStream {
+    pub fn into_body(self) -> IoStream<Se> {
         let HttpResponse { body, .. } = self;
 
         body
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+
+    use super::*;
+    use crate::abi::testing::{TestMessageExchangeFn, TestStreamExchangeFn};
+
+    #[test]
+    fn test_http_fetch_query_normalization() {
+        HttpRequest::fetch_in(
+            "GET",
+            "https://example.com/?foo=1&bar=2",
+            &HashMap::new(),
+            &HashMap::from_iter([
+                ("foo".to_string(), vec!["x".to_string(), "y".to_string()]),
+                ("quz".to_string(), vec!["b".to_string(), "c".to_string()]),
+            ]),
+            None,
+            TestMessageExchangeFn::new(|message| {
+                let query = message["url"].as_str().unwrap().split_once("?").unwrap().1;
+                let mut pairs = query.split("&").collect::<Vec<_>>();
+                pairs.sort();
+
+                assert_eq!(
+                    pairs,
+                    vec!["bar=2", "foo=1", "foo=x", "foo=y", "quz=b", "quz=c"]
+                );
+
+                serde_json::json!({ "kind": "ok", "handle": 1 })
+            }),
+            TestStreamExchangeFn::new(
+                |_handle, _buf| unimplemented!(),
+                |_handle, _buf| unimplemented!(),
+                |_handle| unimplemented!(),
+            ),
+        )
+        .unwrap();
     }
 }

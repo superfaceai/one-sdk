@@ -26,6 +26,12 @@ mod result;
 
 pub use self::{
     bits::{AbiPair, AbiPairRepr, Handle, Ptr, Size},
-    exchange::{JsonMessageError, MessageFn, StreamFn},
+    exchange::{
+        JsonMessageError, MessageExchange, MessageExchangeFfiFn, StaticMessageExchange,
+        StaticStreamExchange, StreamExchange, StreamExchangeFfiFn,
+    },
     result::{err_from_wasi_errno, AbiResult, AbiResultRepr},
 };
+
+#[cfg(test)]
+pub use exchange::testing;

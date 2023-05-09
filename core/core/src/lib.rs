@@ -1,16 +1,19 @@
 use std::sync::Mutex;
 
+use bindings::MessageExchangeFfi;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use sf_std::{
     abi::{Ptr, Size},
     unstable::perform::{
-        set_perform_output_error, set_perform_output_exception, set_perform_output_result,
+        set_perform_output_error_in, set_perform_output_exception_in, set_perform_output_result_in,
     },
 };
 
 mod sf_core;
 use sf_core::{CoreConfiguration, SuperfaceCore};
+
+mod bindings;
 
 static GLOBAL_STATE: Mutex<Option<SuperfaceCore>> = Mutex::new(None);
 
@@ -91,9 +94,9 @@ pub extern "C" fn __export_superface_core_perform() {
         .expect("Global state missing: has superface_core_setup been called?");
 
     match state.perform() {
-        Ok(Ok(result)) => set_perform_output_result(result),
-        Ok(Err(error)) => set_perform_output_error(error),
-        Err(exception) => set_perform_output_exception(exception.into()),
+        Ok(Ok(result)) => set_perform_output_result_in(result, MessageExchangeFfi),
+        Ok(Err(error)) => set_perform_output_error_in(error, MessageExchangeFfi),
+        Err(exception) => set_perform_output_exception_in(exception.into(), MessageExchangeFfi),
     }
 }
 
