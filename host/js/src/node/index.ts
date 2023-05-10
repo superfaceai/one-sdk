@@ -8,6 +8,8 @@ import { App, HandleMap } from '../common/index.js';
 import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
 import { ErrorCode, HostError, WasiErrno } from '../common/app.js';
 import { WasiError } from '../common/app.js';
+import { Result, err, ok } from './result.js';
+import { PerformError, UnexpectedError } from '../common/error.js';
 
 const CORE_PATH = createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 
@@ -248,7 +250,25 @@ export class UseCase {
   constructor(private readonly internal: InternalClient, private readonly profile: Profile, public readonly name: string) {
   }
 
-  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<TResult> {
-    return await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security) as TResult;
+  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<Result<TResult, PerformError | UnexpectedError>> {
+    try {
+      const result = await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security);
+
+      return ok(result as TResult);
+    } catch (error: unknown) {
+      if (error instanceof PerformError) {
+        return err(error);
+      }
+
+      if (error instanceof UnexpectedError) {
+        return err(error);
+      }
+
+      if (error instanceof Error) {
+        return err(new UnexpectedError(error.name, error.message));
+      }
+
+      return err(new UnexpectedError('UnknownError', JSON.stringify(error)));
+    }
   }
 }

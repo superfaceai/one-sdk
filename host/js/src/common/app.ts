@@ -3,6 +3,7 @@ import { Asyncify } from './asyncify.js';
 
 import * as sf_host from './sf_host.js';
 import { SecurityValuesMap } from './security.js';
+import { PerformError, UnexpectedError } from './error.js';
 
 export interface WasiContext {
   wasiImport: WebAssembly.ModuleImports;
@@ -264,7 +265,8 @@ export class App implements AppContext {
     input: unknown,
     parameters: Record<string, string>,
     security: SecurityValuesMap,
-    output?: unknown,
+    result?: unknown,
+    error?: unknown,
     exception?: { error_code: ErrorCode, message: string }
   } | undefined = undefined;
 
@@ -353,15 +355,28 @@ export class App implements AppContext {
         this.performState = { profileUrl, providerUrl, mapUrl, usecase, input, parameters, security };
         await core.performFn();
 
-        if (this.performState.exception) {
-          const err = new Error(this.performState.exception.message);
+        if (this.performState.result !== undefined) {
+          const result = this.performState.result;
           this.performState = undefined;
-          throw err;
+
+          return result;
         }
 
-        const output = this.performState.output;
-        this.performState = undefined;
-        return output;
+        if (this.performState.error !== undefined) {
+          const err = this.performState.error;
+          this.performState = undefined;
+
+          throw new PerformError(err);
+        }
+
+        if (this.performState.exception !== undefined) {
+          const exception = this.performState.exception;
+          this.performState = undefined;
+
+          throw new UnexpectedError(exception?.error_code, exception.message);
+        }
+
+        throw new UnexpectedError('UnexpectedError', 'Unexpected perform state');
       }
     );
   }
@@ -383,16 +398,15 @@ export class App implements AppContext {
         };
 
       case 'perform-output-result':
-        this.performState!.output = message.map_result;
+        this.performState!.result = message.result;
         return { kind: 'ok' };
 
       case 'perform-output-error':
-        this.performState!.output = message.map_result;
+        this.performState!.error = message.error;
         return { kind: 'ok' };
 
       case 'perform-output-exception':
-        console.log('perform-output-exception', message);
-        this.performState!.exception = message;
+        this.performState!.exception = message.exception;
         return { kind: 'ok' };
 
       case 'file-open': {

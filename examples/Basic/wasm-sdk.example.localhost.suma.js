@@ -42,7 +42,7 @@ function Example({ input, parameters, services }) {
   } catch (err) {
     throw new std.unstable.MapError({
       title: err.name,
-      detail: JSON.stringify(err),
+      detail: err.message,
     });
   }
 }
