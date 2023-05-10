@@ -52,7 +52,7 @@ define_exchange_core_to_host! {
 #[derive(Debug, Error)]
 pub enum HttpCallError {
     #[error("Invalid fetch url: {0}")]
-    InvalidUrl(#[from] url::ParseError),
+    InvalidUrl(String),
     #[error("Unknown http error: {0}")]
     Unknown(String), // TODO: more granular
 }
@@ -67,7 +67,7 @@ impl HttpRequest {
         query: &MultiMap,
         body: Option<&[u8]>,
     ) -> Result<Self, HttpCallError> {
-        let mut url = Url::parse(url)?;
+        let mut url = Url::parse(url).map_err(|err| HttpCallError::InvalidUrl(err.to_string()))?;
         // merge query params already in the URL with the params passed in query
         // TODO: or we can assert here that the url doesn't contain any params -
         url.query_pairs_mut().extend_pairs(
@@ -125,9 +125,7 @@ impl HttpRequest {
 
     fn response_error_to_http_call_error(error_code: ErrorCode, message: String) -> HttpCallError {
         match error_code {
-            ErrorCode::NetworkInvalidUrl => {
-                HttpCallError::InvalidUrl(todo!("create url::ParseError"))
-            }
+            ErrorCode::NetworkInvalidUrl => HttpCallError::InvalidUrl(message),
             _ => HttpCallError::Unknown(format!("{:?}: {}", error_code, message)),
         }
     }
