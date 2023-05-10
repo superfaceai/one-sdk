@@ -308,7 +308,7 @@
     ws "^8.2.2"
 
 "@superfaceai/one-sdk@file:../../host/js":
-  version "3.0.0-rc.1"
+  version "3.0.0-alpha.3"
   dependencies:
     "@cloudflare/workers-wasi" "^0.0.5"
 

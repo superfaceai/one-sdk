@@ -1,5 +1,7 @@
 use std::sync::Mutex;
 
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 use sf_std::abi::{Ptr, Size};
 
 mod sf_core;
@@ -25,10 +27,10 @@ pub extern "C" fn __export_superface_core_setup() {
     unsafe { __wasm_call_ctors() };
 
     // initialize tracing
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_max_level(tracing::Level::TRACE)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::EnvFilter::from_env("SF_LOG"))
+        .init();
 
     tracing::debug!("superface_core_setup called");
 

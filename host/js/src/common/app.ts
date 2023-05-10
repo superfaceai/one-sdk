@@ -265,7 +265,7 @@ export class App implements AppContext {
   }
 
   async handleMessage(message: any): Promise<any> {
-    console.log('host: message:', message);
+    // console.log('host: message:', message);
 
     switch (message['kind']) {
       case 'perform-input':

@@ -163,6 +163,7 @@ class CfwWasiCompat implements WasiContext {
 
 export type ClientOptions = {
   env?: Record<string, string>;
+  assetsPath?: string;
   preopens?: Record<string, Uint8Array>;
 };
 
@@ -222,11 +223,12 @@ class InternalClient {
     await this.setup();
 
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
+    const assetsPath = this.options.assetsPath ?? 'superface'; // TODO: path join? - not sure if we are going to stick with this VFS
 
     return await this.app.perform(
-      `file://grid/${resolvedProfile}.supr`,
-      `file://grid/${provider}.provider.json`,
-      `file://grid/${resolvedProfile}.${provider}.suma.js`,
+      `file://${assetsPath}/${resolvedProfile}.supr`,
+      `file://${assetsPath}/${provider}.provider.json`,
+      `file://${assetsPath}/${resolvedProfile}.${provider}.suma.js`,
       usecase,
       input,
       parameters,
