@@ -70,13 +70,14 @@ extern "C" fn __import_message_exchange_retrieve(
 // ERRORS //
 ////////////
 
+/// Host JS counterpart: host/js/src/common/app.ts
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorCode {
-    #[serde(rename = "http:unknown")]
-    HttpUnknown,
+    #[serde(rename = "network:error")]
+    NetworkError,
 
-    #[serde(rename = "http:invalid_url")]
-    HttpInvalidUrl,
+    #[serde(rename = "network:invalid_url")]
+    NetworkInvalidUrl,
 }
 
 /////////////

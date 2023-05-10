@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
-use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
+use super::{ErrorCode, IoStream, MessageExchange, EXCHANGE_MESSAGE};
 use crate::{abi::Handle, lowercase_headers_multimap, HeadersMultiMap, MultiMap};
 
 define_exchange_core_to_host! {
@@ -26,7 +26,8 @@ define_exchange_core_to_host! {
             handle: Handle,
         },
         Err {
-            error: String
+            error_code: ErrorCode,
+            message: String,
         }
     }
 }
@@ -42,7 +43,8 @@ define_exchange_core_to_host! {
             body_stream: IoStream, // TODO: optional? in case response doesn't have a body
         },
         Err {
-            error: String
+            error_code: ErrorCode,
+            message: String,
         }
     }
 }
@@ -58,7 +60,6 @@ pub struct HttpRequest {
     handle: Handle,
 }
 impl HttpRequest {
-    // TODO: proper errors
     pub fn fetch(
         method: &str,
         url: &str,
@@ -93,18 +94,19 @@ impl HttpRequest {
                 assert!(request_body_stream.is_none());
                 Ok(Self { handle })
             }
-            HttpCallResponse::Err { error } => return Err(HttpCallError::Unknown(error)),
+            HttpCallResponse::Err {
+                error_code,
+                message,
+            } => Err(Self::response_error_to_http_call_error(error_code, message)),
         }
     }
 
-    // TODO: proper errors
     pub fn into_response(&mut self) -> Result<HttpResponse, HttpCallError> {
         let exchange_response = HttpCallHeadRequest::new(self.handle)
             .send_json(&EXCHANGE_MESSAGE)
             .unwrap();
 
         match exchange_response {
-            HttpCallHeadResponse::Err { error } => return Err(HttpCallError::Unknown(error)),
             HttpCallHeadResponse::Ok {
                 status,
                 headers,
@@ -114,6 +116,19 @@ impl HttpRequest {
                 headers: lowercase_headers_multimap(headers),
                 body: body_stream,
             }),
+            HttpCallHeadResponse::Err {
+                error_code,
+                message,
+            } => Err(Self::response_error_to_http_call_error(error_code, message)),
+        }
+    }
+
+    fn response_error_to_http_call_error(error_code: ErrorCode, message: String) -> HttpCallError {
+        match error_code {
+            ErrorCode::NetworkInvalidUrl => {
+                HttpCallError::InvalidUrl(todo!("create url::ParseError"))
+            }
+            _ => HttpCallError::Unknown(format!("{:?}: {}", error_code, message)),
         }
     }
 }

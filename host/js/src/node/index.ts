@@ -6,6 +6,8 @@ import { createRequire } from 'node:module';
 
 import { App, HandleMap } from '../common/index.js';
 import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
+import { ErrorCode, HostError, WasiErrno } from '../common/app.js';
+import { WasiError } from '../common/app.js';
 
 const CORE_PATH = createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 
@@ -50,7 +52,7 @@ class NodeFileSystem implements FileSystem {
   async read(handle: number, out: Uint8Array): Promise<number> {
     const file = this.files.get(handle);
     if (file === undefined) {
-      throw new Error('invalid file handle - TODO: wasi error');
+      throw new WasiError(WasiErrno.BADF);
     }
 
     const result = await file.read(out, 0, out.byteLength);
@@ -59,7 +61,7 @@ class NodeFileSystem implements FileSystem {
   async write(handle: number, data: Uint8Array): Promise<number> {
     const file = this.files.get(handle);
     if (file === undefined) {
-      throw new Error('invalid file handle - TODO: wasi error');
+      throw new WasiError(WasiErrno.BADF);
     }
 
     const result = await file.write(data, 0, data.length);
@@ -68,10 +70,8 @@ class NodeFileSystem implements FileSystem {
   async close(handle: number): Promise<void> {
     const file = this.files.remove(handle);
     if (file === undefined) {
-      throw new Error('File does not exist');
+      throw new WasiError(WasiErrno.NOENT);
     }
-
-    await file.close();
   }
 }
 
@@ -86,9 +86,27 @@ class NodeTimers implements Timers {
 }
 
 class NodeNetwork implements Network {
-  fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
-    return fetch(input, init); // TODO: import from undici explicitly
+  // TODO: import from undici explicitly
+  async fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+    try {
+      return await fetch(input, init)
+    } catch (err: unknown) {
+      throw fetchErrorToHostError(err);
+    }
   }
+}
+
+function fetchErrorToHostError(error: unknown): HostError {
+  if (error instanceof Error) {
+    let cause = '';
+    for (const [key, value] of Object.entries(error.cause ?? {})) {
+      cause += `${key}: ${value}\n`;
+    }
+
+    return new HostError(ErrorCode.NetworkError, `${error.name} ${error.message}${cause === '' ? '' : `\n${cause}`}`);
+  }
+
+  return new HostError(ErrorCode.NetworkError, 'Unknown error');
 }
 
 export type ClientOptions = {

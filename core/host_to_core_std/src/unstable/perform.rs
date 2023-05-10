@@ -255,7 +255,7 @@ mod test {
 
         let actual = json!({
             "kind": "err",
-            "error_code": "http:invalid_url",
+            "error_code": "network:invalid_url",
             "message": "Message explaining the error"
         });
 
@@ -265,7 +265,7 @@ mod test {
                 error_code,
                 message,
             } => {
-                assert!(matches!(error_code, ErrorCode::HttpInvalidUrl));
+                assert!(matches!(error_code, ErrorCode::NetworkInvalidUrl));
                 assert_eq!(message, "Message explaining the error");
             }
         }
