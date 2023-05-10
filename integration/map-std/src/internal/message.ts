@@ -19,6 +19,11 @@ export function jsonReviverMapValue(key: any, value: any): any {
   // TODO: revive streams
   return value;
 }
+export function responseErrorToError(response: any): Error {
+  const err = new Error(response.message);
+  err.name = response.error_code;
+  return err;
+}
 export type JsonReplacer = (this: any, key: string, value: any) => any;
 export type JsonReviver = (this: any, key: string, value: any) => any;
 export function messageExchange(message: unknown, replacer: JsonReplacer | undefined = undefined, reviver: JsonReviver | undefined = undefined) {

@@ -1,4 +1,4 @@
-import { messageExchange, jsonReviverMapValue, jsonReplacerMapValue } from './internal/message';
+import { messageExchange, jsonReviverMapValue, jsonReplacerMapValue, responseErrorToError } from './internal/message';
 import { ensureMultimap } from './internal/util';
 import { Bytes, ByteStream } from './internal/bytes';
 import type { MultiMap } from './internal/types';
@@ -34,7 +34,7 @@ export class HttpRequest {
     if (response.kind === 'ok') {
       return new HttpResponse(response.status, response.headers, response.body_stream);
     } else {
-      throw new Error(response.error);
+      throw responseErrorToError(response);
     }
   }
 }
@@ -118,7 +118,7 @@ export function takeContext(): AnyValue {
   if (response.kind === 'ok') {
     return response.context;
   } else {
-    throw new Error(response.error);
+    throw responseErrorToError(response);
   }
 }
 export function setOutputSuccess(output: AnyValue) {
@@ -130,7 +130,7 @@ export function setOutputSuccess(output: AnyValue) {
   if (response.kind === 'ok') {
     return;
   } else {
-    throw new Error(response.error);
+    throw responseErrorToError(response);
   }
 }
 export function setOutputFailure(output: AnyValue) {
@@ -142,7 +142,7 @@ export function setOutputFailure(output: AnyValue) {
   if (response.kind === 'ok') {
     return;
   } else {
-    throw new Error(response.error);
+    throw responseErrorToError(response);
   }
 }
 
@@ -206,6 +206,6 @@ export function fetch(url: string, options: FetchOptions): HttpRequest {
   if (response.kind === 'ok') {
     return new HttpRequest(response.handle);
   } else {
-    throw new Error(response.error);
+    throw responseErrorToError(response);
   }
 }

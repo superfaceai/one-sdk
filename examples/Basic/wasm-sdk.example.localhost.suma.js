@@ -22,20 +22,27 @@ function Example({ input, parameters, services }) {
     }
   };
 
-  const response = std.unstable.fetch(url, options).response();
-  const body = response.bodyAuto() ?? {};
+  try {
+    const response = std.unstable.fetch(url, options).response();
+    const body = response.bodyAuto() ?? {};
 
-  if (response.status !== 200) {
+    if (response.status !== 200) {
+      throw new std.unstable.MapError({
+        title: 'Error response',
+        detail: `${JSON.stringify(response)} - ${JSON.stringify(body)}`
+      });
+    }
+
+    return {
+      url: body.url,
+      method: body.method,
+      query: body.query,
+      headers: body.headers,
+    };
+  } catch (err) {
     throw new std.unstable.MapError({
-      title: 'Error response',
-      detail: `${JSON.stringify(response)} - ${JSON.stringify(body)}`
+      title: err.name,
+      detail: JSON.stringify(err),
     });
   }
-
-  return {
-    url: body.url,
-    method: body.method,
-    query: body.query,
-    headers: body.headers,
-  };
 }

@@ -265,7 +265,7 @@ export class App implements AppContext {
     parameters: Record<string, string>,
     security: SecurityValuesMap,
     output?: unknown,
-    exception?: { message: string }
+    exception?: { error_code: ErrorCode, message: string }
   } | undefined = undefined;
 
   private metricsState: {
@@ -391,6 +391,7 @@ export class App implements AppContext {
         return { kind: 'ok' };
 
       case 'perform-output-exception':
+        console.log('perform-output-exception', message);
         this.performState!.exception = message;
         return { kind: 'ok' };
 

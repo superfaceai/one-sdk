@@ -122,7 +122,7 @@ impl MapStdUnstable for InterpreterState {
         match self.http_requests.try_remove(handle) {
             None => Err(MapHttpCallHeadError::InvalidHandle),
             Some(mut request) => match request.into_response() {
-                Err(err) => Err(MapHttpCallHeadError::ResponseError(err.to_string())),
+                Err(err) => Err(MapHttpCallHeadError::Failed(err.to_string())),
                 Ok(response) => Ok(MapHttpResponse {
                     status: response.status(),
                     headers: response.headers().clone(),

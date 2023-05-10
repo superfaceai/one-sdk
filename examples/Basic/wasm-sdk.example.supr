@@ -12,4 +12,9 @@ usecase Example {
     query!
     headers!
   }
+
+  error {
+    title!
+    detail
+  }
 }
