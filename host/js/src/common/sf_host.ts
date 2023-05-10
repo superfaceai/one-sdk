@@ -11,11 +11,12 @@ function strace<A extends unknown[], R>(name: string, fn: Fn<A, R>, asyncify: As
   return (...args: A): R => {
     const result: any = fn(...args);
 
-    if (asyncify.getState() === AsyncifyState.Normal) {
-      console.debug(`host: [strace] ${name}(${args}) = ${result}`);
-    } else {
-      console.debug(`host: [strace] ${name}(${args}) = <async suspended (${result})>`);
-    }
+    // TODO: control this from variable
+    // if (asyncify.getState() === AsyncifyState.Normal) {
+    //   console.debug(`host: [strace] ${name}(${args}) = ${result}`);
+    // } else {
+    //   console.debug(`host: [strace] ${name}(${args}) = <async suspended (${result})>`);
+    // }
 
     return result;
   }
@@ -64,7 +65,7 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
       app.memoryBytes.subarray(msg_ptr, msg_ptr + msg_len)
     ));
     const response = await app.handleMessage(msg);
-    console.log('host: message-response:', response);
+    // console.log('host: message-response:', response);
   
     let messageHandle = 0;
     const responseBytes = textCoder.encodeUtf8(JSON.stringify(response));

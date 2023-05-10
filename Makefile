@@ -71,7 +71,7 @@ ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
 
 test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
-	cd core && cargo test
+	cd core && cargo test -- -- --nocapture
 endif
 build_core: ${CORE_WASM} ${CORE_ASYNCIFY_WASM}
 

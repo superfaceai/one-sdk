@@ -3,6 +3,10 @@ import { Client } from '@superfaceai/one-sdk/cloudflare';
 import { GRID_IMPORTS } from './grid';
 
 const client = new Client({
+  env: {
+    SF_LOG: 'info'
+  },
+  assetsPath: 'grid',
   preopens: { ...GRID_IMPORTS }
 });
 
