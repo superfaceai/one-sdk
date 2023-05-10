@@ -15,6 +15,6 @@
   "scripts": {
     "check": "tsc -p tsconfig.json -noEmit",
     "build:esbuild": "esbuild src/profile_validator.ts --bundle --target=es2022 --platform=neutral --main-fields=module --format=iife --tree-shaking=true --outfile=dist/profile_validator.js",
-    "build": "yarn check && rimraf dist/ && yarn build:esbuild"
+    "build": "yarn run check && rimraf dist/ && yarn build:esbuild"
   }
 }
