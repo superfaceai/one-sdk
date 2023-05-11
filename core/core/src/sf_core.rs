@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     io::Read,
-    time::Instant
+    time::Instant,
 };
 
 use anyhow::Context;

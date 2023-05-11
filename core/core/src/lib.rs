@@ -45,7 +45,10 @@ pub extern "C" fn __export_superface_core_setup() {
     let config = match CoreConfiguration::from_env() {
         Ok(c) => c,
         Err(err) => {
-            tracing::error!("Failed to load core configuration from environment: {}", err);
+            tracing::error!(
+                "Failed to load core configuration from environment: {}",
+                err
+            );
             CoreConfiguration::default()
         }
     };
