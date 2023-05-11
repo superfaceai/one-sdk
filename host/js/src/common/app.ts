@@ -89,15 +89,19 @@ class ReadableStreamAdapter implements Stream {
  * the periodic timer fires, this could cause core to be invoked twice within the same asyncify context, causing undefined behavior.
  * 
  * We can avoid this by synchronizing over core.
+ * 
+ * Note that this is not thread safe (concurrent), but merely task safe (asynchronous).
  */
 class AsyncMutex<T> {
-  private promise: Promise<void>;
-  private resolve: () => void;
+  /** Promise to be awaited to synchtonize between tasks. */
+  private condvar: Promise<void>;
+  /** Indicator of whether the mutex is currently locked. */
+  private isLocked: boolean;
   private value: T;
 
   constructor(value: T) {
-    this.promise = Promise.resolve();
-    this.resolve = () => { };
+    this.condvar = Promise.resolve();
+    this.isLocked = false;
     this.value = value;
   }
 
@@ -111,14 +115,24 @@ class AsyncMutex<T> {
   }
 
   public async withLock<R>(fn: (value: T) => Promise<R>): Promise<R> {
-    await this.promise;
-    this.promise = new Promise((resolve) => { this.resolve = resolve; });
+    do {
+      // Under the assumption that we do not have concurrency it can never happen that two tasks
+      // pass over the condition of this loop and think they both have a lock - that would imply there exists task preemption in synchronous code.
+      //
+      // If there ever is threading or task preemption, we will need to use other means (atomics, spinlocks).
+      await this.condvar;
+    } while (this.isLocked);
+    
+    this.isLocked = true;
+    let notify: () => void;
+    this.condvar = new Promise((resolve) => { notify = resolve; });
 
-    const result = await fn(this.value);
-
-    this.resolve();
-
-    return result;
+    try {
+      return await fn(this.value);
+    } finally {
+      this.isLocked = false;
+      notify!();
+    }
   }
 }
 
@@ -232,7 +246,7 @@ export class App implements AppContext {
   }
 
   public async setup(): Promise<void> {
-    await this.core!.withLock(core => core.setupFn());
+    return this.core!.withLock(core => core.setupFn());
   }
 
   public async teardown(): Promise<void> {
@@ -240,6 +254,9 @@ export class App implements AppContext {
     return this.core!.withLock(core => core.teardownFn());
   }
 
+  /**
+   * @throws {PerformError | UnexpectedError}
+   */
   public async perform(
     profileUrl: string,
     providerUrl: string,
