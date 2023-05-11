@@ -152,14 +152,14 @@ mod test {
             "securitySchemes": [
               {
                 "id": "apikey_header",
-                "type": "apikey",
+                "type": "apiKey",
                 "in": "header",
                 "name": "X-API-KEY",
                 "apikey": "api_key_value"
               },
               {
                 "id": "apikey_body",
-                "type": "apikey",
+                "type": "apiKey",
                 "in": "body",
                 "name": "/json/path",
                 "bodyType": "json",
@@ -167,14 +167,14 @@ mod test {
               },
               {
                 "id": "apikey_path",
-                "type": "apikey",
+                "type": "apiKey",
                 "in": "path",
                 "name": "path_secret",
                 "apikey": "api_key_value"
               },
               {
                 "id": "apikey_query",
-                "type": "apikey",
+                "type": "apiKey",
                 "in": "query",
                 "name": "query_param",
                 "apikey": "api_key_value"

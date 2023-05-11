@@ -56,7 +56,9 @@ impl JsInterpreter {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
-        self.context.eval_global(name, code).context("Failed to evaluate global code")?;
+        self.context
+            .eval_global(name, code)
+            .context("Failed to evaluate global code")?;
 
         Ok(())
     }

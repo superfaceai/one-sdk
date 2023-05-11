@@ -6,6 +6,8 @@ use sf_std::abi::{Ptr, Size};
 
 mod sf_core;
 use sf_core::SuperfaceCore;
+mod config;
+use config::CoreConfiguration;
 
 mod profile_validator;
 
@@ -40,7 +42,17 @@ pub extern "C" fn __export_superface_core_setup() {
     }
 
     // here we panic on error because there is nothing to teardown
-    lock.replace(SuperfaceCore::new().unwrap());
+    let config = match CoreConfiguration::from_env() {
+        Ok(c) => c,
+        Err(err) => {
+            tracing::error!(
+                "Failed to load core configuration from environment: {}",
+                err
+            );
+            CoreConfiguration::default()
+        }
+    };
+    lock.replace(SuperfaceCore::new(config).unwrap());
 }
 
 #[no_mangle]

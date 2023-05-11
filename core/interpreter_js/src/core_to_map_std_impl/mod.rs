@@ -24,7 +24,7 @@ macro_rules! link_into {
         $({
             let state = $state.clone();
             let fun = $context.wrap_callback(move |context, this, args| {
-                let __span = tracing::span!(tracing::Level::TRACE, $key).entered();
+                let __span = tracing::span!(tracing::Level::TRACE, concat!("map/", $key)).entered();
 
                 let result = $fn_impl(state.borrow_mut().deref_mut(), context, this, args).map_err(anyhow::Error::from);
 

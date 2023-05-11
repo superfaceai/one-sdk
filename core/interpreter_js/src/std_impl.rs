@@ -78,7 +78,7 @@ impl MapStdUnstable for InterpreterState {
     }
 
     fn print(&mut self, message: &str) {
-        tracing::info!("map: {}", message);
+        tracing::info!(map = %message);
     }
 
     fn stream_read(&mut self, handle: Handle, buf: &mut [u8]) -> std::io::Result<usize> {

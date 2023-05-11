@@ -121,7 +121,7 @@ fn __export_print_debug<H: MapStdUnstable + 'static>(
     for arg in args {
         write!(&mut buffer, " {:#?}", JsValueDebug(arg)).unwrap();
     }
-    tracing::debug!("map:{}", buffer);
+    tracing::debug!("map: {}", buffer);
 
     Ok(context.undefined_value().unwrap())
 }
