@@ -19,5 +19,7 @@ url = { version = "2" }
 tracing = { version = "0.1" }
 
 [profile.release]
-opt-level = "z"
+opt-level = "s"
 lto = true
+debug = false
+strip = "debuginfo"
