@@ -1,4 +1,5 @@
 import type { AnyValue } from '@superfaceai/map-std/types/unstable';
+// @ts-ignore // TODO: fix this somehow?
 import { unstable } from '@superfaceai/map-std';
 
 import { parseRuleResult, profileRules, Source } from './parser';

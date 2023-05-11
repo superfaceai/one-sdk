@@ -9,7 +9,10 @@ use anyhow::Context;
 use sf_std::unstable::{
     fs::{self, OpenOptions},
     http::HttpRequest,
-    perform::{perform_input, perform_output, PerformOutput},
+    perform::{
+        perform_input, set_perform_output_error, set_perform_output_exception,
+        set_perform_output_result, PerformException,
+    },
     provider::ProviderJson,
     HostValue,
 };
@@ -21,7 +24,7 @@ use map_std::{
         services::prepare_services_map,
         MapValue, MapValueObject,
     },
-    MapInterpreter,
+    MapInterpreter, MapInterpreterRunError,
 };
 use tracing::instrument;
 
@@ -79,7 +82,7 @@ impl SuperfaceCore {
             let mut file = OpenOptions::new()
                 .read(true)
                 .open(&path)
-                .context("Failed to open map file")?;
+                .context(format!("Failed to open file: {}", path))?;
 
             file.read_to_end(&mut data)
                 .context("Failed to read map file")?;
@@ -177,6 +180,12 @@ impl SuperfaceCore {
         }
     }
 
+    fn map_error_to_perform_exception(error: MapInterpreterRunError) -> PerformException {
+        return PerformException {
+            message: error.to_string(),
+        };
+    }
+
     // TODO: use thiserror
     #[instrument(level = "Trace")]
     pub fn send_metrics(&mut self) -> anyhow::Result<()> {
@@ -264,27 +273,26 @@ impl SuperfaceCore {
             .data
             .as_slice();
 
-        let map_result = interpreter
-            .run(
-                map_code,
-                &perform_input.usecase,
-                map_input,
-                MapValue::Object(map_parameters),
-                map_services,
-                map_security,
-            )
-            .context(format!(
-                "Failed to run map \"{}::{}\"",
-                perform_input.map_url, perform_input.usecase
-            ))?;
+        let map_result = interpreter.run(
+            map_code,
+            &perform_input.usecase,
+            map_input,
+            MapValue::Object(map_parameters),
+            map_services,
+            map_security,
+        );
 
-        // if let Err(err) = profile_validator.validate_output(map_result.clone()) {
-        //     tracing::error!("Output validation error: {}", err);
-        // }
-        let map_result = map_result
-            .map(|v| self.map_value_to_host_value(v))
-            .map_err(|v| self.map_value_to_host_value(v));
-        perform_output(PerformOutput { map_result });
+        match map_result {
+            Err(error) => {
+                set_perform_output_exception(Self::map_error_to_perform_exception(error));
+            }
+            Ok(Ok(result)) => {
+                set_perform_output_result(self.map_value_to_host_value(result));
+            }
+            Ok(Err(error)) => {
+                set_perform_output_error(self.map_value_to_host_value(error));
+            }
+        }
 
         Ok(())
     }

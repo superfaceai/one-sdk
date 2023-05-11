@@ -16,6 +16,6 @@
     "build:std": "tsc -p tsconfig.json",
     "build:map_std:types": "tsc -p tsconfig.json --emitDeclarationOnly",
     "build:map_std": "esbuild src/map_std.ts --bundle --target=es2022 --platform=neutral --format=iife --tree-shaking=true --outfile=dist/map_std.js",
-    "build": "yarn check && rimraf types/ dist/ && yarn build:map_std && yarn build:map_std:types"
+    "build": "yarn run check && rimraf types/ dist/ && yarn build:map_std && yarn build:map_std:types"
   }
 }

@@ -3,6 +3,7 @@ import { Asyncify } from './asyncify.js';
 
 import * as sf_host from './sf_host.js';
 import { SecurityValuesMap } from './security.js';
+import { PerformError, UnexpectedError } from './error.js';
 
 export interface WasiContext {
   wasiImport: WebAssembly.ModuleImports;
@@ -38,6 +39,101 @@ export interface AppContext {
   readStream(handle: number, out: Uint8Array): Promise<number>;
   writeStream(handle: number, data: Uint8Array): Promise<number>;
   closeStream(handle: number): Promise<void>;
+}
+export class WasiError extends Error {
+  constructor(public readonly errno: WasiErrno) {
+    super(`WASI error: ${WasiErrno[errno]}`);
+  }
+}
+export enum WasiErrno {
+  SUCCESS = 0,
+  TOOBIG = 1,
+  ACCES = 2,
+  ADDRINUSE = 3,
+  ADDRNOTAVAIL = 4,
+  AFNOSUPPORT = 5,
+  AGAIN = 6,
+  ALREADY = 7,
+  BADF = 8,
+  BADMSG = 9,
+  BUSY = 10,
+  CANCELED = 11,
+  CHILD = 12,
+  CONNABORTED = 13,
+  CONNREFUSED = 14,
+  CONNRESET = 15,
+  DEADLK = 16,
+  DESTADDRREQ = 17,
+  DOM = 18,
+  DQUOT = 19,
+  EXIST = 20,
+  FAULT = 21,
+  FBIG = 22,
+  HOSTUNREACH = 23,
+  IDRM = 24,
+  ILSEQ = 25,
+  INPROGRESS = 26,
+  INTR = 27,
+  INVAL = 28,
+  IO = 29,
+  ISCONN = 30,
+  ISDIR = 31,
+  LOOP = 32,
+  MFILE = 33,
+  MLINK = 34,
+  MSGSIZE = 35,
+  MULTIHOP = 36,
+  NAMETOOLONG = 37,
+  NETDOWN = 38,
+  NETRESET = 39,
+  NETUNREACH = 40,
+  NFILE = 41,
+  NOBUFS = 42,
+  NODEV = 43,
+  NOENT = 44,
+  NOEXEC = 45,
+  NOLCK = 46,
+  NOLINK = 47,
+  NOMEM = 48,
+  NOMSG = 49,
+  NOPROTOOPT = 50,
+  NOSPC = 51,
+  NOSYS = 52,
+  NOTCONN = 53,
+  NOTDIR = 54,
+  NOTEMPTY = 55,
+  NOTRECOVERABLE = 56,
+  NOTSOCK = 57,
+  NOTSUP = 58,
+  NOTTY = 59,
+  NXIO = 60,
+  OVERFLOW = 61,
+  OWNERDEAD = 62,
+  PERM = 63,
+  PIPE = 64,
+  PROTO = 65,
+  PROTONOSUPPORT = 66,
+  PROTOTYPE = 67,
+  RANGE = 68,
+  ROFS = 69,
+  SPIPE = 70,
+  SRCH = 71,
+  STALE = 72,
+  TIMEDOUT = 73,
+  TXTBSY = 74,
+  XDEV = 75,
+  NOTCAPABLE = 76,
+}
+export class HostError extends Error {
+  constructor(public readonly code: ErrorCode, message: string) {
+    super(message);
+    this.name = code;
+  }
+}
+/// Core counterpart in core/host_to_core_std/src/unstable/mod.rs
+export enum ErrorCode {
+  NetworkError = 'network:error', // generic network error
+  NetworkInvalidUrl = 'network:invalid_url'
 }
 
 class ReadableStreamAdapter implements Stream {
@@ -183,7 +279,9 @@ export class App implements AppContext {
     input: unknown,
     parameters: Record<string, string>,
     security: SecurityValuesMap,
-    output?: unknown
+    result?: unknown,
+    error?: PerformError,
+    exception?: UnexpectedError
   } | undefined = undefined;
 
   private metricsState: {
@@ -268,15 +366,33 @@ export class App implements AppContext {
   ): Promise<unknown> {
     this.setSendMetricsTimeout();
 
-
     return this.core!.withLock(
       async (core) => {
         this.performState = { profileUrl, providerUrl, mapUrl, usecase, input, parameters, security };
         await core.performFn();
 
-        const output = this.performState.output;
-        this.performState = undefined;
-        return output;
+        if (this.performState.result !== undefined) {
+          const result = this.performState.result;
+          this.performState = undefined;
+
+          return result;
+        }
+
+        if (this.performState.error !== undefined) {
+          const err = this.performState.error;
+          this.performState = undefined;
+
+          throw err;
+        }
+
+        if (this.performState.exception !== undefined) {
+          const exception = this.performState.exception;
+          this.performState = undefined;
+
+          throw exception;
+        }
+
+        throw new UnexpectedError('UnexpectedError', 'Unexpected perform state');
       }
     );
   }
@@ -297,25 +413,37 @@ export class App implements AppContext {
           map_security: this.performState!.security,
         };
 
-      case 'perform-output':
-        this.performState!.output = message.map_result;
+      case 'perform-output-result':
+        this.performState!.result = message.result;
+        return { kind: 'ok' };
+
+      case 'perform-output-error':
+        this.performState!.error = new PerformError(message.error);
+        return { kind: 'ok' };
+
+      case 'perform-output-exception':
+        this.performState!.exception = new UnexpectedError(message.exception.error_code, message.exception.message);
         return { kind: 'ok' };
 
       case 'file-open': {
-        const handle = await this.fileSystem.open(message.path, {
-          createNew: message.create_new,
-          create: message.create,
-          truncate: message.truncate,
-          append: message.append,
-          write: message.write,
-          read: message.read
-        });
-        const res = this.streams.insert({
-          read: this.fileSystem.read.bind(this.fileSystem, handle),
-          write: this.fileSystem.write.bind(this.fileSystem, handle),
-          close: this.fileSystem.close.bind(this.fileSystem, handle)
-        });
-        return { kind: 'ok', stream: res };
+        try {
+          const handle = await this.fileSystem.open(message.path, {
+            createNew: message.create_new,
+            create: message.create,
+            truncate: message.truncate,
+            append: message.append,
+            write: message.write,
+            read: message.read
+          });
+          const res = this.streams.insert({
+            read: this.fileSystem.read.bind(this.fileSystem, handle),
+            write: this.fileSystem.write.bind(this.fileSystem, handle),
+            close: this.fileSystem.close.bind(this.fileSystem, handle)
+          });
+          return { kind: 'ok', stream: res };
+        } catch (error: any) {
+          return { kind: 'err', errno: error.errno };
+        }
       }
 
       case 'http-call': {
@@ -328,20 +456,26 @@ export class App implements AppContext {
           requestInit.body = new Uint8Array(message.body);
         }
 
-        const request = this.network.fetch(message.url, requestInit);
-
-        return { kind: 'ok', handle: this.requests.insert(request) };
+        try {
+          const request = this.network.fetch(message.url, requestInit);
+          return { kind: 'ok', handle: this.requests.insert(request) };
+        } catch (error: any) {
+          return { kind: 'err', error_code: error.name, message: error.message };
+        }
       }
 
       case 'http-call-head': {
-        const response = await this.requests.remove(message.handle)!!;
-        const bodyStream = new ReadableStreamAdapter(response.body!!); // TODO: handle when they are missing
-
-        return { kind: 'ok', status: response.status, headers: headersToMultimap(response.headers), body_stream: this.streams.insert(bodyStream) };
+        try {
+          const response = await this.requests.remove(message.handle)!;
+          const bodyStream = new ReadableStreamAdapter(response.body!); // TODO: handle when they are missing
+          return { kind: 'ok', status: response.status, headers: headersToMultimap(response.headers), body_stream: this.streams.insert(bodyStream) };
+        } catch (error: any) {
+          return { kind: 'err', error_code: error.name, message: error.message };
+        }
       }
 
       default:
-        return { 'kind': 'err', 'error': 'Unknown message' }
+        return { 'kind': 'err', 'error': `Unknown message ${message['kind']}` }
     }
   }
 

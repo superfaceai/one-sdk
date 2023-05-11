@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{value::SecurityValuesMap, HostValue, MessageExchange, EXCHANGE_MESSAGE};
+use super::{value::SecurityValuesMap, ErrorCode, HostValue, MessageExchange, EXCHANGE_MESSAGE};
 
 define_exchange_core_to_host! {
     struct PerformInputRequest {
@@ -23,21 +23,51 @@ define_exchange_core_to_host! {
             map_security: SecurityValuesMap
         },
         Err {
-            error: String
+            error_code: ErrorCode,
+            message: String,
         }
     }
 }
 
 define_exchange_core_to_host! {
-    struct PerformOutputRequest<'a> {
-        kind: "perform-output",
-        /// Result or error of the map.
-        ///
-        /// Only errors defined in the profile are returned here.
-        map_result: &'a Result<HostValue, HostValue>
-    } -> enum PerformOutputResponse {
+    struct PerformOutputResultRequest {
+        kind: "perform-output-result",
+        /// Result of the map.
+        result: HostValue
+    } -> enum PerformOutputResultResponse {
         Ok,
-        Err { error: String }
+        Err {
+            error_code: ErrorCode,
+            message: String
+        }
+    }
+}
+
+define_exchange_core_to_host! {
+    struct PerformOutputErrorRequest {
+        kind: "perform-output-error",
+        /// Only errors defined in the profile are returned here.
+        error: HostValue
+    } -> enum PerformOutputErrorResponse {
+        Ok,
+        Err {
+            error_code: ErrorCode,
+            message: String
+        }
+    }
+}
+
+define_exchange_core_to_host! {
+    struct PerformOutputExceptionRequest {
+        kind: "perform-output-exception",
+        /// All other unexpected errors are returned here.
+        exception: PerformException
+    } -> enum PerformOutputExceptionResponse {
+        Ok,
+        Err {
+            error_code: ErrorCode,
+            message: String
+        }
     }
 }
 
@@ -77,21 +107,60 @@ pub fn perform_input() -> PerformInput {
             map_parameters,
             map_security,
         },
-        PerformInputResponse::Err { error } => panic!("perform-input error: {}", error),
+        PerformInputResponse::Err {
+            error_code,
+            message,
+        } => panic!("perform-input error: {:?} {}", error_code, message),
     }
 }
 
-pub struct PerformOutput {
-    pub map_result: Result<HostValue, HostValue>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PerformException {
+    pub message: String,
 }
-pub fn perform_output(output: PerformOutput) {
-    let response = PerformOutputRequest::new(&output.map_result)
+
+pub fn set_perform_output_result(result: HostValue) {
+    let response = PerformOutputResultRequest::new(result)
         .send_json(&EXCHANGE_MESSAGE)
         .unwrap();
 
     match response {
-        PerformOutputResponse::Ok => (),
-        PerformOutputResponse::Err { error } => panic!("perform-output error: {}", error),
+        PerformOutputResultResponse::Ok => (),
+        PerformOutputResultResponse::Err {
+            error_code,
+            message,
+        } => panic!("perform-output-result error: {:?}: {}", error_code, message),
+    }
+}
+
+pub fn set_perform_output_error(error: HostValue) {
+    let response = PerformOutputErrorRequest::new(error)
+        .send_json(&EXCHANGE_MESSAGE)
+        .unwrap();
+
+    match response {
+        PerformOutputErrorResponse::Ok => (),
+        PerformOutputErrorResponse::Err {
+            error_code,
+            message,
+        } => panic!("perform-output-error error: {:?}: {}", error_code, message),
+    }
+}
+
+pub fn set_perform_output_exception(exception: PerformException) {
+    let response = PerformOutputExceptionRequest::new(exception)
+        .send_json(&EXCHANGE_MESSAGE)
+        .unwrap();
+
+    match response {
+        PerformOutputExceptionResponse::Ok => (),
+        PerformOutputExceptionResponse::Err {
+            error_code,
+            message,
+        } => panic!(
+            "perform-output-exception error: {:?}: {}",
+            error_code, message
+        ),
     }
 }
 
@@ -99,10 +168,7 @@ pub fn perform_output(output: PerformOutput) {
 mod test {
     use serde_json::json;
 
-    use super::{
-        HostValue, PerformInputRequest, PerformInputResponse, PerformOutputRequest,
-        PerformOutputResponse,
-    };
+    use super::*;
 
     #[test]
     fn test_message_in_perform_input() {
@@ -160,31 +226,48 @@ mod test {
     }
 
     #[test]
-    fn test_message_in_perform_output() {
-        let actual = serde_json::to_value(PerformOutputRequest {
-            kind: PerformOutputRequest::KIND,
-            map_result: &Ok(HostValue::String("hello".into())),
+    fn test_message_in_perform_output_result() {
+        let actual = serde_json::to_value(PerformOutputResultRequest {
+            kind: PerformOutputResultRequest::KIND,
+            result: HostValue::String("hello".into()),
         })
         .unwrap();
 
         assert_eq!(
             serde_json::to_value(actual).unwrap(),
             json!({
-                "kind": "perform-output",
-                "map_result": {"Ok": "hello"}
+                "kind": "perform-output-result",
+                "result": "hello"
             })
         )
     }
 
     #[test]
-    fn test_message_out_perform_output() {
+    fn test_message_out_perform_output_result() {
         let actual = json!({
             "kind": "ok"
         });
 
-        match serde_json::from_value::<PerformOutputResponse>(actual).unwrap() {
-            PerformOutputResponse::Ok => (),
-            PerformOutputResponse::Err { .. } => unreachable!(),
+        match serde_json::from_value::<PerformOutputResultResponse>(actual).unwrap() {
+            PerformOutputResultResponse::Ok => (),
+            PerformOutputResultResponse::Err { .. } => unreachable!(),
+        }
+
+        let actual = json!({
+            "kind": "err",
+            "error_code": "network:invalid_url",
+            "message": "Message explaining the error"
+        });
+
+        match serde_json::from_value::<PerformOutputResultResponse>(actual).unwrap() {
+            PerformOutputResultResponse::Ok => unreachable!(),
+            PerformOutputResultResponse::Err {
+                error_code,
+                message,
+            } => {
+                assert!(matches!(error_code, ErrorCode::NetworkInvalidUrl));
+                assert_eq!(message, "Message explaining the error");
+            }
         }
     }
 }

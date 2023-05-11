@@ -9,6 +9,8 @@ pub mod perform;
 pub mod provider;
 
 mod value;
+use serde::Deserialize;
+use serde::Serialize;
 pub use value::HostValue;
 pub use value::SecurityValue;
 pub use value::SecurityValuesMap;
@@ -64,8 +66,22 @@ extern "C" fn __import_message_exchange_retrieve(
     unreachable!()
 }
 
+////////////
+// ERRORS //
+////////////
+
+/// Host JS counterpart: host/js/src/common/app.ts
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ErrorCode {
+    #[serde(rename = "network:error")]
+    NetworkError,
+
+    #[serde(rename = "network:invalid_url")]
+    NetworkInvalidUrl,
+}
+
 /////////////
-// STREMAS //
+// STREAMS //
 /////////////
 
 // SAFETY: We choose to trust this FFI.

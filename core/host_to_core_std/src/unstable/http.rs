@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
-use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
+use super::{ErrorCode, IoStream, MessageExchange, EXCHANGE_MESSAGE};
 use crate::{abi::Handle, lowercase_headers_multimap, HeadersMultiMap, MultiMap};
 
 define_exchange_core_to_host! {
@@ -26,7 +26,8 @@ define_exchange_core_to_host! {
             handle: Handle,
         },
         Err {
-            error: String
+            error_code: ErrorCode,
+            message: String,
         }
     }
 }
@@ -42,7 +43,8 @@ define_exchange_core_to_host! {
             body_stream: IoStream, // TODO: optional? in case response doesn't have a body
         },
         Err {
-            error: String
+            error_code: ErrorCode,
+            message: String,
         }
     }
 }
@@ -50,17 +52,14 @@ define_exchange_core_to_host! {
 #[derive(Debug, Error)]
 pub enum HttpCallError {
     #[error("Invalid fetch url: {0}")]
-    InvalidUrl(#[from] url::ParseError),
-    #[error("HttpCall error: {0}")]
-    Request(String), // TODO: more granular
-    #[error("OutHttpCallHead error: {0}")]
-    Response(String), // TODO: more granular
+    InvalidUrl(String),
+    #[error("Unknown http error: {0}")]
+    Unknown(String), // TODO: more granular
 }
 pub struct HttpRequest {
     handle: Handle,
 }
 impl HttpRequest {
-    // TODO: proper errors
     pub fn fetch(
         method: &str,
         url: &str,
@@ -68,13 +67,13 @@ impl HttpRequest {
         query: &MultiMap,
         body: Option<&[u8]>,
     ) -> Result<Self, HttpCallError> {
-        let mut url = Url::parse(url)?;
+        let mut url = Url::parse(url).map_err(|err| HttpCallError::InvalidUrl(err.to_string()))?;
         // merge query params already in the URL with the params passed in query
-        // TODO: or we can assert here that the url doesn't contain any params - 
+        // TODO: or we can assert here that the url doesn't contain any params -
         url.query_pairs_mut().extend_pairs(
-            query.iter().flat_map(
-                |(key, values)| values.iter().map(move |value| (key, value))
-            )
+            query
+                .iter()
+                .flat_map(|(key, values)| values.iter().map(move |value| (key, value))),
         );
 
         let response = HttpCallRequest {
@@ -95,18 +94,19 @@ impl HttpRequest {
                 assert!(request_body_stream.is_none());
                 Ok(Self { handle })
             }
-            HttpCallResponse::Err { error } => return Err(HttpCallError::Request(error)),
+            HttpCallResponse::Err {
+                error_code,
+                message,
+            } => Err(Self::response_error_to_http_call_error(error_code, message)),
         }
     }
 
-    // TODO: proper errors
     pub fn into_response(&mut self) -> Result<HttpResponse, HttpCallError> {
         let exchange_response = HttpCallHeadRequest::new(self.handle)
             .send_json(&EXCHANGE_MESSAGE)
             .unwrap();
 
         match exchange_response {
-            HttpCallHeadResponse::Err { error } => return Err(HttpCallError::Response(error)),
             HttpCallHeadResponse::Ok {
                 status,
                 headers,
@@ -116,6 +116,17 @@ impl HttpRequest {
                 headers: lowercase_headers_multimap(headers),
                 body: body_stream,
             }),
+            HttpCallHeadResponse::Err {
+                error_code,
+                message,
+            } => Err(Self::response_error_to_http_call_error(error_code, message)),
+        }
+    }
+
+    fn response_error_to_http_call_error(error_code: ErrorCode, message: String) -> HttpCallError {
+        match error_code {
+            ErrorCode::NetworkInvalidUrl => HttpCallError::InvalidUrl(message),
+            _ => HttpCallError::Unknown(format!("{:?}: {}", error_code, message)),
         }
     }
 }

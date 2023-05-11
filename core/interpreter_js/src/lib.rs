@@ -9,14 +9,14 @@ use map_std::{
     MapInterpreter, MapInterpreterRunError,
 };
 
-mod state;
-use state::InterpreterState;
+mod std_impl;
+use std_impl::InterpreterState;
 
 mod core_to_map_std_impl;
 
 #[derive(Debug, Error)]
 pub enum JsInterpreterError {
-    #[error("{0}")]
+    #[error(transparent)]
     Error(#[from] anyhow::Error), // TODO: big todo - Javy uses anyhow, we need to figure out how to reasonably interface with that
     #[error("Eval code cannot be an empty string")]
     EvalCodeEmpty,
@@ -56,9 +56,7 @@ impl JsInterpreter {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
-        self.context
-            .eval_global(name, code)
-            .context("Failed to evaluate global code")?;
+        self.context.eval_global(name, code).context("Failed to evaluate global code")?;
 
         Ok(())
     }
@@ -113,7 +111,7 @@ impl MapInterpreter for JsInterpreter {
 
         self.eval_code("map.js", &bundle)
             .context("Failed to run map bundle")
-            .map_err(fmt_error)?;
+            .map_err(fmt_error)?; // format anyhow to something
 
         Ok(self.take_output())
     }

@@ -174,24 +174,48 @@ pub struct HttpResponse {
     /// Body stream of content-encoding decoded data.
     pub body_stream: Handle,
 }
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ErrorCode {
+    #[serde(rename = "network:error")]
+    NetworkError,
+
+    #[serde(rename = "network:invalid_handle")]
+    NetworkInvalidHandle,
+
+    #[serde(rename = "network:invalid_url")]
+    NetworkInvalidUrl,
+
+    #[serde(rename = "security:misssing_secret")]
+    SecurityMissingSecret,
+
+    #[serde(rename = "security:invalid_configuration")]
+    SecurityInvalidConfiguration,
+
+    #[serde(rename = "outcome:unxpected")]
+    OutcomeUnexpected,
+
+    #[serde(rename = "context:taken")]
+    ContextTaken,
+}
 #[derive(Debug, Error)]
 pub enum HttpCallError {
     // TODO: define more granular categories
     #[error("http call failed: {0}")]
     Failed(String),
 
-    #[error("Missing secret value: {0}")]
-    MissingSecret(String),
-
     #[error("Invalid security configuration: {0}")]
     InvalidSecurityConfiguration(String),
+
+    #[error("Missing secret value: {0}")]
+    MissingSecret(String),
 }
 #[derive(Debug, Error)]
 pub enum HttpCallHeadError {
+    #[error("Response error: {0}")]
+    Failed(String),
+
     #[error("Handle does not belong to an active http request")]
     InvalidHandle,
-    #[error("Response error: {0}")]
-    ResponseError(String),
 }
 
 #[derive(Debug, Error)]
@@ -245,7 +269,10 @@ define_exchange_map_to_core! {
                 request_body_stream: Option<()>, // TODO: think about implementation/ergonomics
                 handle: Handle,
             },
-            Err { error: String, }
+            Err {
+                error_code: ErrorCode,
+                message: String
+            },
         } => {
             let handle = state.http_call(HttpRequest {
                 method,
@@ -261,7 +288,11 @@ define_exchange_map_to_core! {
                     request_body_stream: None,
                     handle,
                 },
-                Err(err) => Response::Err { error: err.to_string() }
+                Err(err) => match err {
+                    HttpCallError::Failed(message) => Response::Err { error_code: ErrorCode::NetworkError, message },
+                    HttpCallError::MissingSecret(message) => Response::Err { error_code: ErrorCode::SecurityMissingSecret, message },
+                    HttpCallError::InvalidSecurityConfiguration(message) => Response::Err { error_code: ErrorCode::SecurityInvalidConfiguration, message },
+                }
             }
         },
         HttpCallHead {
@@ -272,40 +303,56 @@ define_exchange_map_to_core! {
                 headers: HeadersMultiMap,
                 body_stream: Handle,
             },
-            Err { error: String, },
+            Err {
+                error_code: ErrorCode,
+                message: String
+            },
         } => match state.http_call_head(handle) {
-            Err(err) => Response::Err { error: err.to_string() },
             Ok(HttpResponse {
                 status,
                 headers,
                 body_stream,
-            }) => Response::Ok { status, headers, body_stream, }
+            }) => Response::Ok { status, headers, body_stream, },
+            Err(err) => match err {
+                HttpCallHeadError::InvalidHandle => Response::Err { error_code: ErrorCode::NetworkInvalidHandle, message: "Invalid request handle".to_string() },
+                HttpCallHeadError::Failed(message) => Response::Err { error_code: ErrorCode::NetworkError, message },
+            }
         },
         // input and output
         TakeContext -> enum Response {
             Ok { context: MapValue },
-            Err { error: String }
+            Err {
+                error_code: ErrorCode,
+                message: String
+            }
         } => match state.take_context() {
-            Err(err) => Response::Err { error: err.to_string() },
             Ok(context) => Response::Ok { context },
+            Err(err) => match err {
+                TakeContextError::AlreadyTaken => Response::Err { error_code: ErrorCode::ContextTaken, message: err.to_string() }
+            }
         },
         SetOutputSuccess { output: MapValue } -> enum Response {
             Ok,
             Err {
-                error: String
+                error_code: ErrorCode,
+                message: String,
             }
         } => match state.set_output_success(output) {
             Ok(()) => Response::Ok,
-            Err(err) => Response::Err { error: err.to_string() }
+            Err(err) => Response::Err {
+                error_code: ErrorCode::OutcomeUnexpected,
+                message: err.to_string()
+            }
         },
         SetOutputFailure { output: MapValue } -> enum Response {
             Ok,
             Err {
-                error: String
+                error_code: ErrorCode,
+                message: String,
             }
         } => match state.set_output_failure(output) {
             Ok(()) => Response::Ok,
-            Err(err) =>Response::Err { error: err.to_string() }
+            Err(err) => Response::Err { error_code: ErrorCode::OutcomeUnexpected, message: err.to_string() }
         }
     }
 }

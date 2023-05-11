@@ -1,4 +1,4 @@
-import { CharIndexSpan } from '../../../common/source';
+import { CharIndexSpan } from '../../common/source';
 import { ProtoError } from '../../error';
 import { LexerTokenData, LexerTokenKind } from '../token';
 

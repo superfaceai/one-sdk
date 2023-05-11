@@ -6,6 +6,10 @@ import { createRequire } from 'node:module';
 
 import { App, HandleMap } from '../common/index.js';
 import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
+import { ErrorCode, HostError, WasiErrno } from '../common/app.js';
+import { WasiError } from '../common/app.js';
+import { Result, err, ok } from './result.js';
+import { PerformError, UnexpectedError } from '../common/error.js';
 
 const CORE_PATH = createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 
@@ -50,7 +54,7 @@ class NodeFileSystem implements FileSystem {
   async read(handle: number, out: Uint8Array): Promise<number> {
     const file = this.files.get(handle);
     if (file === undefined) {
-      throw new Error('invalid file handle - TODO: wasi error');
+      throw new WasiError(WasiErrno.BADF);
     }
 
     const result = await file.read(out, 0, out.byteLength);
@@ -59,7 +63,7 @@ class NodeFileSystem implements FileSystem {
   async write(handle: number, data: Uint8Array): Promise<number> {
     const file = this.files.get(handle);
     if (file === undefined) {
-      throw new Error('invalid file handle - TODO: wasi error');
+      throw new WasiError(WasiErrno.BADF);
     }
 
     const result = await file.write(data, 0, data.length);
@@ -68,7 +72,7 @@ class NodeFileSystem implements FileSystem {
   async close(handle: number): Promise<void> {
     const file = this.files.remove(handle);
     if (file === undefined) {
-      throw new Error('File does not exist');
+      throw new WasiError(WasiErrno.NOENT);
     }
 
     await file.close();
@@ -86,9 +90,27 @@ class NodeTimers implements Timers {
 }
 
 class NodeNetwork implements Network {
-  fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
-    return fetch(input, init); // TODO: import from undici explicitly
+  // TODO: import from undici explicitly
+  async fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+    try {
+      return await fetch(input, init)
+    } catch (err: unknown) {
+      throw fetchErrorToHostError(err);
+    }
   }
+}
+
+function fetchErrorToHostError(error: unknown): HostError {
+  if (error instanceof Error) {
+    let cause = '';
+    for (const [key, value] of Object.entries(error.cause ?? {})) {
+      cause += `${key}: ${value}\n`;
+    }
+
+    return new HostError(ErrorCode.NetworkError, `${error.name} ${error.message}${cause === '' ? '' : `\n${cause}`}`);
+  }
+
+  return new HostError(ErrorCode.NetworkError, 'Unknown error');
 }
 
 export type ClientOptions = {
@@ -144,9 +166,9 @@ class InternalClient {
   ): Promise<unknown> {
     await this.setup();
 
-    const profileUrl = this.resolveProfileUrl(profile);
-    const providerUrl = this.resolveProviderUrl(provider);
-    const mapUrl = this.resolveMapUrl(profile, provider);
+    const profileUrl = await this.resolveProfileUrl(profile);
+    const providerUrl = await this.resolveProviderUrl(provider);
+    const mapUrl = await this.resolveMapUrl(profile, provider);
 
     return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
   }
@@ -164,34 +186,22 @@ class InternalClient {
     this.ready = true;
   }
 
-  public resolveProfileUrl(profile: string): string {
+  public async resolveProfileUrl(profile: string): Promise<string> {
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
     const path = resolve(this.assetsPath, `${resolvedProfile}.supr`);
 
-    if (fs.stat(path) === undefined) {
-      throw new Error(`Profile file does not exist, path: ${path}`);
-    }
-
     return `file://${path}`;
   }
 
-  public resolveMapUrl(profile: string, provider?: string): string {
+  public async resolveMapUrl(profile: string, provider?: string): Promise<string> {
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
-    const path = resolve(this.assetsPath, `${resolvedProfile}.${provider}.js`);
-
-    if (fs.stat(path) === undefined) {
-      throw new Error(`Map file does not exist, path: ${path}`);
-    }
+    const path = resolve(this.assetsPath, `${resolvedProfile}.${provider}.suma.js`);
 
     return `file://${path}`;
   }
 
-  public resolveProviderUrl(provider: string): string {
+  public async resolveProviderUrl(provider: string): Promise<string> {
     const path = resolve(this.assetsPath, `${provider}.provider.json`);
-
-    if (fs.stat(path) === undefined) {
-      throw new Error(`Provider file does not exist, path: ${path}`);
-    }
 
     return `file://${path}`;
   }
@@ -229,7 +239,7 @@ export class Profile {
   }
 
   public static async loadLocal(internal: InternalClient, name: string): Promise<Profile> {
-    const profileUrl = internal.resolveProfileUrl(name);
+    const profileUrl = await internal.resolveProfileUrl(name);
     return new Profile(internal, name, profileUrl);
   }
 
@@ -242,7 +252,25 @@ export class UseCase {
   constructor(private readonly internal: InternalClient, private readonly profile: Profile, public readonly name: string) {
   }
 
-  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<TResult> {
-    return await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security) as TResult;
+  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<Result<TResult, PerformError | UnexpectedError>> {
+    try {
+      const result = await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security);
+
+      return ok(result as TResult);
+    } catch (error: unknown) {
+      if (error instanceof PerformError) {
+        return err(error);
+      }
+
+      if (error instanceof UnexpectedError) {
+        return err(error);
+      }
+
+      if (error instanceof Error) {
+        return err(new UnexpectedError(error.name, error.message));
+      }
+
+      return err(new UnexpectedError('UnknownError', JSON.stringify(error)));
+    }
   }
 }
