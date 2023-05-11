@@ -266,8 +266,8 @@ export class App implements AppContext {
     parameters: Record<string, string>,
     security: SecurityValuesMap,
     result?: unknown,
-    error?: unknown,
-    exception?: { error_code: ErrorCode, message: string }
+    error?: PerformError,
+    exception?: UnexpectedError
   } | undefined = undefined;
 
   private metricsState: {
@@ -349,7 +349,6 @@ export class App implements AppContext {
   ): Promise<unknown> {
     this.setSendMetricsTimeout();
 
-
     return this.core!.withLock(
       async (core) => {
         this.performState = { profileUrl, providerUrl, mapUrl, usecase, input, parameters, security };
@@ -366,14 +365,14 @@ export class App implements AppContext {
           const err = this.performState.error;
           this.performState = undefined;
 
-          throw new PerformError(err);
+          throw err;
         }
 
         if (this.performState.exception !== undefined) {
           const exception = this.performState.exception;
           this.performState = undefined;
 
-          throw new UnexpectedError(exception?.error_code, exception.message);
+          throw exception;
         }
 
         throw new UnexpectedError('UnexpectedError', 'Unexpected perform state');
@@ -402,11 +401,11 @@ export class App implements AppContext {
         return { kind: 'ok' };
 
       case 'perform-output-error':
-        this.performState!.error = message.error;
+        this.performState!.error = new PerformError(message.error);
         return { kind: 'ok' };
 
       case 'perform-output-exception':
-        this.performState!.exception = message.exception;
+        this.performState!.exception = new UnexpectedError(message.exception.error_code, message.exception.message);
         return { kind: 'ok' };
 
       case 'file-open': {

@@ -16,7 +16,7 @@ mod core_to_map_std_impl;
 
 #[derive(Debug, Error)]
 pub enum JsInterpreterError {
-    #[error("{0}")]
+    #[error(transparent)]
     Error(#[from] anyhow::Error), // TODO: big todo - Javy uses anyhow, we need to figure out how to reasonably interface with that
     #[error("Eval code cannot be an empty string")]
     EvalCodeEmpty,
@@ -56,9 +56,7 @@ impl JsInterpreter {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
-        self.context
-            .eval_global(name, code)
-            .context("Failed to evaluate global code")?;
+        self.context.eval_global(name, code).context("Failed to evaluate global code")?;
 
         Ok(())
     }

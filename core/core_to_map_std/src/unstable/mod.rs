@@ -179,6 +179,9 @@ pub enum ErrorCode {
     #[serde(rename = "network:error")]
     NetworkError,
 
+    #[serde(rename = "network:invalid_handle")]
+    NetworkInvalidHandle,
+
     #[serde(rename = "network:invalid_url")]
     NetworkInvalidUrl,
 
@@ -311,7 +314,7 @@ define_exchange_map_to_core! {
                 body_stream,
             }) => Response::Ok { status, headers, body_stream, },
             Err(err) => match err {
-                HttpCallHeadError::InvalidHandle => Response::Err { error_code: ErrorCode::NetworkError, message: "Invalid request handle".to_string() },
+                HttpCallHeadError::InvalidHandle => Response::Err { error_code: ErrorCode::NetworkInvalidHandle, message: "Invalid request handle".to_string() },
                 HttpCallHeadError::Failed(message) => Response::Err { error_code: ErrorCode::NetworkError, message },
             }
         },

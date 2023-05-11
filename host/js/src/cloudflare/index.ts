@@ -3,6 +3,8 @@ import { WASI } from '@cloudflare/workers-wasi';
 import { App, HandleMap } from '../common/index.js';
 import type { TextCoder, FileSystem, Timers, Network, WasiContext, SecurityValuesMap } from '../common/index.js';
 
+export { PerformError, UnexpectedError } from '../common/error.js';
+
 // @ts-ignore
 import coreModule from '../assets/core-async.wasm';
 

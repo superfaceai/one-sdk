@@ -16,15 +16,19 @@ MAKE_FLAGS=${2:-MODE=debug}
 
 case $1 in
 	node)
-		cd ..
-		make build_host_js $MAKE_FLAGS
+		if [ "$MAKE_FLAGS" != nomake ]; then
+			cd ..
+			make build_host_js $MAKE_FLAGS
+		fi
 		cd "$base"
 		node --experimental-wasi-unstable-preview1 ./node_example.mjs $ASSETS_PATH $PROFILE $USECASE $INPUT $PROVIDER $PARAMETERS $SECURITY
 	;;
 
 	cloudflare)
-		cd ..
-		make build_host_js $MAKE_FLAGS
+		if [ "$MAKE_FLAGS" != nomake ]; then
+			cd ..
+			make build_host_js $MAKE_FLAGS
+		fi
 		cd "$base/cloudflare_worker"
 		yarn dev
 	;;

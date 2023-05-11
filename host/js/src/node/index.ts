@@ -74,6 +74,8 @@ class NodeFileSystem implements FileSystem {
     if (file === undefined) {
       throw new WasiError(WasiErrno.NOENT);
     }
+
+    await file.close();
   }
 }
 

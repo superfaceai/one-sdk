@@ -1,4 +1,4 @@
-import { Client } from '@superfaceai/one-sdk/cloudflare';
+import { Client, PerformError, UnexpectedError } from '@superfaceai/one-sdk/cloudflare';
 
 import { GRID_IMPORTS } from './grid';
 
@@ -26,10 +26,10 @@ export default {
     const to = url.searchParams.get('to') ?? '';
     const text = url.searchParams.get('text') ?? 'Hello world!';
 
-    let result: { Err: { title: string, detail?: string } } | { Ok: { messageId: string } };
+    let result: Promise<unknown>;
     switch (url.pathname) {
       case '/sms':
-        result = await (await client.getProfile('communication/send-sms')).getUseCase('SendMessage').perform(
+        result = (await client.getProfile('communication/send-sms')).getUseCase('SendMessage').perform(
           { to, text },
           {
             provider: 'twilio',
@@ -45,7 +45,7 @@ export default {
         break
       
       case '/email':
-        result = await (await client.getProfile('communication/send-email')).getUseCase('SendEmail').perform(
+        result = (await client.getProfile('communication/send-email')).getUseCase('SendEmail').perform(
           { from: 'cfw@demo.superface.org', to, text, subject: 'Superface on Cloudflare Workers' },
           {
             provider: 'mailchimp',
@@ -62,12 +62,19 @@ export default {
         return new Response(`Path ${url.pathname} not found`, { status: 404 });
     }
 
-    if ('Err' in result) {
-      const err = result['Err'];
-      return new Response(`${err.title}\n${err.detail}`, { status: 500 });
+    try {
+      // result as defined in the profile
+      const ok = await result;
+      return new Response(`Result: ${JSON.stringify(ok)}`);
+    } catch (error) {
+      if (error instanceof PerformError) {
+        // error as defined in the profile
+        const err = error.errorResult as { title: string, detail: string };
+        return new Response(`${err.title}\n${err.detail}`, { status: 400 });
+      } else {
+        // exception - should not be part of a normal flow
+        return new Response(`${error.name}\n${error.message}`, { status: 500 });
+      }
     }
-
-    const ok = result['Ok'];
-    return new Response(`Result: ${JSON.stringify(ok)}`);
-  },
+  }
 };

@@ -12,7 +12,7 @@ declare global {
 globalThis.std = { unstable };
 globalThis.Buffer = NodeBuffer;
 
-globalThis._start = (usecaseName: string): void => {
+globalThis._start = function _start(usecaseName: string): void {
   const context = globalThis.std.unstable.takeContext() as Record<string, unstable.AnyValue>;
 
   // TODO: this is best-effort - these are functions currently visible in the global scope
