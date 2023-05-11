@@ -4,7 +4,7 @@ import { GRID_IMPORTS } from './grid';
 
 const client = new Client({
   env: {
-    SF_LOG: 'info'
+    SF_LOG: 'trace'
   },
   assetsPath: 'grid',
   preopens: { ...GRID_IMPORTS }
