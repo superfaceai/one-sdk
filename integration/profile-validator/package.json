@@ -1,7 +1,6 @@
 {
-  "name": "profile-validator",
+  "name": "@superfaceai/profile-validator",
   "version": "0.1.0",
-  "license": "MIT",
   "private": true,
   "devDependencies": {
     "@types/core-ffi": "*",

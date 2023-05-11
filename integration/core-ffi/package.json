@@ -1,5 +1,5 @@
 {
-	"name": "@types/core-ffi",
+	"name": "@types/superfaceai__core-ffi",
 	"version": "0.1.0",
 	"types": "ffi",
 	"private": true
