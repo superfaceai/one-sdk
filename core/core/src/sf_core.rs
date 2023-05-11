@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     io::Read,
-    time::{Duration, Instant},
+    time::Instant
 };
 
 use anyhow::Context;
@@ -28,6 +28,8 @@ use map_std::{
 };
 use tracing::instrument;
 
+use crate::config::CoreConfiguration;
+
 // use crate::profile_validator::ProfileValidator;
 
 struct DocumentCacheEntry {
@@ -47,17 +49,18 @@ impl std::fmt::Debug for DocumentCacheEntry {
 
 #[derive(Debug)]
 pub struct SuperfaceCore {
+    config: CoreConfiguration,
     document_cache: HashMap<String, DocumentCacheEntry>,
 }
 impl SuperfaceCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
 
-    // TODO: this is only illustrative - should be configurable from the host and possbily separately for each document
-    const MAX_CACHE_TIME: Duration = Duration::from_secs(3);
-
     // TODO: Use thiserror and define specific errors
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new(config: CoreConfiguration) -> anyhow::Result<Self> {
+        tracing::info!(config = ?config);
+
         Ok(Self {
+            config,
             document_cache: HashMap::new(),
         })
     }
@@ -69,7 +72,7 @@ impl SuperfaceCore {
         tracing::debug!(url);
         match self.document_cache.get(url) {
             Some(DocumentCacheEntry { store_time, .. })
-                if store_time.elapsed() <= Self::MAX_CACHE_TIME =>
+                if store_time.elapsed() <= self.config.cache_duration =>
             {
                 tracing::debug!("already cached");
                 return Ok(());
@@ -119,7 +122,7 @@ impl SuperfaceCore {
                 .context("Failed to read response body")?;
         }
 
-        tracing::trace!("bytes: {:?}", data);
+        tracing::trace!(bytes = ?data);
         if tracing::enabled!(tracing::Level::DEBUG) {
             if let Ok(utf8) = std::str::from_utf8(&data) {
                 tracing::debug!(utf8);
