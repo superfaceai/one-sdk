@@ -63,10 +63,10 @@ ${CORE_BUILD}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PRO
 	cd core && cargo build --package superface_core --target wasm32-wasi ${FLAGS}
 ${CORE_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
 	@echo 'Optimizing wasm...'
-	wasm-opt -O2 ${CORE_BUILD} --output ${CORE_WASM}
+	wasm-opt -Oz ${CORE_BUILD} --output ${CORE_WASM}
 ${CORE_ASYNCIFY_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
 	@echo 'Running asyncify...'
-	wasm-opt -O2 --asyncify --pass-arg=asyncify-asserts ${CORE_BUILD} --output ${CORE_ASYNCIFY_WASM}
+	wasm-opt --strip-debug --strip-producers --strip-target-features -Oz --asyncify ${CORE_BUILD} --output ${CORE_ASYNCIFY_WASM}
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
 
