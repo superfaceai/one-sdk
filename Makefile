@@ -98,7 +98,7 @@ ${MAP_STD}:
 	cd integration && yarn install && yarn workspace @superfaceai/map-std build
 
 ${PROFILE_VALIDATOR}:
-	cd integration && yarn install && yarn workspace profile-validator build
+	cd integration && yarn install && yarn workspace @superfaceai/profile-validator build
 
 clean_integration:
 	rm -rf integration/map-std/dist integration/profile-validator/dist

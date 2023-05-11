@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
-    "@types/core-ffi": "*",
+    "@types/superfaceai__core-ffi": "*",
     "esbuild": "^0.17.15",
     "rimraf": "^4.4.1",
     "typescript": "^5.0.3"
