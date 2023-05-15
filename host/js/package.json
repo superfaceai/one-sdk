@@ -13,8 +13,10 @@
     "@cloudflare/workers-wasi": "^0.0.5"
   },
   "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit",
     "clean": "rimraf common cloudflare node",
-    "build": "yarn clean && tsc -p tsconfig.json"
+    "build": "yarn clean && tsc -p tsconfig.json",
+    "test": "yarn run check"
   },
   "files": [
     "assets/**/*",

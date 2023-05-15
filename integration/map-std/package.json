@@ -13,6 +13,7 @@
   },
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
+    "test": "yarn run check",
     "build:std": "tsc -p tsconfig.json",
     "build:map_std:types": "tsc -p tsconfig.json --emitDeclarationOnly",
     "build:map_std": "esbuild src/map_std.ts --bundle --target=es2022 --platform=neutral --format=iife --tree-shaking=true --outfile=dist/map_std.js",
