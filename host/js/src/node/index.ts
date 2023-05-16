@@ -11,6 +11,8 @@ import { WasiError } from '../common/app.js';
 import { Result, err, ok } from './result.js';
 import { PerformError, UnexpectedError } from '../common/error.js';
 
+import { systemErrorToWasiError, fetchErrorToHostError } from './error.js';
+
 const CORE_PATH = createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 
 class NodeTextCoder implements TextCoder {
@@ -48,34 +50,50 @@ class NodeFileSystem implements FileSystem {
       flags += 'r';
     }
 
-    const fileHandle = await fs.open(path, flags);
-    return this.files.insert(fileHandle);
+    try {
+      const fileHandle = await fs.open(path, flags);
+      return this.files.insert(fileHandle);
+    } catch (err: unknown) {
+      throw systemErrorToWasiError(err);
+    }
   }
   async read(handle: number, out: Uint8Array): Promise<number> {
     const file = this.files.get(handle);
     if (file === undefined) {
-      throw new WasiError(WasiErrno.BADF);
+      throw new WasiError(WasiErrno.EBADF);
     }
 
-    const result = await file.read(out, 0, out.byteLength);
-    return result.bytesRead;
+    try {
+      const result = await file.read(out, 0, out.byteLength);
+      return result.bytesRead;
+    } catch (err: unknown) {
+      throw systemErrorToWasiError(err);
+    }
   }
   async write(handle: number, data: Uint8Array): Promise<number> {
     const file = this.files.get(handle);
     if (file === undefined) {
-      throw new WasiError(WasiErrno.BADF);
+      throw new WasiError(WasiErrno.EBADF);
     }
 
-    const result = await file.write(data, 0, data.length);
-    return result.bytesWritten;
+    try {
+      const result = await file.write(data, 0, data.length);
+      return result.bytesWritten;
+    } catch (err: unknown) {
+      throw systemErrorToWasiError(err);
+    }
   }
   async close(handle: number): Promise<void> {
     const file = this.files.remove(handle);
     if (file === undefined) {
-      throw new WasiError(WasiErrno.NOENT);
+      throw new WasiError(WasiErrno.ENOENT);
     }
 
-    await file.close();
+    try {
+      await file.close();
+    } catch (err: unknown) {
+      throw systemErrorToWasiError(err);
+    }
   }
 }
 
@@ -98,19 +116,6 @@ class NodeNetwork implements Network {
       throw fetchErrorToHostError(err);
     }
   }
-}
-
-function fetchErrorToHostError(error: unknown): HostError {
-  if (error instanceof Error) {
-    let cause = '';
-    for (const [key, value] of Object.entries(error.cause ?? {})) {
-      cause += `${key}: ${value}\n`;
-    }
-
-    return new HostError(ErrorCode.NetworkError, `${error.name} ${error.message}${cause === '' ? '' : `\n${cause}`}`);
-  }
-
-  return new HostError(ErrorCode.NetworkError, 'Unknown error');
 }
 
 export type ClientOptions = {
