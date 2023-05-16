@@ -101,7 +101,7 @@ impl HttpRequest {
         }
     }
 
-    pub fn into_response(&mut self) -> Result<HttpResponse, HttpCallError> {
+    pub fn into_response(self) -> Result<HttpResponse, HttpCallError> {
         let exchange_response = HttpCallHeadRequest::new(self.handle)
             .send_json(&EXCHANGE_MESSAGE)
             .unwrap();

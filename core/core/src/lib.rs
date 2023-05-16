@@ -5,11 +5,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use sf_std::abi::{Ptr, Size};
 
 mod sf_core;
-use sf_core::SuperfaceCore;
-mod config;
-use config::CoreConfiguration;
-
-mod profile_validator;
+use sf_core::{CoreConfiguration, SuperfaceCore};
 
 static GLOBAL_STATE: Mutex<Option<SuperfaceCore>> = Mutex::new(None);
 
