@@ -12,7 +12,7 @@ For more details about Superface, visit [How it Works](https://superface.ai/how-
 
 ## Try it out
 
-A simple demenonstration can be run with `./examples/run.sh node [CORE_DOCKER=1]`. It builds entire projects and Node.js host, then runs the example.
+A simple demenonstration can be run with `./examples/run.sh node [CORE_MODE=default|docker|lax]`. It builds entire projects and Node.js host, then runs the example.
 
 This will require to have Development requirements installed. In case of building the core in Docker `node` and `yarn` are still required.
 
@@ -33,11 +33,11 @@ python3 -m pip install wasmtime requests
 brew install node yarn
 ```
 
-For development build with `make` from root. To create release build run `make MODE=release`.
+For development build with `make` from root. To create release build run `make CORE_PROFILE=release`.
 
 ### Docker
 
-Core can be built in docker to avoid installing compiler dependencies. Run `make CORE_DOCKER=1`.
+Core can be built in docker to avoid installing compiler dependencies. Run `make CORE_MODE=docker`.
 
 It is also possible (but not required) to build the wasi-sdk in docker `docker build -f core/Dockerfile-wasi-sdk -o core/`, but beware that this takes a really long time.
 
