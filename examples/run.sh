@@ -4,7 +4,7 @@ base=$(dirname "$0")
 base=$(realpath "$base")
 cd "$base"
 
-ASSETS_PATH="$base/../examples/Basic"
+ASSETS_PATH="$base/../examples/basic"
 PROFILE="wasm-sdk/example"
 USECASE=Example
 INPUT='{"id":1}'
@@ -21,7 +21,9 @@ case $1 in
 			make build_host_js $MAKE_FLAGS
 		fi
 		cd "$base"
+		node ./basic/localhost.server.mjs &
 		node --experimental-wasi-unstable-preview1 ./node_example.mjs $ASSETS_PATH $PROFILE $USECASE $INPUT $PROVIDER $PARAMETERS $SECURITY
+		pkill -f 'node ./basic/localhost.server.mjs'
 	;;
 
 	cloudflare)

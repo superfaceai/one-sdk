@@ -14,7 +14,7 @@ async function main() {
           parameters: JSON.parse(process.argv[7]),
           security: JSON.parse(process.argv[8])
         }
-      ); // FIXME: shouldn't panic if input isn't passed
+      );
 
     console.log("RESULT:", result);
   }
