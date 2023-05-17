@@ -12,17 +12,17 @@ use map_std::unstable::MapValue;
 #[derive(Debug, Error)]
 pub enum ProfileValidatorError {
     #[error("Error interpreting validator code: {0}")]
-    InterpreterError(#[from] JsInterpreterError),
+    InterpreterFailed(#[from] JsInterpreterError),
     #[error("Internal validator error: {0}")]
     InternalError(String),
     #[error("Error parsing profile: {0}")]
-    ProfileParseError(String),
+    ProfileParseFailed(String),
     #[error("Input is invalid: {0}")]
-    InputValidationError(String),
+    InputValidationFailed(String),
     #[error("Result is invalid: {0}")]
-    ResultValidationError(String),
+    ResultValidationFailed(String),
     #[error("Error is invalid: {0}")]
-    ErrorValidationError(String),
+    ErrorValidationFailed(String),
 }
 
 pub struct ProfileValidator {
@@ -67,7 +67,7 @@ impl ProfileValidator {
 
         self.interpreter.eval_bytecode(&self.validator_bytecode)?;
         match self.interpreter.take_output() {
-            Err(err) => Err(ProfileValidatorError::ProfileParseError(
+            Err(err) => Err(ProfileValidatorError::ProfileParseFailed(
                 err.try_into_string().unwrap(),
             )),
             Ok(_) => Ok(()),
@@ -90,7 +90,7 @@ impl ProfileValidator {
             Err(err) => Err(ProfileValidatorError::InternalError(
                 err.try_into_string().unwrap(),
             )),
-            Ok(MapValue::String(err)) => Err(ProfileValidatorError::InputValidationError(err)),
+            Ok(MapValue::String(err)) => Err(ProfileValidatorError::InputValidationFailed(err)),
             Ok(MapValue::None) => Ok(()),
             _ => unreachable!(),
         }
@@ -117,7 +117,7 @@ impl ProfileValidator {
                         err.try_into_string().unwrap(),
                     )),
                     Ok(MapValue::String(err)) => {
-                        Err(ProfileValidatorError::ResultValidationError(err))
+                        Err(ProfileValidatorError::ResultValidationFailed(err))
                     }
                     Ok(MapValue::None) => Ok(()),
                     _ => unreachable!(),
@@ -137,7 +137,7 @@ impl ProfileValidator {
                         err.try_into_string().unwrap(),
                     )),
                     Ok(MapValue::String(err)) => {
-                        Err(ProfileValidatorError::ErrorValidationError(err))
+                        Err(ProfileValidatorError::ErrorValidationFailed(err))
                     }
                     Ok(MapValue::None) => Ok(()),
                     _ => unreachable!(),

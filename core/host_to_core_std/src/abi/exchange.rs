@@ -10,9 +10,9 @@ use super::{AbiResult, AbiResultRepr, Handle, Ptr, Size};
 #[derive(Debug, Error)]
 pub enum JsonMessageError {
     #[error("Failed to serialize message: {0}")]
-    SerializeError(serde_json::Error),
+    SerializeFailed(serde_json::Error),
     #[error("Failed to deserialize message: {0}")]
-    DeserializeError(serde_json::Error),
+    DeserializeFailed(serde_json::Error),
 }
 
 pub struct MessageFn {
@@ -105,7 +105,7 @@ impl MessageFn {
         let _span = _span.enter();
 
         let json_message =
-            serde_json::to_string(message).map_err(JsonMessageError::SerializeError)?;
+            serde_json::to_string(message).map_err(JsonMessageError::SerializeFailed)?;
 
         tracing::trace!(request = %json_message);
 
@@ -114,7 +114,7 @@ impl MessageFn {
         tracing::trace!(response = %std::str::from_utf8(response.as_slice()).unwrap());
 
         let response = serde_json::from_slice(response.as_slice())
-            .map_err(JsonMessageError::DeserializeError)?;
+            .map_err(JsonMessageError::DeserializeFailed)?;
 
         Ok(response)
     }

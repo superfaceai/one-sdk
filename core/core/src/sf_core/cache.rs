@@ -12,11 +12,11 @@ use sf_std::unstable::{
 #[derive(Debug, thiserror::Error)]
 pub enum DocumentCacheError {
     #[error("Failed to load document \"{0}\" file: {1}")]
-    FileError(String, std::io::Error),
+    FileLoadFailed(String, std::io::Error),
     #[error("Failed to load document \"{0}\" over http: {1}")]
-    HttpError(String, HttpCallError),
+    HttpLoadFailed(String, HttpCallError),
     #[error("Failed to read http body: {0}")]
-    HttpBodyReadError(std::io::Error),
+    HttpBodyReadFailed(std::io::Error),
 }
 
 struct DocumentCacheEntry {
@@ -108,7 +108,7 @@ impl DocumentCache {
 
     fn cache_file(url: &str) -> Result<Vec<u8>, DocumentCacheError> {
         match url.strip_prefix(Self::FILE_URL_PREFIX) {
-            None => Err(DocumentCacheError::FileError(
+            None => Err(DocumentCacheError::FileLoadFailed(
                 url.to_string(),
                 std::io::ErrorKind::NotFound.into(),
             )),
@@ -116,11 +116,11 @@ impl DocumentCache {
                 let mut file = OpenOptions::new()
                     .read(true)
                     .open(&path)
-                    .map_err(|err| DocumentCacheError::FileError(path.to_string(), err))?;
+                    .map_err(|err| DocumentCacheError::FileLoadFailed(path.to_string(), err))?;
 
                 let mut data = Vec::new();
                 file.read_to_end(&mut data)
-                    .map_err(|err| DocumentCacheError::FileError(path.to_string(), err))?;
+                    .map_err(|err| DocumentCacheError::FileLoadFailed(path.to_string(), err))?;
 
                 Ok(data)
             }
@@ -131,13 +131,13 @@ impl DocumentCache {
         let mut response =
             HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
                 .and_then(|v| v.into_response())
-                .map_err(|err| DocumentCacheError::HttpError(url.to_string(), err))?;
+                .map_err(|err| DocumentCacheError::HttpLoadFailed(url.to_string(), err))?;
 
         let mut data = Vec::new();
         response
             .body()
             .read_to_end(&mut data)
-            .map_err(|err| DocumentCacheError::HttpBodyReadError(err))?;
+            .map_err(|err| DocumentCacheError::HttpBodyReadFailed(err))?;
 
         Ok(data)
     }
