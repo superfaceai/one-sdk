@@ -30,11 +30,21 @@ export function systemErrorToWasiError(error: unknown): WasiError {
 
 export function fetchErrorToHostError(error: unknown): HostError {
   if (error instanceof Error) {
+    // if there is an errno in the cause we use that
+    if (error.cause !== null && typeof error.cause === 'object' && typeof (error.cause as Record<string, unknown>).errno === 'number') {
+      const cause = error.cause as Record<string, unknown>;
+
+      switch (cause.code) {
+        case 'ECONNREFUSED': return new HostError(ErrorCode.NetworkConnectionRefused, `Connection refused: ${cause.address}:${cause.port}`);
+        case 'ENOTFOUND': return new HostError(ErrorCode.NetworkHostNotFound, `Host not found: ${cause.hostname}`);
+      }
+    }
+    
+    // otherwise we build a message and return a generic network error
     let cause = '';
     for (const [key, value] of Object.entries(error.cause ?? {})) {
       cause += `${key}: ${value}\n`;
     }
-
     return new HostError(ErrorCode.NetworkError, `${error.name} ${error.message}${cause === '' ? '' : `\n${cause}`}`);
   }
 

@@ -16,14 +16,19 @@ mod core_to_map_std_impl;
 
 #[derive(Debug, Error)]
 pub enum JsInterpreterError {
-    #[error(transparent)]
-    Error(#[from] anyhow::Error), // TODO: big todo - Javy uses anyhow, we need to figure out how to reasonably interface with that
+    // TODO: big todo - Javy uses anyhow, we need to figure out how to reasonably interface with that
+    #[error("Initialzation failed: {0}")]
+    InitializationFailed(anyhow::Error),
+    #[error("Code evaluation failed: {0:#}")]
+    EvalFailed(anyhow::Error),
+    #[error("Code compilation failed: {0:#}")]
+    CompilationFailed(anyhow::Error),
     #[error("Eval code cannot be an empty string")]
     EvalCodeEmpty,
 }
 
 fn fmt_error(error: anyhow::Error) -> MapInterpreterRunError {
-    MapInterpreterRunError::Error(format!("{:?}", error))
+    MapInterpreterRunError::Error(format!("{:#}", error))
 }
 
 pub struct JsInterpreter {
@@ -38,7 +43,7 @@ impl JsInterpreter {
 
         // link ffi
         core_to_map_std_impl::unstable::link(&mut context, state.clone())
-            .context("Failed to export sf_unstable")?;
+            .context("Failed to export sf_unstable").map_err(JsInterpreterError::InitializationFailed)?;
 
         Ok(Self { context, state })
     }
@@ -57,8 +62,7 @@ impl JsInterpreter {
         }
 
         self.context
-            .eval_global(name, code)
-            .context("Failed to evaluate global code")?;
+            .eval_global(name, code).map_err(JsInterpreterError::EvalFailed)?;
 
         Ok(())
     }
@@ -70,14 +74,13 @@ impl JsInterpreter {
 
         let bytecode = self
             .context
-            .compile_global(name, code)
-            .context("Failed to compile global code")?;
+            .compile_global(name, code).map_err(JsInterpreterError::CompilationFailed)?;
 
         Ok(bytecode)
     }
 
     pub fn eval_bytecode(&mut self, bytecode: &[u8]) -> Result<(), JsInterpreterError> {
-        self.context.eval_binary(bytecode)?;
+        self.context.eval_binary(bytecode).map_err(JsInterpreterError::EvalFailed)?;
 
         Ok(())
     }

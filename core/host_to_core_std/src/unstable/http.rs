@@ -53,6 +53,10 @@ define_exchange_core_to_host! {
 pub enum HttpCallError {
     #[error("Invalid fetch url: {0}")]
     InvalidUrl(String),
+    #[error("Connection refused: {0}")]
+    ConnectionRefused(String),
+    #[error("Host was not found: {0}")]
+    HostNotFound(String),
     #[error("Unknown http error: {0}")]
     Unknown(String), // TODO: more granular
 }
@@ -126,7 +130,9 @@ impl HttpRequest {
     fn response_error_to_http_call_error(error_code: ErrorCode, message: String) -> HttpCallError {
         match error_code {
             ErrorCode::NetworkInvalidUrl => HttpCallError::InvalidUrl(message),
-            _ => HttpCallError::Unknown(format!("{:?}: {}", error_code, message)),
+            ErrorCode::NetworkConnectionRefused => HttpCallError::ConnectionRefused(message),
+            ErrorCode::NetworkHostNotFound => HttpCallError::HostNotFound(message),
+            ErrorCode::NetworkError | ErrorCode::NetworkInvalidHandle => HttpCallError::Unknown(format!("{:?}: {}", error_code, message)),
         }
     }
 }

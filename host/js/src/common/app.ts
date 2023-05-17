@@ -133,6 +133,8 @@ export class HostError extends Error {
 /// Core counterpart in core/host_to_core_std/src/unstable/mod.rs
 export enum ErrorCode {
   NetworkError = 'network:error', // generic network error
+  NetworkConnectionRefused = 'network:ECONNREFUSED',
+  NetworkHostNotFound = 'network:ENOTFOUND',
   NetworkInvalidUrl = 'network:invalid_url'
 }
 

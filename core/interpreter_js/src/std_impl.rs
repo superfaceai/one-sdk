@@ -4,7 +4,7 @@ use slab::Slab;
 
 use map_std::unstable::{
     security::{resolve_security, SecurityMap},
-    HttpCallError, HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
+    HttpCallError as MapHttpCallError, HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
     HttpResponse as MapHttpResponse, MapStdUnstable, MapValue, SetOutputError, TakeContextError,
 };
 use sf_std::{
@@ -102,7 +102,7 @@ impl MapStdUnstable for InterpreterState {
         }
     }
 
-    fn http_call(&mut self, mut params: MapHttpRequest) -> Result<Handle, HttpCallError> {
+    fn http_call(&mut self, mut params: MapHttpRequest) -> Result<Handle, MapHttpCallError> {
         let security_map = self.security.as_ref().unwrap();
         resolve_security(security_map, &mut params)?;
 
@@ -112,8 +112,7 @@ impl MapStdUnstable for InterpreterState {
             &params.headers,
             &params.query,
             params.body.as_deref(),
-        )
-        .map_err(|err| HttpCallError::Failed(err.to_string()))?;
+        )?;
 
         Ok(self.http_requests.insert(request))
     }
@@ -121,14 +120,15 @@ impl MapStdUnstable for InterpreterState {
     fn http_call_head(&mut self, handle: Handle) -> Result<MapHttpResponse, MapHttpCallHeadError> {
         match self.http_requests.try_remove(handle) {
             None => Err(MapHttpCallHeadError::InvalidHandle),
-            Some(request) => match request.into_response() {
-                Err(err) => Err(MapHttpCallHeadError::Failed(err.to_string())),
-                Ok(response) => Ok(MapHttpResponse {
+            Some(request) => {
+                let response = request.into_response()?;
+
+                Ok(MapHttpResponse {
                     status: response.status(),
                     headers: response.headers().clone(),
                     body_stream: self.streams.insert(response.into_body()),
-                }),
-            },
+                })
+            }
         }
     }
 

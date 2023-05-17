@@ -1,26 +1,22 @@
 use std::collections::BTreeMap;
 
-use anyhow::Context;
 use tracing::instrument;
 
 use sf_std::unstable::{
     fs,
-    perform::{
-        perform_input, set_perform_output_error, set_perform_output_exception,
-        set_perform_output_result, PerformException,
-    },
+    perform::{perform_input, PerformException},
     provider::ProviderJson,
     HostValue,
 };
 
-use interpreter_js::JsInterpreter;
+use interpreter_js::{JsInterpreter, JsInterpreterError};
 use map_std::{
     unstable::{
         security::{prepare_provider_parameters, prepare_security_map},
         services::prepare_services_map,
         MapValue, MapValueObject,
     },
-    MapInterpreter, MapInterpreterRunError,
+    MapInterpreter, MapInterpreterRunError
 };
 
 mod config;
@@ -31,6 +27,32 @@ mod profile_validator;
 
 mod cache;
 use cache::DocumentCache;
+
+use self::cache::DocumentCacheError;
+
+pub struct PerformExceptionError {
+    pub message: String
+}
+impl From<DocumentCacheError> for PerformExceptionError {
+    fn from(value: DocumentCacheError) -> Self {
+        PerformExceptionError { message: value.to_string() }
+    }
+}
+impl From<MapInterpreterRunError> for PerformExceptionError {
+    fn from(value: MapInterpreterRunError) -> Self {
+        PerformExceptionError { message: value.to_string() }
+    }
+}
+impl From<JsInterpreterError> for PerformExceptionError {
+    fn from(value: JsInterpreterError) -> Self {
+        PerformExceptionError { message: value.to_string() }
+    }
+}
+impl From<PerformExceptionError> for PerformException {
+    fn from(value: PerformExceptionError) -> Self {
+        PerformException { message: value.message }
+    }
+}
 
 #[derive(Debug)]
 pub struct SuperfaceCore {
@@ -100,7 +122,7 @@ impl SuperfaceCore {
     }
 
     // TODO: Use thiserror and define specific errors
-    pub fn perform(&mut self) -> anyhow::Result<()> {
+    pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
         let perform_input = perform_input();
 
         self.document_cache.cache(&perform_input.profile_url)?;
@@ -115,18 +137,19 @@ impl SuperfaceCore {
                     .map(|(k, v)| (k, self.host_value_to_map_value(v))),
             ),
             HostValue::None => MapValueObject::new(),
-            _ => anyhow::bail!("Parameters must be an Object or None"),
+            _ => return Err(PerformExceptionError {
+                message: "Parameters must be an Object or None".to_string()
+            })
         };
 
-        let provider_json = &self
+        let provider_json = self
             .document_cache
             .get(&perform_input.provider_url)
             .unwrap();
         let provider_json = match serde_json::from_slice::<ProviderJson>(provider_json) {
-            Err(err) => {
-                tracing::error!("Failed to deserialize provider JSON: {:#}", err);
-                panic!("Failed to deserialize provider JSON: {}", err);
-            }
+            Err(err) => return Err(PerformExceptionError {
+                message: format!("Failed to deserialize provider JSON: {}", err)
+            }),
             Ok(v) => v,
         };
 
@@ -156,20 +179,21 @@ impl SuperfaceCore {
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = JsInterpreter::new().context("Failed to initialize interpreter")?;
+        let mut interpreter = JsInterpreter::new()?;
         // here we allow runtime stdlib replacement for development purposes
         // this might be removed in the future
         match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
-                let replacement =
-                    fs::read_to_string(&path).context("Failed to load replacement map_std")?;
+                let replacement = fs::read_to_string(&path).map_err(|err| PerformExceptionError {
+                    message: format!("Faield to load replacement map_std: {}", err)
+                })?;
+
                 interpreter.eval_code(&path, &replacement)
             }
-        }
-        .context("Failed to evaluate map stdlib code")?;
+        }?;
 
-        let map_code = &self.document_cache.get(&perform_input.map_url).unwrap();
+        let map_code = self.document_cache.get(&perform_input.map_url).unwrap();
 
         let map_result = interpreter.run(
             map_code,
@@ -178,22 +202,11 @@ impl SuperfaceCore {
             MapValue::Object(map_parameters),
             map_services,
             map_security,
-        );
+        )?;
 
-        match map_result {
-            Err(error) => {
-                set_perform_output_exception(PerformException {
-                    message: error.to_string(),
-                });
-            }
-            Ok(Ok(result)) => {
-                set_perform_output_result(self.map_value_to_host_value(result));
-            }
-            Ok(Err(error)) => {
-                set_perform_output_error(self.map_value_to_host_value(error));
-            }
-        }
-
-        Ok(())
+        Ok(match map_result {
+            Ok(result) => Ok(self.map_value_to_host_value(result)),
+            Err(error) => Err(self.map_value_to_host_value(error))
+        })
     }
 }
