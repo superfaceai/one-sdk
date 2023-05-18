@@ -222,7 +222,7 @@ class InternalClient {
   }
 }
 
-export class Client {
+export class SuperfaceClient {
   private internal: InternalClient;
 
   constructor(readonly options: ClientOptions = {}) {

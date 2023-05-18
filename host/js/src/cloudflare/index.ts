@@ -39,7 +39,7 @@ class CfwFileSystem implements FileSystem {
     if (data === undefined) {
       throw new WasiError(WasiErrno.EBADF);
     }
-    
+
     return this.files.insert({ data, cursor: 0 });
   }
   async read(handle: number, out: Uint8Array): Promise<number> {
@@ -62,7 +62,7 @@ class CfwFileSystem implements FileSystem {
     if (file === undefined) {
       throw new WasiError(WasiErrno.EBADF);
     }
-    
+
     throw new WasiError(WasiErrno.EROFS);
   }
   async close(handle: number): Promise<void> {
@@ -134,14 +134,14 @@ class CfwWasiCompat implements WasiContext {
     iovs_len: number
   ): Array<Uint8Array> {
     let result = Array<Uint8Array>(iovs_len)
-  
+
     for (let i = 0; i < iovs_len; i++) {
       const bufferPtr = view.getUint32(iovs_ptr, true)
       iovs_ptr += 4
-  
+
       const bufferLen = view.getUint32(iovs_ptr, true)
       iovs_ptr += 4
-  
+
       result[i] = new Uint8Array(view.buffer, bufferPtr, bufferLen)
     }
     return result
@@ -253,7 +253,7 @@ class InternalClient {
   }
 }
 
-export class Client {
+export class SuperfaceClient {
   private internal: InternalClient;
 
   constructor(readonly options: ClientOptions = {}) {
