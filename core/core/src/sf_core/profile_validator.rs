@@ -1,13 +1,13 @@
 #![allow(dead_code)] // TODO: validator broken? always has been
 
-use std::collections::BTreeMap;
-
 use thiserror::Error;
 
 use sf_std::unstable::fs;
 
 use interpreter_js::{JsInterpreter, JsInterpreterError};
 use map_std::unstable::MapValue;
+
+use super::map_std_impl::MapStdImpl;
 
 #[derive(Debug, Error)]
 pub enum ProfileValidatorError {
@@ -26,7 +26,7 @@ pub enum ProfileValidatorError {
 }
 
 pub struct ProfileValidator {
-    interpreter: JsInterpreter,
+    interpreter: JsInterpreter<MapStdImpl>,
     validator_bytecode: Vec<u8>,
     usecase: String,
 }
@@ -34,7 +34,7 @@ impl ProfileValidator {
     const PROFILE_VALIDATOR_JS: &str = include_str!("../../assets/js/profile_validator.js");
 
     pub fn new(profile: String, usecase: String) -> Result<Self, ProfileValidatorError> {
-        let mut interpreter = JsInterpreter::new()?;
+        let mut interpreter = JsInterpreter::new(MapStdImpl::new())?;
 
         let validator_bytecode = match std::env::var("SF_REPLACE_PROFILE_VALIDATOR").ok() {
             None => interpreter.compile_code("profile_validator.js", Self::PROFILE_VALIDATOR_JS),
@@ -57,16 +57,16 @@ impl ProfileValidator {
 
     fn set_profile(&mut self, profile: String) -> Result<(), ProfileValidatorError> {
         tracing::trace!("ProfileValidator::set_profile: {}", profile);
-        self.interpreter.set_context(
-            MapValue::Object(BTreeMap::from_iter([
-                ("profile".into(), MapValue::String(profile)),
-                ("usecase".into(), MapValue::String(self.usecase.clone())),
-            ])),
+        self.interpreter.state_mut().set_context(
+            map_std::map_value!({
+                "profile": MapValue::String(profile),
+                "usecase": MapValue::String(self.usecase.clone())
+            }),
             None,
         );
 
         self.interpreter.eval_bytecode(&self.validator_bytecode)?;
-        match self.interpreter.take_output() {
+        match self.interpreter.state_mut().take_output().unwrap() {
             Err(err) => Err(ProfileValidatorError::ProfileParseFailed(
                 err.try_into_string().unwrap(),
             )),
@@ -76,17 +76,17 @@ impl ProfileValidator {
 
     pub fn validate_input(&mut self, input: MapValue) -> Result<(), ProfileValidatorError> {
         tracing::trace!("ProfileValidator::validate_input: {:?}", input);
-        self.interpreter.set_context(
-            MapValue::Object(BTreeMap::from_iter([
-                ("input".into(), input),
-                ("usecase".into(), MapValue::String(self.usecase.clone())),
-            ])),
+        self.interpreter.state_mut().set_context(
+            map_std::map_value!({
+                "input": input,
+                "usecase": MapValue::String(self.usecase.clone())
+            }),
             None,
         );
 
         self.interpreter.eval_bytecode(&self.validator_bytecode)?;
 
-        match self.interpreter.take_output() {
+        match self.interpreter.state_mut().take_output().unwrap() {
             Err(err) => Err(ProfileValidatorError::InternalError(
                 err.try_into_string().unwrap(),
             )),
@@ -104,15 +104,15 @@ impl ProfileValidator {
 
         match result {
             Ok(res) => {
-                let val = MapValue::Object(BTreeMap::from_iter([
-                    ("result".into(), res),
-                    ("usecase".into(), MapValue::String(self.usecase.clone())),
-                ]));
-                self.interpreter.set_context(val, None);
+                let val = map_std::map_value!({
+                    "result": res,
+                    "usecase": MapValue::String(self.usecase.clone())
+                });
+                self.interpreter.state_mut().set_context(val, None);
 
                 self.interpreter.eval_bytecode(&self.validator_bytecode)?;
 
-                match self.interpreter.take_output() {
+                match self.interpreter.state_mut().take_output().unwrap() {
                     Err(err) => Err(ProfileValidatorError::InternalError(
                         err.try_into_string().unwrap(),
                     )),
@@ -124,15 +124,15 @@ impl ProfileValidator {
                 }
             }
             Err(err) => {
-                let val = MapValue::Object(BTreeMap::from_iter([
-                    ("error".into(), err),
-                    ("usecase".into(), MapValue::String(self.usecase.clone())),
-                ]));
-                self.interpreter.set_context(val, None);
+                let val = map_std::map_value!({
+                    "error": err,
+                    "usecase": MapValue::String(self.usecase.clone())
+                });
+                self.interpreter.state_mut().set_context(val, None);
 
                 self.interpreter.eval_bytecode(&self.validator_bytecode)?;
 
-                match self.interpreter.take_output() {
+                match self.interpreter.state_mut().take_output().unwrap() {
                     Err(err) => Err(ProfileValidatorError::InternalError(
                         err.try_into_string().unwrap(),
                     )),

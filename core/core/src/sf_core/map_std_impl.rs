@@ -1,55 +1,28 @@
 use std::io::{Read, Write};
 
-use slab::Slab;
-
-use map_std::unstable::{
-    security::{resolve_security, SecurityMap},
-    HttpCallError as MapHttpCallError, HttpCallHeadError as MapHttpCallHeadError, HttpRequest as MapHttpRequest,
-    HttpResponse as MapHttpResponse, MapStdUnstable, MapValue, SetOutputError, TakeContextError,
+use map_std::{
+    handle_map::HandleMap,
+    unstable::{
+        security::{resolve_security, SecurityMap},
+        HttpCallError as MapHttpCallError, HttpCallHeadError as MapHttpCallHeadError,
+        HttpRequest as MapHttpRequest, HttpResponse as MapHttpResponse, MapStdUnstable, MapValue,
+        SetOutputError, TakeContextError,
+    },
+    MapStdFull,
 };
 use sf_std::{
     abi::Handle,
     unstable::{http::HttpRequest, IoStream},
 };
 
-struct HandleMap<T> {
-    // TODO: figure out if we need generational ids or if it is secure assuming each map has its own state
-    data: Slab<T>,
-}
-impl<T> HandleMap<T> {
-    pub fn new() -> Self {
-        Self { data: Slab::new() }
-    }
-
-    const fn handle_to_index(handle: Handle) -> Option<usize> {
-        (handle as usize).checked_sub(1)
-    }
-
-    const fn index_to_handle(index: usize) -> Handle {
-        (index + 1) as Handle
-    }
-
-    pub fn insert(&mut self, value: T) -> Handle {
-        Self::index_to_handle(self.data.insert(value))
-    }
-
-    pub fn get_mut(&mut self, handle: Handle) -> Option<&mut T> {
-        Self::handle_to_index(handle).and_then(|h| self.data.get_mut(h))
-    }
-
-    pub fn try_remove(&mut self, handle: Handle) -> Option<T> {
-        Self::handle_to_index(handle).and_then(|h| self.data.try_remove(h))
-    }
-}
-
-pub(super) struct InterpreterState {
+pub struct MapStdImpl {
     http_requests: HandleMap<HttpRequest>,
     streams: HandleMap<IoStream>,
     security: Option<SecurityMap>,
     map_context: Option<MapValue>,
     map_output: Option<Result<MapValue, MapValue>>,
 }
-impl InterpreterState {
+impl MapStdImpl {
     pub fn new() -> Self {
         Self {
             http_requests: HandleMap::new(),
@@ -72,11 +45,7 @@ impl InterpreterState {
         self.map_output.take()
     }
 }
-impl MapStdUnstable for InterpreterState {
-    fn abort(&mut self, message: &str, filename: &str, line: usize, column: usize) -> String {
-        format!("{} in ({}:{}:{})", message, filename, line, column)
-    }
-
+impl MapStdUnstable for MapStdImpl {
     fn print(&mut self, message: &str) {
         tracing::info!(map = %message);
     }
@@ -156,3 +125,4 @@ impl MapStdUnstable for InterpreterState {
         Ok(())
     }
 }
+impl MapStdFull for MapStdImpl {}

@@ -7,8 +7,10 @@
 /// Defines message exchange initiated from map to core.
 ///
 /// Response enums are scoped only to the handler code following the definition, so they don't pollute the namespace.
-///
 /// Handlers have access to all fields of the message and the `state` variable.
+///
+/// Architecturally, handlers should be responsible for mapping data, but not for the actual logic. That should be implemented in the state,
+/// which can reference utility functions such as [unstable::security::resolve_security].
 ///
 /// ```
 /// define_exchange! {
@@ -104,55 +106,7 @@ macro_rules! define_exchange_map_to_core {
     };
 }
 
-use std::fmt::Write;
-
+pub mod handle_map;
 pub mod unstable;
 
-pub trait CoreToMapStd: unstable::MapStdUnstable {}
-
-use unstable::{security::SecurityMap, MapValue};
-
-#[derive(Debug, thiserror::Error)]
-pub enum MapInterpreterRunError {
-    // TODO
-    #[error("{0}")]
-    Error(String),
-    #[error("Map code cannot be an empty string")]
-    MapCodeEmpty,
-    #[error("Security is misconfigured:\n{}", MapInterpreterSecurityMisconfiguredError::format_errors(.0.as_slice()))]
-    SecurityMisconfigured(Vec<MapInterpreterSecurityMisconfiguredError>),
-}
-
-#[derive(Debug)]
-pub struct MapInterpreterSecurityMisconfiguredError {
-    pub id: String,
-    pub expected: String,
-}
-impl MapInterpreterSecurityMisconfiguredError {
-    fn format_errors(errors: &[MapInterpreterSecurityMisconfiguredError]) -> String {
-        let mut res = String::new();
-
-        for err in errors {
-            writeln!(
-                &mut res,
-                "Value for {} is misconfigured. Expected {}",
-                err.id, err.expected
-            )
-            .unwrap();
-        }
-
-        res
-    }
-}
-
-pub trait MapInterpreter {
-    fn run(
-        &mut self,
-        code: &[u8],
-        usecase: &str,
-        input: MapValue,
-        parameters: MapValue,
-        services: MapValue,
-        security: SecurityMap,
-    ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError>;
-}
+pub trait MapStdFull: unstable::MapStdUnstable {}
