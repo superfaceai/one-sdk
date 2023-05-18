@@ -107,10 +107,6 @@ jobs:
       with:
         name: core-async-wasm
         path: host/js/assets
-    - name: Install Wasmtime
-      run: |
-        curl https://wasmtime.dev/install.sh -sSf | bash
-        echo $HOME/.wasmtime >> $GITHUB_PATH
     # test and build
     - name: Install Yarn dependencies
       run: yarn install --frozen-lockfile
