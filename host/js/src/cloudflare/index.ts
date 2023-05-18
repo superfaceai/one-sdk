@@ -7,7 +7,7 @@ export { PerformError, UnexpectedError } from '../common/error.js';
 
 // @ts-ignore
 import coreModule from '../assets/core-async.wasm';
-import { WasiErrno, WasiError } from '../common/app.js';
+import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/app.js';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -83,12 +83,20 @@ class CfwTimers implements Timers {
 }
 class CfwNetwork implements Network {
   async fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+    let response;
     try {
-      return await fetch(input, init);
+      response = await fetch(input, init);
     } catch (err: unknown) {
-      console.dir(err);
-      throw err; // TODO: parse
+      throw err; // TODO: are there any errors that we need to handle here?
     }
+
+    if (response.status === 530) {
+      // TODO: DNS error is 530 with a human-readable HTML body describing the error
+      // this is not trivial to parse and map to our error codes
+      throw new HostError(ErrorCode.NetworkError, await response.text().catch(_ => 'Unknown Cloudflare 530 error'));
+    }
+
+    return response;
   }
 }
 
