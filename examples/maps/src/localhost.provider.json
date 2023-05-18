@@ -1,0 +1,23 @@
+{
+  "name": "localhost",
+  "services": [
+    {
+      "id": "default",
+      "baseUrl": "http://localhost:8000"
+    }
+  ],
+  "defaultService": "default",
+  "parameters": [
+    {
+      "name": "PARAM",
+      "default": "default param value"
+    }
+  ],
+  "securitySchemes": [
+    {
+      "id": "basic_auth",
+      "type": "http",
+      "scheme": "basic"
+    }
+  ]
+}

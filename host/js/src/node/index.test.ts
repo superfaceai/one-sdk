@@ -36,7 +36,7 @@ describe('Client', () => {
     });
 
     test('works', async () => {
-      const client = new Client({ assetsPath: resolvePath(__dirname, '../../../../examples/basic') });
+      const client = new Client({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
 
       const profile = await client.getProfile('wasm-sdk/example');
       const result = await profile
@@ -49,8 +49,6 @@ describe('Client', () => {
             security: { basic_auth: { username: 'username', password: 'password' } }
           }
         );
-
-      console.log(result);
 
       expect(result.isOk()).toBe(true);
     });
