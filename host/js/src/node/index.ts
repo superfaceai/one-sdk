@@ -118,7 +118,16 @@ class NodeNetwork implements Network {
 }
 
 export type ClientOptions = {
+  /**
+   * Path to folder with Comlink's assets.
+   */
   assetsPath?: string;
+  /**
+   * Optionally authenticate Client to send metrics about integration to Superface.
+   * 
+   * Manage tokens and see insights here: https://superface.ai/insights
+   */
+  sdkAuthToken?: string;
 };
 
 export type ClientPerformOptions = {
@@ -128,7 +137,8 @@ export type ClientPerformOptions = {
 };
 
 class InternalClient {
-  public assetsPath: string = process.cwd();
+  public assetsPath: string = process.cwd(); // TODO: point to `superface` folder
+  private token: string | undefined;
 
   private corePath: string;
   private wasi: WASI;
@@ -138,6 +148,10 @@ class InternalClient {
   constructor(readonly options: ClientOptions = {}) {
     if (options.assetsPath !== undefined) {
       this.assetsPath = options.assetsPath;
+    }
+
+    if (options.sdkAuthToken !== undefined) {
+      this.token = options.sdkAuthToken;
     }
 
     this.corePath = CORE_PATH;
