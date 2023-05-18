@@ -55,7 +55,8 @@ jobs:
           path: core/dist/core.wasm
       # test
       - name: Run tests
-        run: make test_core
+        working-directory: core
+        run: cargo test
 
   integration:
     runs-on: ubuntu-latest
