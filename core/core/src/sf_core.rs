@@ -121,7 +121,6 @@ impl SuperfaceCore {
         Ok(())
     }
 
-    // TODO: Use thiserror and define specific errors
     pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
         let perform_input = perform_input();
 
@@ -186,7 +185,7 @@ impl SuperfaceCore {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
                 let replacement = fs::read_to_string(&path).map_err(|err| PerformExceptionError {
-                    message: format!("Faield to load replacement map_std: {}", err)
+                    message: format!("Failed to load replacement map_std: {}", err)
                 })?;
 
                 interpreter.eval_code(&path, &replacement)

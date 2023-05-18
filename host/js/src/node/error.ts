@@ -2,12 +2,12 @@ import { getSystemErrorMap } from 'util';
 
 import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/app.js';
 
+/** Builds a map from Node errno to WasiErrno by using error codes (such as EBADF) to match them */
 function systemErrnoToWasiErrnoMap(): Record<number, WasiErrno> {
   const map = getSystemErrorMap();
 
   const result: Record<number, WasiErrno> = {};
-  for (const [key, [code, description]] of map.entries()) {
-    // codes start with E, so we strip that and try to get WasiErrno value from that
+  for (const [key, [code, _description]] of map.entries()) {
     if (code in WasiErrno) {
       result[key] = WasiErrno[code as any] as unknown as WasiErrno;
     }
