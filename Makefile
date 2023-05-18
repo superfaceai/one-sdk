@@ -59,7 +59,7 @@ ifeq ($(CORE_PHONY),1)
 .PHONY: ${CORE_BUILD} ${MAP_STD} ${PROFILE_VALIDATOR}
 endif
 
-deps: deps_core deps_integration deps_hosts
+deps: deps_core
 build: build_core build_integration build_hosts
 test: test_core
 clean: clean_core clean_integration clean_hosts
@@ -75,6 +75,7 @@ ${CORE_ASYNCIFY_WASM}: build_core_docker
 else
 deps_core: ${WASI_SDK_FOLDER}
 	rustup target add wasm32-wasi
+	curl https://wasmtime.dev/install.sh -sSf | bash
 
 ${CORE_BUILD}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
 	cd core && cargo build --package superface_core --target wasm32-wasi ${CORE_FLAGS}
@@ -117,8 +118,13 @@ ${MAP_STD}:
 ${PROFILE_VALIDATOR}:
 	cd integration && yarn install && yarn workspace @superfaceai/profile-validator build
 
+test_integration:
+	cd integration && \
+	yarn workspace @superfaceai/map-std test && \
+	yarn workspace @superfaceai/profile-validator test
+
 clean_integration:
-	rm -rf integration/map-std/dist integration/profile-validator/dist
+	rm -rf integration/map-std/dist integration/map-std/types integration/profile-validator/dist
 
 ##########
 ## HOST ##
@@ -133,3 +139,6 @@ build_host_js: ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${HOST_JS_ASSETS}
 	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS_WASM_CORE}
 	cd host/js && yarn install && yarn build	
+
+test_host_js:
+	cd host/js && yarn test

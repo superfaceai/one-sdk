@@ -1,0 +1,119 @@
+name: CI/CD
+on: push
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      # checkout
+      - uses: actions/checkout@v3
+      # setup
+      - uses: actions/setup-node@v3
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: integration/yarn.lock
+      - name: Cache cargo registry and build directory
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            core/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}
+      - name: Cache WASI SDK
+        uses: actions/cache@v3
+        with:
+          path: core/wasi-sdk-*
+          key: wasisdk-${{ runner.os }}-${{ runner.arch }}
+      - name: Install wasm-opt
+        run: |
+          sudo apt-get update
+          sudo apt-get install binaryen
+      - name: Install rust target
+        run: rustup target add wasm32-wasi
+      - name: Install Wasmtime
+        run: |
+          curl https://wasmtime.dev/install.sh -sSf | bash
+          echo $HOME/.wasmtime/bin >> $GITHUB_PATH
+      # build and store
+      - name: Run make to build core
+        env:
+          CARGO_INCREMENTAL: "0" # disable incremental to reduce load on the cache
+        run: make build_core OS=${{ runner.os }}
+      - name: Upload artifact core-async.wasm
+        uses: actions/upload-artifact@v3
+        with:
+          name: core-async-wasm
+          path: core/dist/core-async.wasm
+      - name: Upload artifact core.wasm
+        uses: actions/upload-artifact@v3
+        with:
+          name: core-wasm
+          path: core/dist/core.wasm
+      # test
+      - name: Run tests
+        working-directory: core
+        run: cargo test
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      # checkout
+      - uses: actions/checkout@v3
+      # setup
+      - uses: actions/setup-node@v3
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: integration/yarn.lock
+      # test and build
+      - name: Install Yarn dependencies
+        working-directory: integration
+        run: yarn install --frozen-lockfile
+      ## first we need map-std which is used in profile-validator
+      - name: Build Map STD
+        working-directory: integration/map-std
+        run: yarn build
+      - name: Test Map STD
+        working-directory: integration/map-std
+        run: yarn test
+      - name: Build Profile validator
+        working-directory: integration/profile-validator
+        run: yarn build
+      - name: Test Profile validator
+        working-directory: integration/profile-validator
+        run: yarn test
+
+  host-js:
+    needs: [core]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: host/js
+    steps:
+    # checkout
+    - uses: actions/checkout@v3
+    # setup
+    - uses: actions/setup-node@v3
+      with:
+        registry-url: https://registry.npmjs.org/
+        node-version: "18"
+        cache: yarn
+        cache-dependency-path: host/js/yarn.lock
+    - uses: actions/download-artifact@v3
+      with:
+        name: core-async-wasm
+        path: host/js/assets
+    # test and build
+    - name: Install Yarn dependencies
+      run: yarn install --frozen-lockfile
+    - name: Build host/js
+      run: yarn build
+    - name: Run tests
+      run: yarn test
+
+  # TODO: additional hosts

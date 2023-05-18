@@ -6,14 +6,13 @@ import { createRequire } from 'node:module';
 
 import { App, HandleMap } from '../common/index.js';
 import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
-import { ErrorCode, HostError, WasiErrno } from '../common/app.js';
-import { WasiError } from '../common/app.js';
-import { Result, err, ok } from './result.js';
+import { WasiErrno, WasiError } from '../common/app.js';
 import { PerformError, UnexpectedError } from '../common/error.js';
+import { Result, err, ok } from './result.js';
 
 import { systemErrorToWasiError, fetchErrorToHostError } from './error.js';
 
-const CORE_PATH = createRequire(import.meta.url).resolve('../assets/core-async.wasm');
+const CORE_PATH = process.env.CORE_PATH ?? createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 
 class NodeTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
