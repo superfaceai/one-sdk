@@ -317,7 +317,9 @@ pub fn resolve_security(
                         ))
                     })?);
                 } else {
-                    return Err(HttpCallError::Failed("Body is empty".to_string()));
+                    return Err(HttpCallError::InvalidSecurityConfiguration(
+                        "Api key placement is set to body but the body is empty".to_string()
+                    ));
                 }
             }
             (ApiKeyPlacement::Body, None) => {

@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use serde::{Deserialize, Serialize};
 
-use sf_std::{abi::Handle, HeadersMultiMap, MultiMap};
+use sf_std::{abi::Handle, HeadersMultiMap, MultiMap, unstable::http::HttpCallError as HostHttpCallError};
 
 pub mod security;
 pub mod services;
@@ -178,22 +178,22 @@ pub struct HttpResponse {
 pub enum ErrorCode {
     #[serde(rename = "network:error")]
     NetworkError,
-
+    #[serde(rename = "network:ECONNREFUSED")]
+    ConnectionRefused,
+    #[serde(rename = "network:ENOTFOUND")]
+    HostNotFound,
     #[serde(rename = "network:invalid_handle")]
     NetworkInvalidHandle,
-
     #[serde(rename = "network:invalid_url")]
     NetworkInvalidUrl,
 
     #[serde(rename = "security:misssing_secret")]
     SecurityMissingSecret,
-
     #[serde(rename = "security:invalid_configuration")]
     SecurityInvalidConfiguration,
 
     #[serde(rename = "outcome:unxpected")]
     OutcomeUnexpected,
-
     #[serde(rename = "context:taken")]
     ContextTaken,
 }
@@ -202,20 +202,47 @@ pub enum HttpCallError {
     // TODO: define more granular categories
     #[error("http call failed: {0}")]
     Failed(String),
-
     #[error("Invalid security configuration: {0}")]
     InvalidSecurityConfiguration(String),
-
     #[error("Missing secret value: {0}")]
     MissingSecret(String),
 }
+impl From<HostHttpCallError> for HttpCallError {
+    fn from(value: HostHttpCallError) -> Self {
+        
+        debug_assert!(!matches!(value, HostHttpCallError::HostNotFound(_) | HostHttpCallError::ConnectionRefused(_)));
+        match value {
+            HostHttpCallError::HostNotFound(m)
+            | HostHttpCallError::ConnectionRefused(m)
+            | HostHttpCallError::InvalidUrl(m)
+            | HostHttpCallError::Unknown(m)
+                => Self::Failed(m)
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum HttpCallHeadError {
     #[error("Response error: {0}")]
     Failed(String),
 
+    #[error("Connection refused: {0}")]
+    ConnectionRefused(String),
+    #[error("Host was not found: {0}")]
+    HostNotFound(String),
+
     #[error("Handle does not belong to an active http request")]
     InvalidHandle,
+}
+impl From<HostHttpCallError> for HttpCallHeadError {
+    fn from(value: HostHttpCallError) -> Self {
+        debug_assert!(!matches!(value, HostHttpCallError::InvalidUrl(_)));
+        match value {
+            HostHttpCallError::ConnectionRefused(m) => Self::ConnectionRefused(m),
+            HostHttpCallError::HostNotFound(m) => Self::HostNotFound(m),
+            HostHttpCallError::InvalidUrl(m) | HostHttpCallError::Unknown(m) => Self::Failed(m)
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -316,6 +343,8 @@ define_exchange_map_to_core! {
             Err(err) => match err {
                 HttpCallHeadError::InvalidHandle => Response::Err { error_code: ErrorCode::NetworkInvalidHandle, message: "Invalid request handle".to_string() },
                 HttpCallHeadError::Failed(message) => Response::Err { error_code: ErrorCode::NetworkError, message },
+                HttpCallHeadError::ConnectionRefused(message) => Response::Err { error_code: ErrorCode::ConnectionRefused, message },
+                HttpCallHeadError::HostNotFound(message) => Response::Err { error_code: ErrorCode::HostNotFound, message },
             }
         },
         // input and output

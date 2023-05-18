@@ -75,9 +75,14 @@ extern "C" fn __import_message_exchange_retrieve(
 pub enum ErrorCode {
     #[serde(rename = "network:error")]
     NetworkError,
-
+    #[serde(rename = "network:ECONNREFUSED")]
+    NetworkConnectionRefused,
+    #[serde(rename = "network:ENOTFOUND")]
+    NetworkHostNotFound,
     #[serde(rename = "network:invalid_url")]
     NetworkInvalidUrl,
+    #[serde(rename = "network:invalid_handle")]
+    NetworkInvalidHandle,
 }
 
 /////////////

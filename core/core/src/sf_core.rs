@@ -1,56 +1,62 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    io::Read,
-    time::Instant,
-};
+use std::collections::BTreeMap;
 
-use anyhow::Context;
+use tracing::instrument;
 
 use sf_std::unstable::{
-    fs::{self, OpenOptions},
-    http::HttpRequest,
-    perform::{
-        perform_input, set_perform_output_error, set_perform_output_exception,
-        set_perform_output_result, PerformException,
-    },
+    fs,
+    perform::{perform_input, PerformException},
     provider::ProviderJson,
     HostValue,
 };
 
-use interpreter_js::JsInterpreter;
+use interpreter_js::{JsInterpreter, JsInterpreterError};
 use map_std::{
     unstable::{
         security::{prepare_provider_parameters, prepare_security_map},
         services::prepare_services_map,
         MapValue, MapValueObject,
     },
-    MapInterpreter, MapInterpreterRunError,
+    MapInterpreter, MapInterpreterRunError
 };
-use tracing::instrument;
 
-use crate::config::CoreConfiguration;
+mod config;
+pub use config::CoreConfiguration;
 
+mod profile_validator;
 // use crate::profile_validator::ProfileValidator;
 
-struct DocumentCacheEntry {
-    store_time: Instant,
-    data: Vec<u8>,
+mod cache;
+use cache::DocumentCache;
+
+use self::cache::DocumentCacheError;
+
+pub struct PerformExceptionError {
+    pub message: String
 }
-impl std::fmt::Debug for DocumentCacheEntry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "MapCacheEntry(<{} bytes>, {}s old)",
-            self.data.len(),
-            self.store_time.elapsed().as_secs()
-        )
+impl From<DocumentCacheError> for PerformExceptionError {
+    fn from(value: DocumentCacheError) -> Self {
+        PerformExceptionError { message: value.to_string() }
+    }
+}
+impl From<MapInterpreterRunError> for PerformExceptionError {
+    fn from(value: MapInterpreterRunError) -> Self {
+        PerformExceptionError { message: value.to_string() }
+    }
+}
+impl From<JsInterpreterError> for PerformExceptionError {
+    fn from(value: JsInterpreterError) -> Self {
+        PerformExceptionError { message: value.to_string() }
+    }
+}
+impl From<PerformExceptionError> for PerformException {
+    fn from(value: PerformExceptionError) -> Self {
+        PerformException { message: value.message }
     }
 }
 
 #[derive(Debug)]
 pub struct SuperfaceCore {
-    config: CoreConfiguration,
-    document_cache: HashMap<String, DocumentCacheEntry>,
+    document_cache: DocumentCache,
 }
 impl SuperfaceCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
@@ -60,83 +66,8 @@ impl SuperfaceCore {
         tracing::info!(config = ?config);
 
         Ok(Self {
-            config,
-            document_cache: HashMap::new(),
+            document_cache: DocumentCache::new(config.cache_duration),
         })
-    }
-
-    fn cache_document(&mut self, url: &str) -> anyhow::Result<()> {
-        let _span = tracing::span!(tracing::Level::DEBUG, "cache_document");
-        let _span = _span.enter();
-
-        tracing::debug!(url);
-        match self.document_cache.get(url) {
-            Some(DocumentCacheEntry { store_time, .. })
-                if store_time.elapsed() <= self.config.cache_duration =>
-            {
-                tracing::debug!("already cached");
-                return Ok(());
-            }
-            _ => (),
-        }
-
-        let mut data = Vec::with_capacity(16 * 1024);
-        if let Some(path) = url.strip_prefix("file://") {
-            let mut file = OpenOptions::new()
-                .read(true)
-                .open(&path)
-                .context(format!("Failed to open file: {}", path))?;
-
-            file.read_to_end(&mut data)
-                .context("Failed to read map file")?;
-        } else if url.starts_with("https://") || url.starts_with("http://") {
-            let mut response =
-                HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
-                    .context("Failed to retrieve map over HTTP")?
-                    .into_response()
-                    .context("Failed to retrieve response")?;
-            response
-                .body()
-                .read_to_end(&mut data)
-                .context("Failed to read response body")?;
-        } else if let Some(data_base64) = url.strip_prefix("data:;base64,") {
-            // TODO: just hacking it in here
-            use base64::Engine;
-            data = base64::engine::general_purpose::STANDARD
-                .decode(data_base64)
-                .unwrap();
-        } else {
-            // TODO: better url join
-            let url_base =
-                std::env::var("SF_REGISTRY_URL").unwrap_or("http://localhost:8321".to_string());
-            let url = format!("{}/{}.js", url_base, url);
-
-            let mut response =
-                HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
-                    .context("Failed to retrieve map over HTTP")?
-                    .into_response()
-                    .context("Failed to retrieve response")?;
-            response
-                .body()
-                .read_to_end(&mut data)
-                .context("Failed to read response body")?;
-        }
-
-        tracing::trace!(bytes = ?data);
-        if tracing::enabled!(tracing::Level::DEBUG) {
-            if let Ok(utf8) = std::str::from_utf8(&data) {
-                tracing::debug!(utf8);
-            }
-        }
-
-        self.document_cache.insert(
-            url.to_string(),
-            DocumentCacheEntry {
-                store_time: Instant::now(),
-                data,
-            },
-        );
-        Ok(())
     }
 
     /// Converts HostValue into MapValue.
@@ -183,12 +114,6 @@ impl SuperfaceCore {
         }
     }
 
-    fn map_error_to_perform_exception(error: MapInterpreterRunError) -> PerformException {
-        return PerformException {
-            message: error.to_string(),
-        };
-    }
-
     // TODO: use thiserror
     #[instrument(level = "Trace")]
     pub fn send_metrics(&mut self) -> anyhow::Result<()> {
@@ -196,16 +121,13 @@ impl SuperfaceCore {
         Ok(())
     }
 
-    // TODO: Use thiserror and define specific errors
-    pub fn perform(&mut self) -> anyhow::Result<()> {
+    pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
         let perform_input = perform_input();
 
-        self.cache_document(&perform_input.profile_url)
-            .context("Failed to cache profile")?;
-        self.cache_document(&perform_input.provider_url)
-            .context("Failed to cache provider")?;
-        self.cache_document(&perform_input.map_url)
-            .context("Failed to cache map")?;
+        self.document_cache.cache(&perform_input.profile_url)?;
+        self.document_cache.cache(&perform_input.profile_url)?;
+        self.document_cache.cache(&perform_input.provider_url)?;
+        self.document_cache.cache(&perform_input.map_url)?;
 
         let map_input = self.host_value_to_map_value(perform_input.map_input);
         let mut map_parameters = match perform_input.map_parameters {
@@ -214,19 +136,19 @@ impl SuperfaceCore {
                     .map(|(k, v)| (k, self.host_value_to_map_value(v))),
             ),
             HostValue::None => MapValueObject::new(),
-            _ => anyhow::bail!("Parameters must be an Object or None"),
+            _ => return Err(PerformExceptionError {
+                message: "Parameters must be an Object or None".to_string()
+            })
         };
 
-        let provider_json = &self
+        let provider_json = self
             .document_cache
             .get(&perform_input.provider_url)
-            .unwrap()
-            .data;
+            .unwrap();
         let provider_json = match serde_json::from_slice::<ProviderJson>(provider_json) {
-            Err(err) => {
-                tracing::error!("Failed to deserialize provider JSON: {:#}", err);
-                panic!("Failed to deserialize provider JSON: {}", err);
-            }
+            Err(err) => return Err(PerformExceptionError {
+                message: format!("Failed to deserialize provider JSON: {}", err)
+            }),
             Ok(v) => v,
         };
 
@@ -256,25 +178,21 @@ impl SuperfaceCore {
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = JsInterpreter::new().context("Failed to initialize interpreter")?;
+        let mut interpreter = JsInterpreter::new()?;
         // here we allow runtime stdlib replacement for development purposes
         // this might be removed in the future
         match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
-                let replacement =
-                    fs::read_to_string(&path).context("Failed to load replacement map_std")?;
+                let replacement = fs::read_to_string(&path).map_err(|err| PerformExceptionError {
+                    message: format!("Failed to load replacement map_std: {}", err)
+                })?;
+
                 interpreter.eval_code(&path, &replacement)
             }
-        }
-        .context("Failed to evaluate map stdlib code")?;
+        }?;
 
-        let map_code = &self
-            .document_cache
-            .get(&perform_input.map_url)
-            .unwrap()
-            .data
-            .as_slice();
+        let map_code = self.document_cache.get(&perform_input.map_url).unwrap();
 
         let map_result = interpreter.run(
             map_code,
@@ -283,20 +201,11 @@ impl SuperfaceCore {
             MapValue::Object(map_parameters),
             map_services,
             map_security,
-        );
+        )?;
 
-        match map_result {
-            Err(error) => {
-                set_perform_output_exception(Self::map_error_to_perform_exception(error));
-            }
-            Ok(Ok(result)) => {
-                set_perform_output_result(self.map_value_to_host_value(result));
-            }
-            Ok(Err(error)) => {
-                set_perform_output_error(self.map_value_to_host_value(error));
-            }
-        }
-
-        Ok(())
+        Ok(match map_result {
+            Ok(result) => Ok(self.map_value_to_host_value(result)),
+            Err(error) => Err(self.map_value_to_host_value(error))
+        })
     }
 }

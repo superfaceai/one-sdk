@@ -1,10 +1,25 @@
 OS=$(shell uname -s)
 
-ifeq ($(MODE),release)
-	FLAGS=--release
+# mode to use to build the core - can be "default", "docker" or "lax"
+CORE_MODE=default
+# forces the build of the core - this is the default because we let cargo decide what needs to be rebuilt, but it also runs wasm-opt needlessly if nothing has changed
+CORE_PHONY=0
+# builds the core in docker instead of on the host
+CORE_DOCKER=0
+
+ifeq ($(CORE_MODE),default)
+	CORE_PHONY=1
+endif
+ifeq ($(CORE_MODE),docker)
+	CORE_PHONY=1
+	CORE_DOCKER=1
+endif
+
+ifeq ($(CORE_PROFILE),release)
+	CORE_FLAGS=--release
 else
-	MODE=debug
-	FLAGS=
+	CORE_PROFILE=debug
+	CORE_FLAGS=
 endif
 
 # WASI SDK
@@ -18,7 +33,7 @@ WASI_SDK_FOLDER=core/wasi-sdk-${WASI_SDK_VERSION}.0
 WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-${WASI_SDK_OS}.tar.gz"
 
 # Core
-CORE_BUILD=core/target/wasm32-wasi/${MODE}/superface_core.wasm
+CORE_BUILD=core/target/wasm32-wasi/${CORE_PROFILE}/superface_core.wasm
 CORE_DIST_FOLDER=core/dist
 CORE_WASM=${CORE_DIST_FOLDER}/core.wasm
 CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/core-async.wasm
@@ -40,7 +55,9 @@ all: clean build
 # phony these to ensure we get a fresh build of core whenever map-std changes
 # sadly neither yarn nor make can just diff the map-std code and figure out if it needs a rebuild
 # but maybe later we could hash (docker actually does it out of the box) or possibly use git?
+ifeq ($(CORE_PHONY),1)
 .PHONY: ${CORE_BUILD} ${MAP_STD} ${PROFILE_VALIDATOR}
+endif
 
 deps: deps_core deps_integration deps_hosts
 build: build_core build_integration build_hosts
@@ -50,7 +67,7 @@ clean: clean_core clean_integration clean_hosts
 ##########
 ## CORE ##
 ##########
-ifdef CORE_DOCKER
+ifeq ($(CORE_DOCKER),1)
 build_core_docker: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_DIST_FOLDER}
 	docker build ./core -o ${CORE_DIST_FOLDER}
 ${CORE_WASM}: build_core_docker
@@ -60,7 +77,7 @@ deps_core: ${WASI_SDK_FOLDER}
 	rustup target add wasm32-wasi
 
 ${CORE_BUILD}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
-	cd core && cargo build --package superface_core --target wasm32-wasi ${FLAGS}
+	cd core && cargo build --package superface_core --target wasm32-wasi ${CORE_FLAGS}
 ${CORE_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
 	@echo 'Optimizing wasm...'
 	wasm-opt -Oz ${CORE_BUILD} --output ${CORE_WASM}

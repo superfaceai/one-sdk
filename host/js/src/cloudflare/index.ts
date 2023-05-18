@@ -7,6 +7,7 @@ export { PerformError, UnexpectedError } from '../common/error.js';
 
 // @ts-ignore
 import coreModule from '../assets/core-async.wasm';
+import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/app.js';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -31,12 +32,12 @@ class CfwFileSystem implements FileSystem {
 
   async open(path: string, options: { createNew?: boolean, create?: boolean, truncate?: boolean, append?: boolean, write?: boolean, read?: boolean }): Promise<number> {
     if (options.read !== true) {
-      throw new Error('operation not supported - TODO: wasi error');
+      throw new WasiError(WasiErrno.EROFS);
     }
 
     const data = this.preopens[path];
     if (data === undefined) {
-      throw new Error('File does not exist');
+      throw new WasiError(WasiErrno.EBADF);
     }
     
     return this.files.insert({ data, cursor: 0 });
@@ -44,7 +45,7 @@ class CfwFileSystem implements FileSystem {
   async read(handle: number, out: Uint8Array): Promise<number> {
     const file = this.files.get(handle);
     if (file === undefined) {
-      throw new Error('invalid file handle - TODO: wasi error');
+      throw new WasiError(WasiErrno.EBADF);
     }
 
     const readCount = Math.min(out.byteLength, file.data.byteLength - file.cursor);
@@ -59,15 +60,15 @@ class CfwFileSystem implements FileSystem {
   async write(handle: number, data: Uint8Array): Promise<number> {
     const file = this.files.get(handle);
     if (file === undefined) {
-      throw new Error('invalid file handle - TODO: wasi error');
+      throw new WasiError(WasiErrno.EBADF);
     }
     
-    throw new Error('operation not supported - TODO: wasi error');
+    throw new WasiError(WasiErrno.EROFS);
   }
   async close(handle: number): Promise<void> {
     const file = this.files.remove(handle);
     if (file === undefined) {
-      throw new Error('File does not exist');
+      throw new WasiError(WasiErrno.EBADF);
     }
   }
 }
@@ -81,8 +82,21 @@ class CfwTimers implements Timers {
   }
 }
 class CfwNetwork implements Network {
-  fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
-    return fetch(input, init);
+  async fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+    let response;
+    try {
+      response = await fetch(input, init);
+    } catch (err: unknown) {
+      throw err; // TODO: are there any errors that we need to handle here?
+    }
+
+    if (response.status === 530) {
+      // TODO: DNS error is 530 with a human-readable HTML body describing the error
+      // this is not trivial to parse and map to our error codes
+      throw new HostError(ErrorCode.NetworkError, await response.text().catch(_ => 'Unknown Cloudflare 530 error'));
+    }
+
+    return response;
   }
 }
 
