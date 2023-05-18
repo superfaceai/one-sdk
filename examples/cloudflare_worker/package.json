@@ -9,10 +9,10 @@
   },
   "devDependencies": {
     "typescript": "^5.0.2",
-    "wrangler": "^2.18.0"
+    "wrangler": "^3.00.0"
   },
   "scripts": {
-    "dev": "yarn install --force && wrangler dev --local",
+    "dev": "wrangler dev",
     "publish": "wrangler publish",
     "build:debug": "rm -rf dist && yarn install --force && wrangler publish --dry-run --outdir=dist"
   }
