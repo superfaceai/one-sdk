@@ -6,9 +6,6 @@ use thiserror::Error;
 
 use map_std::MapStdFull;
 
-// mod std_impl;
-// use std_impl::InterpreterState;
-
 mod core_to_map_bindings;
 
 #[derive(Debug, Error)]
