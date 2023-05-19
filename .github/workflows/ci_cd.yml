@@ -22,7 +22,9 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/registry/index
             core/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}-debug
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}-
       - name: Cache WASI SDK
         uses: actions/cache@v3
         with:
