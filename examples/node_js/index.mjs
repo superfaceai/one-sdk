@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import { Client } from '../../host/js/node/index.js';
+import { SuperfaceClient } from '../../host/js/node/index.js';
 
 async function startLocalhostServer() {
   const server = createServer((req, res) => {
@@ -20,8 +20,8 @@ async function startLocalhostServer() {
 
 async function main() {
   const server = await startLocalhostServer();
-  const client = new Client({ assetsPath: '../examples/maps/src' });
 
+  const client = new SuperfaceClient({ assetsPath: '../examples/maps/src' });
   const profile = await client.getProfile('wasm-sdk/example');
   const result = await profile
     .getUseCase('Example')
@@ -35,7 +35,6 @@ async function main() {
     );
 
   console.log('RESULT:', result);
-
   server.close();
 }
 

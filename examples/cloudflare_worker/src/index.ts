@@ -1,8 +1,8 @@
-import { Client, PerformError, UnexpectedError } from '@superfaceai/one-sdk/cloudflare';
+import { SuperfaceClient, PerformError } from '@superfaceai/one-sdk/cloudflare';
 
 import { GRID_IMPORTS } from './grid';
 
-const client = new Client({
+const client = new SuperfaceClient({
   env: {
     SF_LOG: 'trace',
     SF_CONFIG_CACHE_DURATION: '10'
@@ -44,7 +44,7 @@ export default {
           }
         );
         break
-      
+
       case '/email':
         result = (await client.getProfile('communication/send-email')).getUseCase('SendEmail').perform(
           { from: 'cfw@demo.superface.org', to, text, subject: 'Superface on Cloudflare Workers' },
@@ -58,7 +58,7 @@ export default {
           }
         );
         break;
-      
+
       default:
         return new Response(`Path ${url.pathname} not found`, { status: 404 });
     }

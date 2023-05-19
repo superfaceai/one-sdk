@@ -22,6 +22,7 @@ case $1 in
 			make build_host_js $MAKE_FLAGS
 		fi
 		cd "$base/cloudflare_worker"
+		yarn install
 		yarn dev
 	;;
 
