@@ -52,5 +52,28 @@ describe('SuperfaceClient', () => {
 
       expect(result.isOk()).toBe(true);
     });
+
+    test('concurrent requests', async () => {
+      const client = new SuperfaceClient({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
+
+      const profile = await client.getProfile('wasm-sdk/example');
+      const options = {
+        provider: 'localhost',
+        parameters: { PARAM: 'parameter_value' },
+        security: { basic_auth: { username: 'username', password: 'password' } }
+      };
+
+      await profile.getUseCase('Example').perform({ id: 1 }, options); // issue: needed to warm up the core, otherwise WASI is tried to be setted up mulitple times
+
+      const results = await Promise.all([
+        profile.getUseCase('Example').perform({ id: 1 }, options),
+        profile.getUseCase('Example').perform({ id: 2 }, options),
+        profile.getUseCase('Example').perform({ id: 3 }, options),
+      ]);
+
+      console.log(results);
+
+      expect(results.filter(r => r.isOk()).length).toBe(3);
+    });
   });
 });
