@@ -132,7 +132,9 @@ impl HttpRequest {
             ErrorCode::NetworkInvalidUrl => HttpCallError::InvalidUrl(message),
             ErrorCode::NetworkConnectionRefused => HttpCallError::ConnectionRefused(message),
             ErrorCode::NetworkHostNotFound => HttpCallError::HostNotFound(message),
-            ErrorCode::NetworkError | ErrorCode::NetworkInvalidHandle => HttpCallError::Unknown(format!("{:?}: {}", error_code, message)),
+            ErrorCode::NetworkError | ErrorCode::NetworkInvalidHandle => {
+                HttpCallError::Unknown(format!("{:?}: {}", error_code, message))
+            }
         }
     }
 }

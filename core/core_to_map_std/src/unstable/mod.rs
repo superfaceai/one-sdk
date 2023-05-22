@@ -4,7 +4,9 @@ use thiserror::Error;
 
 use serde::{Deserialize, Serialize};
 
-use sf_std::{abi::Handle, HeadersMultiMap, MultiMap, unstable::http::HttpCallError as HostHttpCallError};
+use sf_std::{
+    abi::Handle, unstable::http::HttpCallError as HostHttpCallError, HeadersMultiMap, MultiMap,
+};
 
 pub mod security;
 pub mod services;
@@ -152,6 +154,23 @@ impl<'de> Deserialize<'de> for MapValue {
     }
 }
 
+#[macro_export]
+macro_rules! map_value {
+    // TODO: if we ever need this it could go the way serde_json::value! macro is implemented
+    // for now we can get away with a much simpler implementation
+    ({
+        $($key: literal : $value: expr),+ $(,)?
+    }) => {
+        $crate::unstable::MapValue::Object({
+            let mut object = $crate::unstable::MapValueObject::new();
+            $(
+                object.insert($key.to_string(), $value);
+            )+
+            object
+        })
+    };
+}
+
 pub struct HttpRequest {
     /// HTTP method - will be used as-is.
     pub method: String,
@@ -209,14 +228,15 @@ pub enum HttpCallError {
 }
 impl From<HostHttpCallError> for HttpCallError {
     fn from(value: HostHttpCallError) -> Self {
-        
-        debug_assert!(!matches!(value, HostHttpCallError::HostNotFound(_) | HostHttpCallError::ConnectionRefused(_)));
+        debug_assert!(!matches!(
+            value,
+            HostHttpCallError::HostNotFound(_) | HostHttpCallError::ConnectionRefused(_)
+        ));
         match value {
             HostHttpCallError::HostNotFound(m)
             | HostHttpCallError::ConnectionRefused(m)
             | HostHttpCallError::InvalidUrl(m)
-            | HostHttpCallError::Unknown(m)
-                => Self::Failed(m)
+            | HostHttpCallError::Unknown(m) => Self::Failed(m),
         }
     }
 }
@@ -240,7 +260,7 @@ impl From<HostHttpCallError> for HttpCallHeadError {
         match value {
             HostHttpCallError::ConnectionRefused(m) => Self::ConnectionRefused(m),
             HostHttpCallError::HostNotFound(m) => Self::HostNotFound(m),
-            HostHttpCallError::InvalidUrl(m) | HostHttpCallError::Unknown(m) => Self::Failed(m)
+            HostHttpCallError::InvalidUrl(m) | HostHttpCallError::Unknown(m) => Self::Failed(m),
         }
     }
 }
@@ -256,10 +276,12 @@ pub enum SetOutputError {
     AlreadySet,
 }
 
+/// Represents high-level logic implementation of map std.
+///
+/// This implementation is called by map std bindings.
 pub trait MapStdUnstable {
     // env
     fn print(&mut self, message: &str);
-    fn abort(&mut self, message: &str, filename: &str, line: usize, column: usize) -> String;
 
     // streams
     fn stream_read(&mut self, handle: Handle, buf: &mut [u8]) -> std::io::Result<usize>;

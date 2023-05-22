@@ -1,18 +1,12 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
 use quickjs_wasm_rs::Context;
 use thiserror::Error;
 
-use map_std::{
-    unstable::{security::SecurityMap, MapValue},
-    MapInterpreter, MapInterpreterRunError,
-};
+use map_std::MapStdFull;
 
-mod std_impl;
-use std_impl::InterpreterState;
-
-mod core_to_map_std_impl;
+mod core_to_map_bindings;
 
 #[derive(Debug, Error)]
 pub enum JsInterpreterError {
@@ -27,33 +21,26 @@ pub enum JsInterpreterError {
     EvalCodeEmpty,
 }
 
-fn fmt_error(error: anyhow::Error) -> MapInterpreterRunError {
-    MapInterpreterRunError::Error(format!("{:#}", error))
-}
-
-pub struct JsInterpreter {
+pub struct JsInterpreter<S: MapStdFull + 'static> {
     context: Context,
     #[allow(dead_code)]
-    state: Rc<RefCell<InterpreterState>>,
+    state: Rc<RefCell<S>>,
 }
-impl JsInterpreter {
-    pub fn new() -> Result<Self, JsInterpreterError> {
+impl<S: MapStdFull + 'static> JsInterpreter<S> {
+    pub fn new(state: S) -> Result<Self, JsInterpreterError> {
         let mut context = Context::default();
-        let state = Rc::new(RefCell::new(InterpreterState::new()));
+        let state = Rc::new(RefCell::new(state));
 
         // link ffi
-        core_to_map_std_impl::unstable::link(&mut context, state.clone())
-            .context("Failed to export sf_unstable").map_err(JsInterpreterError::InitializationFailed)?;
+        core_to_map_bindings::unstable::link(&mut context, state.clone())
+            .context("Failed to export sf_unstable")
+            .map_err(JsInterpreterError::InitializationFailed)?;
 
         Ok(Self { context, state })
     }
 
-    pub fn set_context(&mut self, context: MapValue, security: Option<SecurityMap>) {
-        self.state.borrow_mut().set_context(context, security);
-    }
-
-    pub fn take_output(&mut self) -> Result<MapValue, MapValue> {
-        self.state.borrow_mut().take_output().unwrap()
+    pub fn state_mut(&mut self) -> impl DerefMut<Target = S> + '_ {
+        self.state.borrow_mut()
     }
 
     pub fn eval_code(&mut self, name: &str, code: &str) -> Result<(), JsInterpreterError> {
@@ -62,7 +49,8 @@ impl JsInterpreter {
         }
 
         self.context
-            .eval_global(name, code).map_err(JsInterpreterError::EvalFailed)?;
+            .eval_global(name, code)
+            .map_err(JsInterpreterError::EvalFailed)?;
 
         Ok(())
     }
@@ -74,50 +62,29 @@ impl JsInterpreter {
 
         let bytecode = self
             .context
-            .compile_global(name, code).map_err(JsInterpreterError::CompilationFailed)?;
+            .compile_global(name, code)
+            .map_err(JsInterpreterError::CompilationFailed)?;
 
         Ok(bytecode)
     }
 
     pub fn eval_bytecode(&mut self, bytecode: &[u8]) -> Result<(), JsInterpreterError> {
-        self.context.eval_binary(bytecode).map_err(JsInterpreterError::EvalFailed)?;
+        self.context
+            .eval_binary(bytecode)
+            .map_err(JsInterpreterError::EvalFailed)?;
 
         Ok(())
     }
-}
-impl MapInterpreter for JsInterpreter {
-    fn run(
-        &mut self,
-        code: &[u8],
-        usecase: &str,
-        input: MapValue,
-        parameters: MapValue,
-        services: MapValue,
-        security: SecurityMap,
-    ) -> Result<Result<MapValue, MapValue>, MapInterpreterRunError> {
-        self.set_context(
-            MapValue::Object(BTreeMap::from_iter([
-                ("input".to_string(), input),
-                ("parameters".to_string(), parameters),
-                ("services".to_string(), services),
-            ])),
-            Some(security),
-        );
 
-        let map_code = std::str::from_utf8(code)
-            .context("Code must be valid utf8 text")
-            .map_err(fmt_error)?;
-
-        if map_code.len() == 0 {
-            return Err(MapInterpreterRunError::MapCodeEmpty);
+    pub fn run(&mut self, code: &str, usecase: &str) -> Result<(), JsInterpreterError> {
+        if code.len() == 0 {
+            return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
-        let bundle = format!("{}\n\n_start('{}');", map_code, usecase);
+        let bundle = format!("{}\n\n_start('{}');", code, usecase);
 
-        self.eval_code("map.js", &bundle)
-            .context("Failed to run map bundle")
-            .map_err(fmt_error)?; // format anyhow to something
+        self.eval_code("map.js", &bundle)?;
 
-        Ok(self.take_output())
+        Ok(())
     }
 }

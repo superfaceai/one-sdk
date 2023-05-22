@@ -21,7 +21,5 @@ base64 = { workspace = true }
 
 tracing = { workspace = true }
 
-slab = "0.4"
-
 [dev-dependencies]
 sf_std = { path = "../host_to_core_std", package = "host_to_core_std", features = ["stub_ffi"] }

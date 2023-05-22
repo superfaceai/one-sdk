@@ -2,7 +2,12 @@ use std::sync::Mutex;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use sf_std::{abi::{Ptr, Size}, unstable::perform::{set_perform_output_result, set_perform_output_error, set_perform_output_exception}};
+use sf_std::{
+    abi::{Ptr, Size},
+    unstable::perform::{
+        set_perform_output_error, set_perform_output_exception, set_perform_output_result,
+    },
+};
 
 mod sf_core;
 use sf_core::{CoreConfiguration, SuperfaceCore};
@@ -88,7 +93,7 @@ pub extern "C" fn __export_superface_core_perform() {
     match state.perform() {
         Ok(Ok(result)) => set_perform_output_result(result),
         Ok(Err(error)) => set_perform_output_error(error),
-        Err(exception) => set_perform_output_exception(exception.into())
+        Err(exception) => set_perform_output_exception(exception.into()),
     }
 }
 

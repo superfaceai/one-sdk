@@ -114,7 +114,7 @@ trait MessageExchange: Sized + Serialize {
 }
 
 pub type MultiMap = HashMap<String, Vec<String>>;
-// TODO: consider making the key always lowercase
+// TODO: consider making the key always lowercase at the type level somehow
 pub type HeadersMultiMap = MultiMap;
 
 pub fn lowercase_headers_multimap(map: MultiMap) -> MultiMap {

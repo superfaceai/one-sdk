@@ -10,47 +10,51 @@ use sf_std::unstable::{
 };
 
 use interpreter_js::{JsInterpreter, JsInterpreterError};
-use map_std::{
-    unstable::{
-        security::{prepare_provider_parameters, prepare_security_map},
-        services::prepare_services_map,
-        MapValue, MapValueObject,
-    },
-    MapInterpreter, MapInterpreterRunError
+use map_std::unstable::{
+    security::{prepare_provider_parameters, prepare_security_map, PrepareSecurityMapError},
+    services::prepare_services_map,
+    MapValue, MapValueObject,
 };
 
-mod config;
-pub use config::CoreConfiguration;
-
-mod profile_validator;
-// use crate::profile_validator::ProfileValidator;
-
 mod cache;
-use cache::DocumentCache;
+mod config;
+mod map_std_impl;
+mod profile_validator;
 
-use self::cache::DocumentCacheError;
+// use crate::profile_validator::ProfileValidator;
+use cache::{DocumentCache, DocumentCacheError};
+pub use config::CoreConfiguration;
+use map_std_impl::MapStdImpl;
 
 pub struct PerformExceptionError {
-    pub message: String
+    pub message: String,
 }
 impl From<DocumentCacheError> for PerformExceptionError {
     fn from(value: DocumentCacheError) -> Self {
-        PerformExceptionError { message: value.to_string() }
+        PerformExceptionError {
+            message: value.to_string(),
+        }
     }
 }
-impl From<MapInterpreterRunError> for PerformExceptionError {
-    fn from(value: MapInterpreterRunError) -> Self {
-        PerformExceptionError { message: value.to_string() }
+impl From<PrepareSecurityMapError> for PerformExceptionError {
+    fn from(value: PrepareSecurityMapError) -> Self {
+        PerformExceptionError {
+            message: value.to_string(),
+        }
     }
 }
 impl From<JsInterpreterError> for PerformExceptionError {
     fn from(value: JsInterpreterError) -> Self {
-        PerformExceptionError { message: value.to_string() }
+        PerformExceptionError {
+            message: value.to_string(),
+        }
     }
 }
 impl From<PerformExceptionError> for PerformException {
     fn from(value: PerformExceptionError) -> Self {
-        PerformException { message: value.message }
+        PerformException {
+            message: value.message,
+        }
     }
 }
 
@@ -136,9 +140,11 @@ impl SuperfaceCore {
                     .map(|(k, v)| (k, self.host_value_to_map_value(v))),
             ),
             HostValue::None => MapValueObject::new(),
-            _ => return Err(PerformExceptionError {
-                message: "Parameters must be an Object or None".to_string()
-            })
+            _ => {
+                return Err(PerformExceptionError {
+                    message: "Parameters must be an Object or None".to_string(),
+                })
+            }
         };
 
         let provider_json = self
@@ -146,9 +152,11 @@ impl SuperfaceCore {
             .get(&perform_input.provider_url)
             .unwrap();
         let provider_json = match serde_json::from_slice::<ProviderJson>(provider_json) {
-            Err(err) => return Err(PerformExceptionError {
-                message: format!("Failed to deserialize provider JSON: {}", err)
-            }),
+            Err(err) => {
+                return Err(PerformExceptionError {
+                    message: format!("Failed to deserialize provider JSON: {}", err),
+                })
+            }
             Ok(v) => v,
         };
 
@@ -178,34 +186,48 @@ impl SuperfaceCore {
 
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = JsInterpreter::new()?;
+        let mut interpreter = JsInterpreter::new(MapStdImpl::new())?;
         // here we allow runtime stdlib replacement for development purposes
         // this might be removed in the future
         match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
-                let replacement = fs::read_to_string(&path).map_err(|err| PerformExceptionError {
-                    message: format!("Failed to load replacement map_std: {}", err)
-                })?;
+                let replacement =
+                    fs::read_to_string(&path).map_err(|err| PerformExceptionError {
+                        message: format!("Failed to load replacement map_std: {}", err),
+                    })?;
 
                 interpreter.eval_code(&path, &replacement)
             }
         }?;
 
-        let map_code = self.document_cache.get(&perform_input.map_url).unwrap();
+        let map_code =
+            match std::str::from_utf8(self.document_cache.get(&perform_input.map_url).unwrap()) {
+                Err(err) => {
+                    return Err(PerformExceptionError {
+                        message: format!("Failed to parse map as utf8: {}", err),
+                    })
+                }
+                Ok(v) => v,
+            };
 
-        let map_result = interpreter.run(
-            map_code,
-            &perform_input.usecase,
-            map_input,
-            MapValue::Object(map_parameters),
-            map_services,
-            map_security,
-        )?;
+        let map_result = {
+            interpreter.state_mut().set_context(
+                map_std::map_value!({
+                    "input": map_input,
+                    "parameters": MapValue::Object(map_parameters),
+                    "services": map_services
+                }),
+                Some(map_security),
+            );
+            interpreter.run(map_code, &perform_input.usecase)?;
+
+            interpreter.state_mut().take_output().unwrap()
+        };
 
         Ok(match map_result {
             Ok(result) => Ok(self.map_value_to_host_value(result)),
-            Err(error) => Err(self.map_value_to_host_value(error))
+            Err(error) => Err(self.map_value_to_host_value(error)),
         })
     }
 }

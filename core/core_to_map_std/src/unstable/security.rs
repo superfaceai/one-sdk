@@ -1,10 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Write};
 
 use base64::Engine;
 
 use sf_std::unstable::{provider::ProviderJson, SecurityValue, SecurityValuesMap};
-
-use crate::{MapInterpreterRunError, MapInterpreterSecurityMisconfiguredError};
 
 use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
 
@@ -80,10 +78,37 @@ pub enum SecurityMapValue {
 
 pub type SecurityMap = HashMap<SecurityMapKey, SecurityMapValue>;
 
+#[derive(Debug, thiserror::Error)]
+pub enum PrepareSecurityMapError {
+    #[error("Security is misconfigured:\n{}", MapInterpreterSecurityMisconfiguredError::format_errors(.0.as_slice()))]
+    SecurityMisconfigured(Vec<MapInterpreterSecurityMisconfiguredError>),
+}
+#[derive(Debug)]
+pub struct MapInterpreterSecurityMisconfiguredError {
+    pub id: String,
+    pub expected: String,
+}
+impl MapInterpreterSecurityMisconfiguredError {
+    pub fn format_errors(errors: &[MapInterpreterSecurityMisconfiguredError]) -> String {
+        let mut res = String::new();
+
+        for err in errors {
+            writeln!(
+                &mut res,
+                "Value for {} is misconfigured. Expected {}",
+                err.id, err.expected
+            )
+            .unwrap();
+        }
+
+        res
+    }
+}
+
 pub fn prepare_security_map(
     provider_json: &ProviderJson,
     security_values: &SecurityValuesMap,
-) -> Result<SecurityMap, MapInterpreterRunError> {
+) -> Result<SecurityMap, PrepareSecurityMapError> {
     let security_schemes = match &provider_json.security_schemes {
         Some(security_schemes) => security_schemes,
         None => return Ok(SecurityMap::new()),
@@ -199,7 +224,7 @@ pub fn prepare_security_map(
     }
 
     if errors.len() > 0 {
-        return Err(MapInterpreterRunError::SecurityMisconfigured(errors));
+        return Err(PrepareSecurityMapError::SecurityMisconfigured(errors));
     }
 
     Ok(security_map)
@@ -318,7 +343,7 @@ pub fn resolve_security(
                     })?);
                 } else {
                     return Err(HttpCallError::InvalidSecurityConfiguration(
-                        "Api key placement is set to body but the body is empty".to_string()
+                        "Api key placement is set to body but the body is empty".to_string(),
                     ));
                 }
             }
