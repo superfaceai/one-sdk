@@ -250,8 +250,11 @@ function headersToMultimap(headers: Headers): Record<string, string[]> {
 }
 
 type Stream = {
+  /** Reads up to `out.length` bytes from the stream, returns number of bytes read or throws a `WasiError`. */
   read(out: Uint8Array): Promise<number>;
+  /** Writes up to `data.length` bytes into the stream, returns number of bytes written or throws a `WasiError`. */
   write(data: Uint8Array): Promise<number>;
+  /** Closes the stream, returns undefined or throws a `WasiError`. */
   close(): Promise<void>;
 };
 type AppCore = {
@@ -484,7 +487,7 @@ export class App implements AppContext {
   async readStream(handle: number, out: Uint8Array): Promise<number> {
     const stream = this.streams.get(handle);
     if (stream === undefined) {
-      throw new Error('TODO: wasi error');
+      throw new WasiError(WasiErrno.EBADF);
     }
 
     return stream.read(out);
@@ -493,7 +496,7 @@ export class App implements AppContext {
   async writeStream(handle: number, data: Uint8Array): Promise<number> {
     const stream = this.streams.get(handle);
     if (stream === undefined) {
-      throw new Error('TODO: wasi error');
+      throw new WasiError(WasiErrno.EBADF);
     }
 
     return stream.write(data);
@@ -502,7 +505,7 @@ export class App implements AppContext {
   async closeStream(handle: number): Promise<void> {
     const stream = this.streams.remove(handle);
     if (stream === undefined) {
-      throw new Error('TODO: wasi error');
+      throw new WasiError(WasiErrno.EBADF);
     }
 
     await stream.close();
