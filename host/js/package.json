@@ -20,6 +20,8 @@
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
     "clean": "rimraf common cloudflare node",
+    "prepack": "cp ../../LICENSE .",
+    "postpack": "rm LICENSE",
     "build": "yarn clean && tsc -p tsconfig.json",
     "test": "CORE_PATH=./assets/core-async.wasm SF_LOG=trace node --no-warnings --experimental-wasi-unstable-preview1 --experimental-vm-modules node_modules/.bin/jest"
   },
