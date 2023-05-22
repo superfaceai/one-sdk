@@ -27,6 +27,7 @@
     "assets/**/*",
     "common/**/*",
     "node/**/*",
-    "cloudflare/**/*"
+    "cloudflare/**/*",
+    "../../LICENSE"
   ]
 }
