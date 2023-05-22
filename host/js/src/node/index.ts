@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 
 import { App, HandleMap } from '../common/index.js';
 import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
-import { WasiErrno, WasiError } from '../common/app.js';
+import { AsyncMutex, WasiErrno, WasiError } from '../common/app.js';
 import { PerformError, UnexpectedError } from '../common/error.js';
 
 import { systemErrorToWasiError, fetchErrorToHostError } from './error.js';
@@ -143,7 +143,7 @@ class InternalClient {
   private corePath: string;
   private wasi: WASI;
   private app: App;
-  private ready = false;
+  private readyState: AsyncMutex<{ ready: boolean }>;
 
   constructor(readonly options: ClientOptions = {}) {
     if (options.assetsPath !== undefined) {
@@ -159,6 +159,8 @@ class InternalClient {
     this.wasi = new WASI({
       env: process.env
     });
+
+    this.readyState = new AsyncMutex({ ready: false });
 
     this.app = new App(this.wasi, {
       network: new NodeNetwork(),
@@ -192,16 +194,18 @@ class InternalClient {
   }
 
   private async setup() {
-    if (this.ready) {
-      return;
-    }
+    return this.readyState.withLock(async (readyState) => {
+      if (readyState.ready === true) {
+        return;
+      }
 
-    await this.app.loadCore(
-      await fs.readFile(this.corePath)
-    );
-    await this.app.setup();
+      await this.app.loadCore(
+        await fs.readFile(this.corePath)
+      );
+      await this.app.setup();
 
-    this.ready = true;
+      readyState.ready = true;
+    });
   }
 
   public async resolveProfileUrl(profile: string): Promise<string> {
@@ -231,8 +235,14 @@ class InternalClient {
   }
 
   private async teardown() {
-    await this.app.teardown();
-    this.ready = false;
+    return this.readyState.withLock(async (readyState) => {
+      if (readyState.ready === false) {
+        return;
+      }
+
+      await this.app.teardown();
+      readyState.ready = false;
+    });
   }
 }
 

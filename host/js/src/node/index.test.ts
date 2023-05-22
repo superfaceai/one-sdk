@@ -52,5 +52,25 @@ describe('OneClient', () => {
 
       expect(result.url).toContain('/api/1');
     });
+
+    test('concurrent requests', async () => {
+      const client = new SuperfaceClient({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
+
+      const profile = await client.getProfile('wasm-sdk/example');
+      const options = {
+        provider: 'localhost',
+        parameters: { PARAM: 'parameter_value' },
+        security: { basic_auth: { username: 'username', password: 'password' } }
+      };
+
+      const usecase = profile.getUseCase('Example');
+      const results = await Promise.all([
+        usecase.perform({ id: 1 }, options),
+        usecase.perform({ id: 2 }, options),
+        usecase.perform({ id: 3 }, options),
+      ]);
+
+      expect(results.filter(r => r.isOk()).length).toBe(3);
+    });
   });
 });

@@ -190,7 +190,7 @@ class ReadableStreamAdapter implements Stream {
  * 
  * Note that this is not thread safe (concurrent), but merely task safe (asynchronous).
  */
-class AsyncMutex<T> {
+export class AsyncMutex<T> {
   /** Promise to be awaited to synchronize between tasks. */
   private condvar: Promise<void>;
   /** Indicator of whether the mutex is currently locked. */
@@ -220,7 +220,7 @@ class AsyncMutex<T> {
       // If there ever is threading or task preemption, we will need to use other means (atomics, spinlocks).
       await this.condvar;
     } while (this.isLocked);
-    
+
     this.isLocked = true;
     let notify: () => void;
     this.condvar = new Promise((resolve) => { notify = resolve; });
