@@ -1,5 +1,5 @@
 import fs, { FileHandle } from 'fs/promises';
-import { resolve } from 'path';
+import { resolve as resolvePath } from 'path';
 import { WASI } from 'wasi';
 
 import { createRequire } from 'node:module';
@@ -13,6 +13,7 @@ import { Result, err, ok } from './result.js';
 import { systemErrorToWasiError, fetchErrorToHostError } from './error.js';
 
 const CORE_PATH = process.env.CORE_PATH ?? createRequire(import.meta.url).resolve('../assets/core-async.wasm');
+const ASSETS_FOLDER = 'superface';
 
 class NodeTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -137,7 +138,7 @@ export type ClientPerformOptions = {
 };
 
 class InternalClient {
-  public assetsPath: string = process.cwd(); // TODO: point to `superface` folder
+  public assetsPath: string = resolvePath(process.cwd(), ASSETS_FOLDER);
   private token: string | undefined;
 
   private corePath: string;
@@ -205,21 +206,21 @@ class InternalClient {
   }
 
   public async resolveProfileUrl(profile: string): Promise<string> {
-    const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
-    const path = resolve(this.assetsPath, `${resolvedProfile}.supr`);
+    const resolvedProfile = profile.replace(/\//g, '.');
+    const path = resolvePath(this.assetsPath, `${resolvedProfile}.supr`);
 
     return `file://${path}`;
   }
 
   public async resolveMapUrl(profile: string, provider?: string): Promise<string> {
-    const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
-    const path = resolve(this.assetsPath, `${resolvedProfile}.${provider}.suma.js`);
+    const resolvedProfile = profile.replace(/\//g, '.');
+    const path = resolvePath(this.assetsPath, `${resolvedProfile}.${provider}.suma.js`);
 
     return `file://${path}`;
   }
 
   public async resolveProviderUrl(provider: string): Promise<string> {
-    const path = resolve(this.assetsPath, `${provider}.provider.json`);
+    const path = resolvePath(this.assetsPath, `${provider}.provider.json`);
 
     return `file://${path}`;
   }
