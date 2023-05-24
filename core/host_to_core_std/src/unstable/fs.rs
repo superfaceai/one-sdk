@@ -14,7 +14,7 @@ use crate::abi::{
 // even though wasmtime rust crate has this API, wasmer is more complex).
 //
 // Instead we rely on our own read/write/close methods and only expose `Read` and `Write` for now. the `fs::File` API will still work
-// but only for files which have been preopened through WASI, otherwise we'll rely on out messages and streams.
+// but only for files which have been preopened through WASI, otherwise we'll rely on our messages and streams.
 
 define_exchange_core_to_host! {
     struct FileOpenRequest<'a> {
@@ -89,7 +89,6 @@ impl OpenOptions {
         self
     }
 
-    // TODO: Should we also change the StreamExchange of the returned IoStream?
     pub fn open_in<Me: MessageExchange, Se: StreamExchange>(
         &self,
         path: &str,
@@ -122,6 +121,7 @@ pub struct FsConvenience<Me: StaticMessageExchange, Se: StaticStreamExchange>(
     std::marker::PhantomData<(Me, Se)>,
 );
 impl<Me: StaticMessageExchange, Se: StaticStreamExchange> FsConvenience<Me, Se> {
+    /// Like [std::fs::read].
     pub fn read(path: &str) -> Result<Vec<u8>, io::Error> {
         let mut file =
             OpenOptions::new()
@@ -133,6 +133,8 @@ impl<Me: StaticMessageExchange, Se: StaticStreamExchange> FsConvenience<Me, Se> 
 
         Ok(data)
     }
+
+    /// Like [std::fs::read_to_string].
     pub fn read_to_string(path: &str) -> Result<String, io::Error> {
         let mut file =
             OpenOptions::new()
