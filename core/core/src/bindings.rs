@@ -129,9 +129,6 @@ extern "C" fn __import_stream_write(
     unreachable!()
 }
 #[cfg(test)]
-extern "C" fn __import_stream_close(handle: Handle) -> AbiResultRepr {
-    // this is actually called in tests which construct IoStreams, so we always succeed here
-    // TODO: this should possibly be configurable on per-test basis
-    assert_ne!(handle, 0);
-    0
+extern "C" fn __import_stream_close(_handle: Handle) -> AbiResultRepr {
+    unreachable!()
 }
