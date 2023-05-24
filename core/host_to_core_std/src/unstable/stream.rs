@@ -8,6 +8,7 @@ use crate::abi::{Handle, StaticStreamExchange, StreamExchange, StreamExchangeFfi
 #[derive(Debug, PartialEq, Eq)]
 pub struct IoStreamHandle(Handle);
 impl IoStreamHandle {
+    #[cfg(test)]
     pub(crate) fn from_raw_handle(handle: Handle) -> Self {
         Self(handle)
     }
@@ -27,17 +28,6 @@ impl<'de> Deserialize<'de> for IoStreamHandle {
 ///
 /// Not all streams can be both read from and written to, those will return an error.
 pub struct IoStream<E: StreamExchange = StreamExchangeFfiFn>(Handle, E);
-// impl Serialize for IoStream<StreamExchangeFfi> {
-//     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
-//         self.0.serialize(ser)
-//     }
-// }
-// impl<'de> Deserialize<'de> for IoStream<StreamExchangeFfi> {
-//     fn deserialize<D: serde::Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
-//         Handle::deserialize(de)
-//             .map(|handle| IoStream::from_raw_handle_in(handle, STREAM_EXCHANGE_FFI))
-//     }
-// }
 impl<E: StaticStreamExchange> IoStream<E> {
     pub fn from_handle(handle: IoStreamHandle) -> Self {
         Self::from_handle_in(handle, E::instance())
@@ -51,10 +41,6 @@ impl<E: StreamExchange> IoStream<E> {
     pub fn into_handle(self) -> IoStreamHandle {
         IoStreamHandle(self.0)
     }
-
-    // pub(crate) fn set_exchange<O: StreamExchange>(self, exchange: E) -> IoStream<O> {
-    //     Self(self.0, exchange)
-    // }
 }
 impl<E: StreamExchange> std::io::Read for IoStream<E> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {

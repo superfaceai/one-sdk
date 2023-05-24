@@ -223,7 +223,7 @@ mod test {
             TestMessageExchangeFn::new(|message| {
                 let query = message["url"].as_str().unwrap().split_once("?").unwrap().1;
                 let mut pairs = query.split("&").collect::<Vec<_>>();
-                pairs.sort();
+                pairs.sort(); // since query parameters don't have a set ordering and internally there is a hashmap, we have to make it deterministic by sorting the pairs
 
                 assert_eq!(
                     pairs,
