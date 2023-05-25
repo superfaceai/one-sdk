@@ -13,7 +13,7 @@
 [![npm](https://img.shields.io/npm/v/@superfaceai/one-sdk/alpha.svg)](https://www.npmjs.com/package/@superfaceai/one-sdk/v/alpha)
 ![TypeScript](https://img.shields.io/static/v1?message=TypeScript&&logoColor=ffffff&color=007acc&labelColor=5c5c5c&label=built%20with)
 
-OneSDK is a universal API client which provides an unparalleled developer experience for every HTTP API. It enhances resiliency to API changes, and comes with built-in integration monitoring and provider failover.
+`SuperfaceClient` is a universal API client which provides an unparalleled developer experience for every HTTP API. It enhances resiliency to API changes, and comes with built-in integration monitoring and provider failover.
 
 For more details about Superface, visit [How it Works](https://superface.ai/how-it-works) and [Get Started](https://superface.ai/docs/getting-started).
 
@@ -26,38 +26,137 @@ For more details about Superface, visit [How it Works](https://superface.ai/how-
 
 ## Install
 
-To install OneSDK into a Node.js project, run:
+To install OneSDK into the project, run:
 
 ```shell
 npm install @superfaceai/one-sdk@alpha
 ```
 
-## Usage
+## Setup
 
-1. Pick use-case:
+SuperfaceClient uses three files (also called Comlink) which together make the integration:
+- **Profile** - describe business capabilities apart from the implementation details, what is expected as input and what will be the result. Profile name have optional scope before `/` and required name `[scope/]<name>`
+- **Provider** - Define a provider's API services and security schemes to use in a Comlink Map
+- **Map** - describe implementation details for fulfilling a business capability from a Comlink Profile
 
-    Use-cases can be discovered in [Superface catalog](https://superface.ai/catalog) or in [Station](https://github.com/superfaceai/station/tree/main_wasm) respository.
+To glue all the parts together, SuperfaceClient uses name and file structure convention.
 
-    **🚧 WASM powered OneSDK is newly using JavaScript to implement use-cases and not all were migrated yet 🚧**
+```
+.
+└── superface/ - directory with all the Comlinks in project root
+    ├── <profileScope>.<profileName>.supr - profile file
+    ├── <providerName>.provider.json - provider file
+    ├── <profileScope>.<profileName>.<providerName>.suma.js - map file
+    └── ... - repeat for all the Comlinks
+```
 
-2. Use in your code:
+### Send email example
 
-    OneSDK is using [EcmaScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules). More on using ES modules is well described in [Pure ESM Package](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c) guide.
+As an example, lets send an email with [Mailchimp](https://github.com/superfaceai/one-sdk/blob/main/examples/maps/src/mailchimp.provider.json). The use-case is described in the profile [communication/send-email](https://github.com/superfaceai/one-sdk/blob/main/examples/maps/src/communication.send-email.supr) and the map with [implementation](https://github.com/superfaceai/one-sdk/blob/feat/superface_assets_convention/examples/maps/src/communication.send-email.mailchimp.suma.js).
 
-    ```js
-    import { SuperfaceClient } from '@superfaceai/one-sdk';
+1. Start with creating a new directory `superface` in the root of your project.
+2. Add the profile. Because profile name contains have scope we need to replace `/` with `.`. So, the profile with name `communication/send-email` have corresponding filename `communication.send-email.supr`.
+3. Add the provider. The provider name is the same as the filename. So the provider with name `mailchimp` have corresponding filename `mailchimp.provider.json`.
+4. Add the map. Map connects profile and provider, so the filename is consists of both as well `communication.send-email.mailchimp.suma.js`.
 
-    const client = new SuperfaceClient();
+The final structure should look like this:
+```
+.
+└── superface/
+    ├── communication.send-email.mailchimp.suma.js
+    ├── communication.send-email.supr
+    └── mailchimp.provider.json
+```
 
-    async function main() {
-      const profile = await client.getProfile({ id: '<profileName>', version: '<profileVersion>'});
+---
 
-      const result = await profile.getUseCase('<usecaseName>').perform({
-        // Input parameters as defined in profile:
-        '<key>': '<value>'
+Use-cases can be discovered in [Superface catalog](https://superface.ai/catalog) or in [Station](https://github.com/superfaceai/station/tree/main_wasm) respository.
+
+**🚧 WASM powered OneSDK is newly using JavaScript to implement use-cases and not all were migrated yet 🚧**
+
+If you are missing a use case, [let us know](https://superface.ai/docs/support)! 
+
+---
+
+## Use in Node.js
+
+Create `index.mjs` file with following content and update 
+
+```js
+import { SuperfaceClient } from '@superfaceai/one-sdk';
+
+async function main() {
+  const client = new SuperfaceClient();
+  const profile = await client.getProfile('<profileName>');
+
+  const result = await profile.getUseCase('<usecaseName>').perform({
+    // Input parameters as defined in profile:
+    '<key>': '<value>'
+  },
+  {
+    provider: '<providerName>',
+    parameters: {
+      // Provider specific integration parameters:
+      '<integrationParameterName>': '<integrationParameterValue>'
+    },
+    security: {
+      // Provider specific security values:
+      '<securityValueId>': {
+        // Security values as described in provider or on profile page
+      }
+    }
+  });
+
+  console.log(result.unwrap());
+}
+
+main();
+```
+
+Then run the script with:
+
+```shell
+node --experimental-wasi-unstable-preview1 index.mjs
+```
+
+---
+
+OneSDK uses [ECMAScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules). More on using ECMAScript modules is well described in [Pure ESM Package](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c) guide.
+
+## Use in Cloudflare
+
+The main difference compared to Node.js is a need to use a virtual filesystem to load the Comlink files. It is needed due to the deployment process, where all files need to be bundled together.
+
+```js
+import { SuperfaceClient, PerformError, UnexpectedError } from '@superfaceai/one-sdk/cloudflare';
+
+import profileFile from '../superface/[scope.]<name>.supr';
+import mapFile from '../superface/[scope.]<name>.<providerName>.suma.js';
+import providerFile from '../superface/<providerName>.provider.json';
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    const client = new SuperfaceClient({
+      env: {
+        SF_LOG: 'info' // use `debug` or `trace` for development debugging
       },
+      // preopens describes the virtual filesystem whith the SuperfaceClient file convention mapped to assets
+      preopens: {
+        'superface/[scope.]<name>.supr': new Uint8Array(profileFile),
+        'superface/[scope.]<name>.<providerName>.suma.js': new Uint8Array(mapFile),
+        'superface/<providerName>.provider.json': new Uint8Array(providerFile)
+      }
+    });
+    const profile = await client.getProfile('<profileName>');  // profile id as defined in customer-management.get-customer.supr
+    const usecase = profile.getUseCase('<usecaseName>'); // use case name as defined in the profile
+    const result = usecase.perform(
+      // Input parameters as defined in profile:
+      '<key>': '<value>'
+      // provider configuration
       {
-        provider: '<providerName>',
+        provider: '<providerName>', // provider name as defined in *.provider.json
         parameters: {
           // Provider specific integration parameters:
           '<integrationParameterName>': '<integrationParameterValue>'
@@ -68,15 +167,27 @@ npm install @superfaceai/one-sdk@alpha
             // Security values as described in provider or on profile page
           }
         }
-      });
+      }
+    );
 
-      console.log(result.unwrap());
+    try {
+      // result as defined in the profile
+      const ok = await result;
+      return new Response(`Result: ${JSON.stringify(ok, null, 2)}`);
+    } catch (error) {
+      if (error instanceof PerformError) {
+        // error as defined in the profile
+        return new Response(`Error: ${JSON.stringify(error.errorResult, null, 2)}`, { status: 400 });
+      } else {
+        // exception - should not be part of a normal flow
+        return new Response(`${error.name}\n${error.message}`, { status: 500 });
+      }
     }
+  }
+}
+```
 
-    main();
-    ```
-
-If you are missing a use case, [let us know](#support)! You can also always [add your own use-case or API provider](https://superface.ai/docs/guides/how-to-create).
+Check full demo with [Shopify](https://github.com/superfaceai/demo-cloudflare-shopify/tree/main) use-cases and more details.
 
 ## Todos & limitations
 
