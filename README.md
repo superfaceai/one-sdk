@@ -23,10 +23,10 @@ This will require to have Development requirements installed. In case of buildin
 
 ## Supported languages
 
-- [🦄 JavaScript/TypeScript](https://github.com/superfaceai/one-sdk/tree/chore/repo_community_standards/host/js)
-  - [Node.js](https://github.com/superfaceai/one-sdk/tree/chore/repo_community_standards/host/js/src/node)
-  - [Cloudflare Workers](https://github.com/superfaceai/one-sdk/tree/chore/repo_community_standards/host/js/src/cloudflare)
-- [🐍 Python](https://github.com/superfaceai/one-sdk/tree/chore/repo_community_standards/host/python)
+- [🦄 JavaScript/TypeScript](https://github.com/superfaceai/one-sdk/tree/main/host/js)
+  - [Node.js](https://github.com/superfaceai/one-sdk/tree/main/host/js/src/node)
+  - [Cloudflare Workers](https://github.com/superfaceai/one-sdk/tree/main/host/js/src/cloudflare)
+- [🐍 Python](https://github.com/superfaceai/one-sdk/tree/main/host/python)
 
 ## Contributing
 
