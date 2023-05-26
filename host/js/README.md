@@ -68,16 +68,6 @@ The final structure should look like this:
     └── mailchimp.provider.json
 ```
 
----
-
-Use-cases can be discovered in [Superface catalog](https://superface.ai/catalog) or in [Station](https://github.com/superfaceai/station/tree/main_wasm) respository.
-
-**🚧 WASM powered OneSDK is newly using JavaScript to implement use-cases and not all were migrated yet 🚧**
-
-If you are missing a use case, [let us know](https://superface.ai/docs/support)! 
-
----
-
 ## Use in Node.js
 
 Create `index.mjs` file with following content and update 
