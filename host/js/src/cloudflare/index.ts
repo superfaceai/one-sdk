@@ -180,7 +180,7 @@ class CfwWasiCompat implements WasiContext {
 export type ClientOptions = {
   env?: Record<string, string>;
   assetsPath?: string;
-  sdkAuthToken?: string;
+  token?: string;
   preopens?: Record<string, Uint8Array>;
 };
 

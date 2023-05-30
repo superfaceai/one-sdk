@@ -128,7 +128,7 @@ export type ClientOptions = {
    * 
    * Manage tokens and see insights here: https://superface.ai/insights
    */
-  sdkAuthToken?: string;
+  token?: string;
 };
 
 export type ClientPerformOptions = {
@@ -151,8 +151,8 @@ class InternalClient {
       this.assetsPath = options.assetsPath;
     }
 
-    if (options.sdkAuthToken !== undefined) {
-      this.token = options.sdkAuthToken;
+    if (options.token !== undefined) {
+      this.token = options.token;
     }
 
     this.corePath = CORE_PATH;
