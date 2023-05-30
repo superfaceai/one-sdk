@@ -36,12 +36,12 @@ describe('OneClient', () => {
     });
 
     test('works', async () => {
-      const client = new OneClient({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
+      const client = new OneClient({ assetsPath: resolvePath(__dirname, '../../../../examples/comlinks/src') });
 
       const profile = await client.getProfile('wasm-sdk/example');
       const result = await profile
         .getUseCase('Example')
-        .perform(
+        .perform<unknown, { url: string }>(
           { id: 1 },
           {
             provider: 'localhost',
@@ -50,7 +50,7 @@ describe('OneClient', () => {
           }
         );
 
-      expect(result.isOk()).toBe(true);
+      expect(result.url).toContain('/api/1');
     });
   });
 });
