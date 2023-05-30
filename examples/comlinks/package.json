@@ -1,5 +1,5 @@
 {
-  "name": "maps",
+  "name": "comlinks",
   "private": true,
   "devDependencies": {
     "@types/superface__map-std": "../../integration/map-std"

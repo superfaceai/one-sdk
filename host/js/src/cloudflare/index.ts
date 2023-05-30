@@ -243,9 +243,9 @@ class InternalClient {
     const assetsPath = this.options.assetsPath ?? 'superface'; // TODO: path join? - not sure if we are going to stick with this VFS
 
     return await this.app.perform(
-      `file://${assetsPath}/${resolvedProfile}.supr`,
+      `file://${assetsPath}/${resolvedProfile}.profile`,
       `file://${assetsPath}/${provider}.provider.json`,
-      `file://${assetsPath}/${resolvedProfile}.${provider}.suma.js`,
+      `file://${assetsPath}/${resolvedProfile}.${provider}.map.js`,
       usecase,
       input,
       parameters,

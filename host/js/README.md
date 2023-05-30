@@ -44,27 +44,27 @@ To glue all the parts together, SuperfaceClient uses name and file structure con
 ```
 .
 └── superface/ - directory with all the Comlinks in project root
-    ├── <profileScope>.<profileName>.supr - profile file
+    ├── <profileScope>.<profileName>.profile - profile file
     ├── <providerName>.provider.json - provider file
-    ├── <profileScope>.<profileName>.<providerName>.suma.js - map file
+    ├── <profileScope>.<profileName>.<providerName>.map.js - map file
     └── ... - repeat for all the Comlinks
 ```
 
 ### Send email example
 
-As an example, lets send an email with [Mailchimp](https://github.com/superfaceai/one-sdk/blob/main/examples/maps/src/mailchimp.provider.json). The use-case is described in the profile [communication/send-email](https://github.com/superfaceai/one-sdk/blob/main/examples/maps/src/communication.send-email.supr) and the map with [implementation](https://github.com/superfaceai/one-sdk/blob/feat/superface_assets_convention/examples/maps/src/communication.send-email.mailchimp.suma.js).
+As an example, lets send an email with [Mailchimp](https://github.com/superfaceai/one-sdk/blob/main/examples/maps/src/mailchimp.provider.json). The use-case is described in the profile [communication/send-email](https://github.com/superfaceai/one-sdk/blob/main/examples/maps/src/communication.send-email.profile) and the map with [implementation](https://github.com/superfaceai/one-sdk/blob/feat/superface_assets_convention/examples/maps/src/communication.send-email.mailchimp.map.js).
 
 1. Start with creating a new directory `superface` in the root of your project.
-2. Add the profile. Because profile name contains have scope we need to replace `/` with `.`. So, the profile with name `communication/send-email` have corresponding filename `communication.send-email.supr`.
+2. Add the profile. Because profile name contains have scope we need to replace `/` with `.`. So, the profile with name `communication/send-email` have corresponding filename `communication.send-email.profile`.
 3. Add the provider. The provider name is the same as the filename. So the provider with name `mailchimp` have corresponding filename `mailchimp.provider.json`.
-4. Add the map. Map connects profile and provider, so the filename is consists of both as well `communication.send-email.mailchimp.suma.js`.
+4. Add the map. Map connects profile and provider, so the filename is consists of both as well `communication.send-email.mailchimp.map.js`.
 
 The final structure should look like this:
 ```
 .
 └── superface/
-    ├── communication.send-email.mailchimp.suma.js
-    ├── communication.send-email.supr
+    ├── communication.send-email.mailchimp.map.js
+    ├── communication.send-email.profile
     └── mailchimp.provider.json
 ```
 
@@ -120,8 +120,8 @@ The main difference compared to Node.js is a need to use a virtual filesystem to
 ```js
 import { SuperfaceClient, PerformError, UnexpectedError } from '@superfaceai/one-sdk/cloudflare';
 
-import profileFile from '../superface/[scope.]<name>.supr';
-import mapFile from '../superface/[scope.]<name>.<providerName>.suma.js';
+import profileFile from '../superface/[scope.]<name>.profile';
+import mapFile from '../superface/[scope.]<name>.<providerName>.map.js';
 import providerFile from '../superface/<providerName>.provider.json';
 
 export default {
@@ -134,12 +134,12 @@ export default {
       },
       // preopens describes the virtual filesystem whith the SuperfaceClient file convention mapped to assets
       preopens: {
-        'superface/[scope.]<name>.supr': new Uint8Array(profileFile),
-        'superface/[scope.]<name>.<providerName>.suma.js': new Uint8Array(mapFile),
+        'superface/[scope.]<name>.profile': new Uint8Array(profileFile),
+        'superface/[scope.]<name>.<providerName>.map.js': new Uint8Array(mapFile),
         'superface/<providerName>.provider.json': new Uint8Array(providerFile)
       }
     });
-    const profile = await client.getProfile('<profileName>');  // profile id as defined in customer-management.get-customer.supr
+    const profile = await client.getProfile('<profileName>');  // profile id as defined in *.profile
     const usecase = profile.getUseCase('<usecaseName>'); // use case name as defined in the profile
     const result = usecase.perform(
       // Input parameters as defined in profile:

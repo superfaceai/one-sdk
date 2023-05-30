@@ -121,7 +121,7 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
     maps/ # example of how map authoring can look
       package.json # pulls in map-std types
       src/
-        [.suma.js files]
+        [.map.js files]
 ```
 
 ## Allowed Licenses

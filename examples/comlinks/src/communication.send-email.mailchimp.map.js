@@ -2,14 +2,14 @@
 
 /** @type {UsecaseFn} */
 function SendEmail({ input, services }) {
-	const url = `${services.mandrill}/api/1.0/messages/send`;
-	const options = {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			'accept': 'application/json'
-		},
-		body: {
+  const url = `${services.mandrill}/api/1.0/messages/send`;
+  const options = {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'accept': 'application/json'
+    },
+    body: {
       key: 'key-will-go-here',
       message: {
         from_email: input.from,
@@ -28,7 +28,7 @@ function SendEmail({ input, services }) {
       }
     },
     security: 'api_key'
-	};
+  };
 
   const response = std.unstable.fetch(url, options).response();
   const body = response.bodyAuto() ?? {};

@@ -207,14 +207,14 @@ class InternalClient {
 
   public async resolveProfileUrl(profile: string): Promise<string> {
     const resolvedProfile = profile.replace(/\//g, '.');
-    const path = resolvePath(this.assetsPath, `${resolvedProfile}.supr`);
+    const path = resolvePath(this.assetsPath, `${resolvedProfile}.profile`);
 
     return `file://${path}`;
   }
 
   public async resolveMapUrl(profile: string, provider?: string): Promise<string> {
     const resolvedProfile = profile.replace(/\//g, '.');
-    const path = resolvePath(this.assetsPath, `${resolvedProfile}.${provider}.suma.js`);
+    const path = resolvePath(this.assetsPath, `${resolvedProfile}.${provider}.map.js`);
 
     return `file://${path}`;
   }
