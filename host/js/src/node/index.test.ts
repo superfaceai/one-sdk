@@ -4,11 +4,11 @@ import { Server, createServer as httpCreateServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath, dirname } from 'node:path';
 
-import { SuperfaceClient } from './index.js';
+import { OneClient } from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-describe('SuperfaceClient', () => {
+describe('OneClient', () => {
   describe('Basic use', () => {
     let server: Server;
 
@@ -36,7 +36,7 @@ describe('SuperfaceClient', () => {
     });
 
     test('works', async () => {
-      const client = new SuperfaceClient({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
+      const client = new OneClient({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
 
       const profile = await client.getProfile('wasm-sdk/example');
       const result = await profile

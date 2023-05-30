@@ -13,7 +13,7 @@
 [![npm](https://img.shields.io/npm/v/@superfaceai/one-sdk/alpha.svg)](https://www.npmjs.com/package/@superfaceai/one-sdk/v/alpha)
 ![TypeScript](https://img.shields.io/static/v1?message=TypeScript&&logoColor=ffffff&color=007acc&labelColor=5c5c5c&label=built%20with)
 
-`SuperfaceClient` is a universal API client which provides an unparalleled developer experience for every HTTP API. It enhances resiliency to API changes, and comes with built-in integration monitoring and provider failover.
+`OneClient` is a universal API client which provides an unparalleled developer experience for every HTTP API. It enhances resiliency to API changes, and comes with built-in integration monitoring and provider failover.
 
 For more details about Superface, visit [How it Works](https://superface.ai/how-it-works) and [Get Started](https://superface.ai/docs/getting-started).
 
@@ -34,12 +34,12 @@ npm install @superfaceai/one-sdk@alpha
 
 ## Setup
 
-SuperfaceClient uses three files (also called Comlink) which together make the integration:
+OneClient uses three files (also called Comlink) which together make the integration:
 - **Profile** - describe business capabilities apart from the implementation details, what is expected as input and what will be the result. Profile name have optional scope before `/` and required name `[scope/]<name>`
 - **Provider** - Define a provider's API services and security schemes to use in a Comlink Map
 - **Map** - describe implementation details for fulfilling a business capability from a Comlink Profile
 
-To glue all the parts together, SuperfaceClient uses name and file structure convention.
+To glue all the parts together, OneClient uses name and file structure convention.
 
 ```
 .
@@ -73,10 +73,10 @@ The final structure should look like this:
 Create `index.mjs` file with following content and update 
 
 ```js
-import { SuperfaceClient } from '@superfaceai/one-sdk';
+import { OneClient } from '@superfaceai/one-sdk';
 
 async function main() {
-  const client = new SuperfaceClient();
+  const client = new OneClient();
   const profile = await client.getProfile('<profileName>');
 
   const result = await profile.getUseCase('<usecaseName>').perform({
@@ -118,7 +118,7 @@ OneSDK uses [ECMAScript modules](https://developer.mozilla.org/en-US/docs/Web/Ja
 The main difference compared to Node.js is a need to use a virtual filesystem to load the Comlink files. It is needed due to the deployment process, where all files need to be bundled together.
 
 ```js
-import { SuperfaceClient, PerformError, UnexpectedError } from '@superfaceai/one-sdk/cloudflare';
+import { OneClient, PerformError, UnexpectedError } from '@superfaceai/one-sdk/cloudflare';
 
 import profileFile from '../superface/[scope.]<name>.profile';
 import mapFile from '../superface/[scope.]<name>.<providerName>.map.js';
@@ -128,11 +128,11 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    const client = new SuperfaceClient({
+    const client = new OneClient({
       env: {
         SF_LOG: 'info' // use `debug` or `trace` for development debugging
       },
-      // preopens describes the virtual filesystem whith the SuperfaceClient file convention mapped to assets
+      // preopens describes the virtual filesystem whith the OneClient file convention mapped to assets
       preopens: {
         'superface/[scope.]<name>.profile': new Uint8Array(profileFile),
         'superface/[scope.]<name>.<providerName>.map.js': new Uint8Array(mapFile),

@@ -1,8 +1,8 @@
-import { SuperfaceClient, PerformError } from '@superfaceai/one-sdk/cloudflare';
+import { OneClient, PerformError } from '@superfaceai/one-sdk/cloudflare';
 
-import { COMLINK_IMPORTS } from './comlink';
+import { COMLINK_IMPORTS } from './comlinks';
 
-const client = new SuperfaceClient({
+const client = new OneClient({
   env: {
     SF_LOG: 'trace',
     SF_CONFIG_CACHE_DURATION: '10'

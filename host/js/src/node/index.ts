@@ -237,7 +237,7 @@ class InternalClient {
   }
 }
 
-export class SuperfaceClient {
+export class OneClient {
   private internal: InternalClient;
 
   constructor(readonly options: ClientOptions = {}) {
