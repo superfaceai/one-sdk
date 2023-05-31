@@ -253,8 +253,8 @@ export class OneClient {
     this.internal = new InternalClient(options);
   }
 
-  public destroy() {
-    this.internal.destroy();
+  public async destroy() {
+    await this.internal.destroy();
   }
 
   public async getProfile(name: string): Promise<Profile> {

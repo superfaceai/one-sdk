@@ -72,5 +72,10 @@ describe('OneClient', () => {
 
       expect(results.filter(r => r.isOk()).length).toBe(3);
     });
+
+    test('destroy without setup', async () => {
+      const client = new SuperfaceClient({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
+      await expect(client.destroy()).resolves.not.toThrow();
+    });
   });
 });
