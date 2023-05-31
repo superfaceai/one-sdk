@@ -6,10 +6,6 @@ publish = false
 
 [features]
 default = []
-# stub out ffi/imports, so that this module can be run without host environemnt
-# this is intended to enable testing this and dependent modules which won't have host
-# imports available during testing
-stub_ffi = []
 
 [dependencies]
 thiserror = { workspace = true }
@@ -20,6 +16,3 @@ serde_urlencoded = { workspace = true }
 url = { workspace = true }
 
 tracing = { workspace = true }
-
-[dev-dependencies]
-host_to_core_std = { path = ".", features = ["stub_ffi"] }

@@ -191,7 +191,6 @@ dependencies = [
 name = "host_to_core_std"
 version = "0.1.0"
 dependencies = [
- "host_to_core_std",
  "serde",
  "serde_json",
  "serde_urlencoded",

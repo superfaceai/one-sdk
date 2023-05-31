@@ -2,8 +2,11 @@ use std::io::{self, Read};
 
 use serde::{Deserialize, Serialize};
 
-use super::{IoStream, MessageExchange, EXCHANGE_MESSAGE};
-use crate::abi::{err_from_wasi_errno, Size};
+use super::{IoStream, IoStreamHandle};
+use crate::abi::{
+    err_from_wasi_errno, MessageExchange, Size, StaticMessageExchange, StaticStreamExchange,
+    StreamExchange,
+};
 
 // Initial idea was to use the file-open message to obtain a fd from the host
 // the use it with `std::fs::File::from_raw_fd`, but the ability to allocate/inject fds into
@@ -11,7 +14,7 @@ use crate::abi::{err_from_wasi_errno, Size};
 // even though wasmtime rust crate has this API, wasmer is more complex).
 //
 // Instead we rely on our own read/write/close methods and only expose `Read` and `Write` for now. the `fs::File` API will still work
-// but only for files which have been preopened through WASI, otherwise we'll rely on out messages and streams.
+// but only for files which have been preopened through WASI, otherwise we'll rely on our messages and streams.
 
 define_exchange_core_to_host! {
     struct FileOpenRequest<'a> {
@@ -26,7 +29,7 @@ define_exchange_core_to_host! {
         create_new: bool,
     } -> enum FileOpenResponse {
         Ok {
-            stream: IoStream
+            stream: IoStreamHandle
         },
         Err { errno: Size }
     }
@@ -86,7 +89,12 @@ impl OpenOptions {
         self
     }
 
-    pub fn open(&self, path: &str) -> Result<IoStream, io::Error> {
+    pub fn open_in<Me: MessageExchange, Se: StreamExchange>(
+        &self,
+        path: &str,
+        message_exchange: Me,
+        stream_exchange: Se,
+    ) -> Result<IoStream<Se>, io::Error> {
         let response = FileOpenRequest {
             kind: FileOpenRequest::KIND,
             path,
@@ -97,21 +105,45 @@ impl OpenOptions {
             create: self.create,
             create_new: self.create_new,
         }
-        .send_json(&EXCHANGE_MESSAGE)
+        .send_json_in(message_exchange)
         .unwrap();
 
         match response {
-            FileOpenResponse::Ok { stream } => Ok(stream),
+            FileOpenResponse::Ok { stream } => {
+                Ok(IoStream::from_handle_in(stream, stream_exchange))
+            }
             FileOpenResponse::Err { errno } => Err(err_from_wasi_errno(errno)),
         }
     }
 }
 
-pub fn read_to_string(path: &str) -> Result<String, io::Error> {
-    let mut file = OpenOptions::new().read(true).open(path.as_ref())?;
+pub struct FsConvenience<Me: StaticMessageExchange, Se: StaticStreamExchange>(
+    std::marker::PhantomData<(Me, Se)>,
+);
+impl<Me: StaticMessageExchange, Se: StaticStreamExchange> FsConvenience<Me, Se> {
+    /// Like [std::fs::read].
+    pub fn read(path: &str) -> Result<Vec<u8>, io::Error> {
+        let mut file =
+            OpenOptions::new()
+                .read(true)
+                .open_in(path.as_ref(), Me::instance(), Se::instance())?;
 
-    let mut data = String::new();
-    file.read_to_string(&mut data)?;
+        let mut data = Vec::new();
+        file.read_to_end(&mut data)?;
 
-    Ok(data)
+        Ok(data)
+    }
+
+    /// Like [std::fs::read_to_string].
+    pub fn read_to_string(path: &str) -> Result<String, io::Error> {
+        let mut file =
+            OpenOptions::new()
+                .read(true)
+                .open_in(path.as_ref(), Me::instance(), Se::instance())?;
+
+        let mut data = String::new();
+        file.read_to_string(&mut data)?;
+
+        Ok(data)
+    }
 }

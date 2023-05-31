@@ -3,8 +3,7 @@ use std::collections::BTreeMap;
 use tracing::instrument;
 
 use sf_std::unstable::{
-    fs,
-    perform::{perform_input, PerformException},
+    perform::{PerformException, PerformInput},
     provider::ProviderJson,
     HostValue,
 };
@@ -25,6 +24,11 @@ mod profile_validator;
 use cache::{DocumentCache, DocumentCacheError};
 pub use config::CoreConfiguration;
 use map_std_impl::MapStdImpl;
+
+use crate::bindings::{MessageExchangeFfi, StreamExchangeFfi};
+type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
+type HttpRequest = sf_std::unstable::http::HttpRequest<MessageExchangeFfi, StreamExchangeFfi>;
+type IoStream = sf_std::unstable::IoStream<StreamExchangeFfi>;
 
 pub struct PerformExceptionError {
     pub message: String,
@@ -126,7 +130,7 @@ impl SuperfaceCore {
     }
 
     pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
-        let perform_input = perform_input();
+        let perform_input = PerformInput::take_in(MessageExchangeFfi);
 
         self.document_cache.cache(&perform_input.profile_url)?;
         self.document_cache.cache(&perform_input.profile_url)?;
@@ -193,7 +197,7 @@ impl SuperfaceCore {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
                 let replacement =
-                    fs::read_to_string(&path).map_err(|err| PerformExceptionError {
+                    Fs::read_to_string(&path).map_err(|err| PerformExceptionError {
                         message: format!("Failed to load replacement map_std: {}", err),
                     })?;
 

@@ -1,8 +1,5 @@
 //! Unstable functions provide no stability guarantees
 
-use super::MessageExchange;
-use crate::abi::{AbiResultRepr, Handle, MessageFn, Ptr, Size, StreamFn};
-
 pub mod fs;
 pub mod http;
 pub mod perform;
@@ -15,60 +12,7 @@ pub use value::HostValue;
 pub use value::SecurityValue;
 pub use value::SecurityValuesMap;
 mod stream;
-pub use stream::IoStream;
-
-//////////////
-// MESSAGES //
-//////////////
-
-// SAFETY: We choose to trust this FFI.
-const EXCHANGE_MESSAGE: MessageFn = unsafe {
-    MessageFn::new(
-        __import_message_exchange,
-        __import_message_exchange_retrieve,
-    )
-};
-#[cfg(not(feature = "stub_ffi"))]
-#[link(wasm_import_module = "sf_host_unstable")]
-extern "C" {
-    #[link_name = "message_exchange"]
-    fn __import_message_exchange(
-        msg_ptr: Ptr<u8>,
-        msg_len: Size,
-        out_ptr: Ptr<u8>,
-        out_len: Size,
-        ret_handle: Ptr<Handle>,
-    ) -> Size;
-
-    #[link_name = "message_exchange_retrieve"]
-    fn __import_message_exchange_retrieve(
-        handle: Handle,
-        out_ptr: Ptr<u8>,
-        out_len: Size,
-    ) -> AbiResultRepr;
-}
-#[cfg(feature = "stub_ffi")]
-extern "C" fn __import_message_exchange(
-    _msg_ptr: Ptr<u8>,
-    _msg_len: Size,
-    _out_ptr: Ptr<u8>,
-    _out_len: Size,
-    _ret_handle: Ptr<Handle>,
-) -> Size {
-    unreachable!()
-}
-#[cfg(feature = "stub_ffi")]
-extern "C" fn __import_message_exchange_retrieve(
-    _handle: Handle,
-    _out_ptr: Ptr<u8>,
-    _out_len: Size,
-) -> AbiResultRepr {
-    unreachable!()
-}
-
-////////////
-// ERRORS //
-////////////
+pub use stream::{IoStream, IoStreamHandle};
 
 /// Host JS counterpart: host/js/src/common/app.ts
 #[derive(Debug, Serialize, Deserialize)]
@@ -85,59 +29,11 @@ pub enum ErrorCode {
     NetworkInvalidHandle,
 }
 
-/////////////
-// STREAMS //
-/////////////
-
-// SAFETY: We choose to trust this FFI.
-const STREAM_IO: StreamFn = unsafe {
-    StreamFn::new(
-        __import_stream_read,
-        __import_stream_write,
-        __import_stream_close,
-    )
-};
-#[cfg(not(feature = "stub_ffi"))]
-#[link(wasm_import_module = "sf_host_unstable")]
-extern "C" {
-    #[link_name = "stream_read"]
-    fn __import_stream_read(handle: Handle, out_ptr: Ptr<u8>, out_len: Size) -> AbiResultRepr;
-
-    #[link_name = "stream_write"]
-    fn __import_stream_write(handle: Handle, in_ptr: Ptr<u8>, in_len: Size) -> AbiResultRepr;
-
-    #[link_name = "stream_close"]
-    fn __import_stream_close(handle: Handle) -> AbiResultRepr;
-}
-#[cfg(feature = "stub_ffi")]
-extern "C" fn __import_stream_read(
-    _handle: Handle,
-    _out_ptr: Ptr<u8>,
-    _out_len: Size,
-) -> AbiResultRepr {
-    unreachable!()
-}
-#[cfg(feature = "stub_ffi")]
-extern "C" fn __import_stream_write(
-    _handle: Handle,
-    _in_ptr: Ptr<u8>,
-    _in_len: Size,
-) -> AbiResultRepr {
-    unreachable!()
-}
-#[cfg(feature = "stub_ffi")]
-extern "C" fn __import_stream_close(handle: Handle) -> AbiResultRepr {
-    // this is actually called in tests which construct IoStreams, so we always succeed here
-    // TODO: this should possibly be configurable on per-test basis
-    assert_ne!(handle, 0);
-    0
-}
-
 #[cfg(test)]
 mod test {
     use serde_json::json;
 
-    use super::{HostValue, IoStream};
+    use super::{HostValue, IoStreamHandle};
 
     // TODO: if this macro is needed outside of tests we can move it to the above module
     macro_rules! host_value_object {
@@ -194,9 +90,9 @@ mod test {
                 "object" => host_value_object! {
                     "none2" => HostValue::None,
                     "boolean" => HostValue::Bool(true),
-                    "stream2" => HostValue::Stream(IoStream::from_raw_handle(123))
+                    "stream2" => HostValue::Stream(IoStreamHandle::from_raw_handle(123))
                 },
-                "stream" => HostValue::Stream(IoStream::from_raw_handle(45))
+                "stream" => HostValue::Stream(IoStreamHandle::from_raw_handle(45))
             }
         );
 

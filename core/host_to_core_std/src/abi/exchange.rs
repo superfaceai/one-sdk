@@ -15,7 +15,80 @@ pub enum JsonMessageError {
     DeserializeFailed(serde_json::Error),
 }
 
-pub struct MessageFn {
+/// Implementation of a channel over which messages can be exchanged.
+pub trait MessageExchange {
+    /// Invoke exchange by sending `message` and retrieving response.
+    fn invoke(&self, message: &[u8]) -> Vec<u8>;
+
+    /// Sends a message using [invoke](Self::invoke) by serializing and deserializing JSON.
+    fn invoke_json<M: Serialize, R: DeserializeOwned>(
+        &self,
+        message: &M,
+    ) -> Result<R, JsonMessageError> {
+        let _span = tracing::span!(tracing::Level::TRACE, "host/message_exchange");
+        let _span = _span.enter();
+
+        let json_message =
+            serde_json::to_string(message).map_err(JsonMessageError::SerializeFailed)?;
+
+        tracing::trace!(request = %json_message);
+
+        let response = self.invoke(json_message.as_bytes());
+
+        tracing::trace!(response = %std::str::from_utf8(response.as_slice()).unwrap());
+
+        let response = serde_json::from_slice(response.as_slice())
+            .map_err(JsonMessageError::DeserializeFailed)?;
+
+        Ok(response)
+    }
+}
+impl<E: MessageExchange + ?Sized> MessageExchange for &E {
+    fn invoke(&self, message: &[u8]) -> Vec<u8> {
+        (**self).invoke(message)
+    }
+}
+/// Static message exchange is a trait for `MessageExchange`s which can be accessed in static context.
+pub trait StaticMessageExchange: MessageExchange + Sized {
+    /// Returns an instance of this exchange.
+    ///
+    /// This does not have to be a pure function.
+    fn instance() -> Self;
+}
+
+/// Implementation of a channel over which byte streams can be exchanged.
+///
+/// Semantics are similar to [std::io::Read] and [std::io::Write].
+pub trait StreamExchange {
+    fn read(&self, handle: Handle, buf: &mut [u8]) -> io::Result<Size>;
+
+    fn write(&self, handle: Handle, buf: &[u8]) -> io::Result<Size>;
+
+    fn close(&self, handle: Handle) -> io::Result<()>;
+}
+impl<E: StreamExchange + ?Sized> StreamExchange for &E {
+    fn read(&self, handle: Handle, buf: &mut [u8]) -> io::Result<Size> {
+        (**self).read(handle, buf)
+    }
+
+    fn write(&self, handle: Handle, buf: &[u8]) -> io::Result<Size> {
+        (**self).write(handle, buf)
+    }
+
+    fn close(&self, handle: Handle) -> io::Result<()> {
+        (**self).close(handle)
+    }
+}
+/// Static stream exchange is a trait for `StreamExchange`s which can be accessed in static context.
+pub trait StaticStreamExchange: StreamExchange + Sized {
+    /// Returns an instance of this exchange.
+    ///
+    /// This does not have to be a pure function.
+    fn instance() -> Self;
+}
+
+/// Implementation of [MessageExchange] over FFI functions.
+pub struct MessageExchangeFfiFn {
     /// Send message and get response or handle to stored response.
     ///
     /// `fn(msg_ptr, msg_len, out_ptr, out_len, ret_handle) -> size
@@ -25,7 +98,7 @@ pub struct MessageFn {
     /// `fn(handle, out_ptr, out_len) -> Result<size, errno>`
     retrieve_fn: unsafe extern "C" fn(Handle, Ptr<u8>, Size) -> AbiResultRepr,
 }
-impl MessageFn {
+impl MessageExchangeFfiFn {
     const DEFAULT_RESPONSE_BUFFER_SIZE: usize = 1024; // or 8k?
 
     /// ## Safety
@@ -40,9 +113,10 @@ impl MessageFn {
             retrieve_fn,
         }
     }
-
+}
+impl MessageExchange for MessageExchangeFfiFn {
     /// Send a message to `self.exchange_fn` and retrieve response, calling `self.retrieve_fn` only if the response doesn't fit into the initial buffer.
-    pub fn invoke(&self, message: &[u8]) -> Vec<u8> {
+    fn invoke(&self, message: &[u8]) -> Vec<u8> {
         let mut response_buffer = Vec::<u8>::with_capacity(Self::DEFAULT_RESPONSE_BUFFER_SIZE);
 
         let (result_size, result_handle) = {
@@ -95,32 +169,10 @@ impl MessageFn {
 
         response_buffer
     }
-
-    /// Sends a message using [invoke](Self::invoke) by serializing and deserializing JSON.
-    pub fn invoke_json<M: Serialize, R: DeserializeOwned>(
-        &self,
-        message: &M,
-    ) -> Result<R, JsonMessageError> {
-        let _span = tracing::span!(tracing::Level::TRACE, "host/message_exchange");
-        let _span = _span.enter();
-
-        let json_message =
-            serde_json::to_string(message).map_err(JsonMessageError::SerializeFailed)?;
-
-        tracing::trace!(request = %json_message);
-
-        let response = self.invoke(json_message.as_bytes());
-
-        tracing::trace!(response = %std::str::from_utf8(response.as_slice()).unwrap());
-
-        let response = serde_json::from_slice(response.as_slice())
-            .map_err(JsonMessageError::DeserializeFailed)?;
-
-        Ok(response)
-    }
 }
 
-pub struct StreamFn {
+/// Abstract implementation of [StreamExchange] over FFI functions.
+pub struct StreamExchangeFfiFn {
     /// Read up to `out_len` bytes from stream at `handle`, return number of read bytes.
     ///
     /// `fn(handle, out_ptr, out_len) -> Result<read, errno>`
@@ -134,7 +186,7 @@ pub struct StreamFn {
     /// `fn(handle) -> Result<(), errno>`
     close_fn: unsafe extern "C" fn(Handle) -> AbiResultRepr,
 }
-impl StreamFn {
+impl StreamExchangeFfiFn {
     /// ## Safety
     ///
     /// Calling any of `read_fn`, `write_fn` and `close_fn` according to their ABI must not cause undefined behavior.
@@ -149,8 +201,9 @@ impl StreamFn {
             close_fn,
         }
     }
-
-    pub fn read(&self, handle: Handle, buf: &mut [u8]) -> io::Result<Size> {
+}
+impl StreamExchange for StreamExchangeFfiFn {
+    fn read(&self, handle: Handle, buf: &mut [u8]) -> io::Result<Size> {
         let out_ptr = buf.as_mut_ptr().into();
         let out_len = buf.len() as Size;
 
@@ -160,7 +213,7 @@ impl StreamFn {
         result.into_io_result().map(|read| read)
     }
 
-    pub fn write(&self, handle: Handle, buf: &[u8]) -> io::Result<Size> {
+    fn write(&self, handle: Handle, buf: &[u8]) -> io::Result<Size> {
         let in_ptr = buf.as_ptr().into();
         let in_len = buf.len() as Size;
 
@@ -170,7 +223,7 @@ impl StreamFn {
         result.into_io_result().map(|written| written)
     }
 
-    pub fn close(&self, handle: Handle) -> io::Result<()> {
+    fn close(&self, handle: Handle) -> io::Result<()> {
         // SAFETY: caller of constructor promises it is safe
         let result: AbiResult = unsafe { (self.close_fn)(handle).into() };
 
@@ -179,14 +232,74 @@ impl StreamFn {
 }
 
 #[cfg(test)]
-mod test {
+pub mod testing {
+    //! Here we export implementation of MessageExchange and StreamExchange for testing.
+
     use std::sync::Mutex;
 
-    use serde::{Deserialize, Serialize};
+    use super::{io, Handle, MessageExchange, Size, StreamExchange};
 
-    use super::{
-        MessageFn, StreamFn, {AbiResult, AbiResultRepr, Handle, Ptr, Size},
-    };
+    // Mutex so the function can be FnMut, but in WASM it doesn't do much.
+    pub struct TestMessageExchangeFn<F: FnMut(serde_json::Value) -> serde_json::Value>(Mutex<F>);
+    impl<F: FnMut(serde_json::Value) -> serde_json::Value> TestMessageExchangeFn<F> {
+        pub fn new(fun: F) -> Self {
+            Self(Mutex::new(fun))
+        }
+    }
+    impl<F: FnMut(serde_json::Value) -> serde_json::Value> MessageExchange
+        for TestMessageExchangeFn<F>
+    {
+        fn invoke(&self, message: &[u8]) -> Vec<u8> {
+            let message = serde_json::from_slice(message).unwrap();
+            let response = (self.0.lock().unwrap())(message);
+
+            serde_json::to_vec(&response).unwrap()
+        }
+    }
+
+    pub struct TestStreamExchangeFn<Fr, Fw, Fc>(Mutex<Fr>, Mutex<Fw>, Mutex<Fc>)
+    where
+        Fr: FnMut(Handle, &mut [u8]) -> io::Result<Size>,
+        Fw: FnMut(Handle, &[u8]) -> io::Result<Size>,
+        Fc: FnMut(Handle) -> io::Result<()>;
+    impl<Fr, Fw, Fc> TestStreamExchangeFn<Fr, Fw, Fc>
+    where
+        Fr: FnMut(Handle, &mut [u8]) -> io::Result<Size>,
+        Fw: FnMut(Handle, &[u8]) -> io::Result<Size>,
+        Fc: FnMut(Handle) -> io::Result<()>,
+    {
+        pub fn new(read: Fr, write: Fw, close: Fc) -> Self {
+            Self(Mutex::new(read), Mutex::new(write), Mutex::new(close))
+        }
+    }
+    impl<Fr, Fw, Fc> StreamExchange for TestStreamExchangeFn<Fr, Fw, Fc>
+    where
+        Fr: FnMut(Handle, &mut [u8]) -> io::Result<Size>,
+        Fw: FnMut(Handle, &[u8]) -> io::Result<Size>,
+        Fc: FnMut(Handle) -> io::Result<()>,
+    {
+        fn read(&self, handle: Handle, buf: &mut [u8]) -> io::Result<Size> {
+            (self.0.lock().unwrap())(handle, buf)
+        }
+
+        fn write(&self, handle: Handle, buf: &[u8]) -> io::Result<Size> {
+            (self.1.lock().unwrap())(handle, buf)
+        }
+
+        fn close(&self, handle: Handle) -> io::Result<()> {
+            (self.2.lock().unwrap())(handle)
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    // Here are the actual tests for this module.
+
+    use std::sync::Mutex;
+
+    use super::*;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Serialize, Deserialize)]
     struct TestMsg {
@@ -269,8 +382,8 @@ mod test {
         .into()
     }
 
-    const MESSAGE_FN: MessageFn =
-        unsafe { MessageFn::new(test_message_exchange_fn, test_message_retrieve_fn) };
+    const MESSAGE_FN: MessageExchangeFfiFn =
+        unsafe { MessageExchangeFfiFn::new(test_message_exchange_fn, test_message_retrieve_fn) };
 
     #[test]
     fn test_invoke_message_roundtrip() {
@@ -290,7 +403,7 @@ mod test {
     fn test_invoke_message_roundtrip_toobig() {
         let long_string = {
             let mut value = String::new();
-            for _ in 0..MessageFn::DEFAULT_RESPONSE_BUFFER_SIZE {
+            for _ in 0..MessageExchangeFfiFn::DEFAULT_RESPONSE_BUFFER_SIZE {
                 value.push_str("na");
             }
 
@@ -354,8 +467,8 @@ mod test {
 
         return AbiResult::Err(handle as Size).into();
     }
-    const STREAM_IO: StreamFn =
-        unsafe { StreamFn::new(test_stream_read, test_stream_write, test_stream_close) };
+    const STREAM_IO: StreamExchangeFfiFn =
+        unsafe { StreamExchangeFfiFn::new(test_stream_read, test_stream_write, test_stream_close) };
 
     #[test]
     fn test_invoke_stream_read_5() {

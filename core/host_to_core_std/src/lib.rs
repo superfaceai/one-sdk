@@ -75,9 +75,10 @@ macro_rules! define_exchange_core_to_host {
                     $( $field_name ),*
                 }
             }
-        }
-        impl $(<$life>)? $crate::MessageExchange for $name $(<$life>)? {
-            type Response = $response_name;
+
+            pub fn send_json_in<E: $crate::abi::MessageExchange>(&self, message_exchange: E) -> Result<$response_name, $crate::abi::JsonMessageError> {
+                message_exchange.invoke_json(self)
+            }
         }
 
         $( #[$out_attr] )*
@@ -97,21 +98,8 @@ macro_rules! define_exchange_core_to_host {
 
 use std::collections::HashMap;
 
-use serde::{de::DeserializeOwned, Serialize};
-
 pub mod abi;
-use abi::{JsonMessageError, MessageFn};
-
 pub mod unstable;
-
-trait MessageExchange: Sized + Serialize {
-    type Response: DeserializeOwned;
-
-    /// Convenience for invoking `fun` and expecting `Self::Response`.
-    fn send_json(&self, fun: &MessageFn) -> Result<Self::Response, JsonMessageError> {
-        fun.invoke_json(self)
-    }
-}
 
 pub type MultiMap = HashMap<String, Vec<String>>;
 // TODO: consider making the key always lowercase at the type level somehow

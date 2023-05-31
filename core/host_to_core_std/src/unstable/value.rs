@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 
-use super::IoStream;
+use super::IoStreamHandle;
 
 /// Similar to [serde_json::Value], it is able to represent any value passed in as input or output.
 ///
@@ -12,7 +12,7 @@ use super::IoStream;
 #[derive(Debug, PartialEq, Eq)]
 pub enum HostValue {
     // custom
-    Stream(IoStream),
+    Stream(IoStreamHandle),
     // standard
     None,
     Bool(bool),
@@ -126,7 +126,7 @@ impl<'de> Deserialize<'de> for HostValue {
                 let values = match visitor.next_key::<String>()? {
                     None => BTreeMap::new(),
                     Some(key) if key == HostValue::CUSTOM_TYPE_STREAM => {
-                        let stream: IoStream = visitor.next_value()?;
+                        let stream: IoStreamHandle = visitor.next_value()?;
 
                         return Ok(HostValue::Stream(stream));
                     }
