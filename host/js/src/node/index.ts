@@ -168,8 +168,6 @@ class InternalClient {
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers()
     }, { metricsTimeout: 1000 });
-
-    this.initProcessHooks();
   }
 
   public destroy() {
@@ -193,21 +191,6 @@ class InternalClient {
     return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
   }
 
-  private async setup() {
-    return this.readyState.withLock(async (readyState) => {
-      if (readyState.ready === true) {
-        return;
-      }
-
-      await this.app.loadCore(
-        await fs.readFile(this.corePath)
-      );
-      await this.app.setup();
-
-      readyState.ready = true;
-    });
-  }
-
   public async resolveProfileUrl(profile: string): Promise<string> {
     const resolvedProfile = profile.replace(/\//g, '.');
     const path = resolvePath(this.assetsPath, `${resolvedProfile}.profile`);
@@ -226,6 +209,23 @@ class InternalClient {
     const path = resolvePath(this.assetsPath, `${provider}.provider.json`);
 
     return `file://${path}`;
+  }
+
+  private async setup() {
+    return this.readyState.withLock(async (readyState) => {
+      if (readyState.ready === true) {
+        return;
+      }
+
+      await this.app.loadCore(
+        await fs.readFile(this.corePath)
+      );
+      await this.app.setup();
+
+      this.initProcessHooks();
+
+      readyState.ready = true;
+    });
   }
 
   private initProcessHooks() {
