@@ -258,6 +258,7 @@ type Stream = {
   close(): Promise<void>;
 };
 type AppCore = {
+
   instance: WebAssembly.Instance;
   asyncify: Asyncify;
   setupFn: () => Promise<void>;
@@ -321,6 +322,20 @@ export class App implements AppContext {
     await this.loadCoreModule(module);
   }
 
+  wrapExport<A extends unknown[], R>(fn: (...arg: A) => R): (...arg: A) => Promise<R> {
+    return async (...args: A) => {
+      try {
+        return await fn(...args);
+      } catch (err: unknown) {
+        if (err instanceof WebAssembly.RuntimeError) {
+          throw new UnexpectedError('WebAssemblyRuntimeError', `${err.message}`,);
+        }
+
+        throw new UnexpectedError('UnexpectedError', `${err}`);
+      }
+    }
+  }
+
   async loadCoreModule(module: WebAssembly.Module) {
     const [instance, asyncify] = await Asyncify.instantiate(module, (asyncify) => this.importObject(asyncify));
 
@@ -329,10 +344,10 @@ export class App implements AppContext {
     this.core = new AsyncMutex({
       instance,
       asyncify,
-      setupFn: asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void),
-      teardownFn: asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void),
-      performFn: asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void),
-      sendMetricsFn: asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void)
+      setupFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void)),
+      teardownFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void)),
+      performFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void)),
+      sendMetricsFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void))
     });
   }
 
@@ -403,8 +418,6 @@ export class App implements AppContext {
   }
 
   async handleMessage(message: any): Promise<any> {
-    // console.log('host: message:', message);
-
     switch (message['kind']) {
       case 'perform-input':
         return {
