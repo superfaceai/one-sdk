@@ -10,13 +10,13 @@ use sf_std::{
     },
 };
 
-#[cfg(feature = "core_mock")]
-use sf_std::unstable::HostValue;
-
 mod sf_core;
 use sf_core::{CoreConfiguration, SuperfaceCore};
 
 mod bindings;
+
+#[cfg(feature = "core_mock")]
+mod mock;
 
 static GLOBAL_STATE: Mutex<Option<SuperfaceCore>> = Mutex::new(None);
 
@@ -32,6 +32,9 @@ extern "C" {
 ///
 /// This function must not be called twice without calling teardown in between.
 pub extern "C" fn __export_superface_core_setup() {
+    #[cfg(feature = "core_mock")]
+    return mock::__export_superface_core_setup();
+
     // call ctors first
     unsafe { __wasm_call_ctors() };
 
@@ -42,12 +45,6 @@ pub extern "C" fn __export_superface_core_setup() {
         .init();
 
     tracing::debug!("superface_core_setup called");
-
-    #[cfg(feature = "core_mock")]
-    {
-        tracing::debug!("mocked superface core setup");
-        return;
-    }
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
     if lock.is_some() {
@@ -75,11 +72,7 @@ pub extern "C" fn __export_superface_core_setup() {
 /// This function must be called exactly once after calling core setup.
 pub extern "C" fn __export_superface_core_teardown() {
     #[cfg(feature = "core_mock")]
-    {
-        tracing::debug!("mocked superface core teardown");
-        unsafe { __wasm_call_dtors() };
-        return;
-    }
+    return mock::__export_superface_core_teardown();
 
     tracing::debug!("superface_core_teardown called");
 
@@ -105,15 +98,7 @@ pub extern "C" fn __export_superface_core_teardown() {
 /// All information about map to be performed will be retrieved through messages.
 pub extern "C" fn __export_superface_core_perform() {
     #[cfg(feature = "core_mock")]
-    {
-        let val = std::env::var("CORE_PERFORM").unwrap_or_default();
-        tracing::debug!("mocked superface core perform {}", val);
-
-        return match val.as_str() {
-            "panic" => panic!("Requested panic!"),
-            _ => set_perform_output_result_in(HostValue::Bool(true), MessageExchangeFfi),
-        };
-    }
+    return mock::__export_superface_core_perform();
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
     let state: &mut SuperfaceCore = lock
@@ -136,10 +121,7 @@ pub extern "C" fn __export_superface_core_perform() {
 /// The host should call this export periodically to send batched insights.
 pub extern "C" fn __export_superface_core_send_metrics() {
     #[cfg(feature = "core_mock")]
-    {
-        tracing::debug!("mocked superface core send metrics");
-        return;
-    }
+    return mock::__export_superface_core_send_metrics();
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
     let state: &mut SuperfaceCore = lock
