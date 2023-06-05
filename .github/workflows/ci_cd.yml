@@ -59,6 +59,21 @@ jobs:
       - name: Run tests
         working-directory: core
         run: cargo test
+      # Core build for Host's tests
+      - name: Run make to build core
+        env:
+          CARGO_INCREMENTAL: "0" # disable incremental to reduce load on the cache
+        run: make build_core CORE_PROFILE=test OS=${{ runner.os }}
+      - name: Upload artifact test-core-async.wasm
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-core-async-wasm
+          path: core/dist/test-core-async.wasm
+      - name: Upload artifact core.wasm
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-core-wasm
+          path: core/dist/test-core.wasm
 
   integration:
     runs-on: ubuntu-latest
@@ -109,6 +124,10 @@ jobs:
     - uses: actions/download-artifact@v3
       with:
         name: core-async-wasm
+        path: host/js/assets
+    - uses: actions/download-artifact@v3
+      with:
+        name: test-core-async-wasm
         path: host/js/assets
     # test and build
     - name: Install Yarn dependencies

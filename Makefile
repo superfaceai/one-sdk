@@ -6,6 +6,7 @@ CORE_MODE=default
 CORE_PHONY=0
 # builds the core in docker instead of on the host
 CORE_DOCKER=0
+CORE_PROFILE=debug
 
 ifeq ($(CORE_MODE),default)
 	CORE_PHONY=1
@@ -17,29 +18,33 @@ endif
 
 ifeq ($(CORE_PROFILE),release)
 	CORE_FLAGS=--release
-else
-	CORE_PROFILE=debug
-	CORE_FLAGS=
+endif
+ifeq ($(CORE_PROFILE),test)
+	CORE_FLAGS=--features "core_mock"
 endif
 
 # WASI SDK
 WASI_SDK_VERSION=20
-ifeq ($(OS),Linux)
-	WASI_SDK_OS=linux
-else
-	WASI_SDK_OS=macos
-endif
+WASI_SDK_OS=macos
 WASI_SDK_FOLDER=core/wasi-sdk-${WASI_SDK_VERSION}.0
 WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-${WASI_SDK_OS}.tar.gz"
+ifeq ($(OS),Linux)
+	WASI_SDK_OS=linux
+endif
 
 # Core
-CORE_BUILD=core/target/wasm32-wasi/${CORE_PROFILE}/superface_core.wasm
 CORE_DIST_FOLDER=core/dist
+CORE_BUILD=core/target/wasm32-wasi/${CORE_PROFILE}/superface_core.wasm
 CORE_WASM=${CORE_DIST_FOLDER}/core.wasm
 CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/core-async.wasm
 CORE_JS_ASSETS=core/core/assets/js
 CORE_JS_ASSETS_MAP_STD=${CORE_JS_ASSETS}/map_std.js
 CORE_JS_ASSETS_PROFILE_VALIDATOR=${CORE_JS_ASSETS}/profile_validator.js
+ifeq ($(CORE_PROFILE),test)
+	CORE_BUILD=core/target/wasm32-wasi/debug/superface_core.wasm
+	CORE_WASM=${CORE_DIST_FOLDER}/test-core.wasm
+	CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/test-core-async.wasm
+endif
 
 # Integration
 MAP_STD=integration/map-std/dist/map_std.js
@@ -47,7 +52,11 @@ PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
 
 # Hosts
 HOST_JS_ASSETS=host/js/assets
-HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/core-async.wasm
+ifeq ($(CORE_PROFILE),test)
+	HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/test-core-async.wasm
+else
+	HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/core-async.wasm
+endif
 
 all: clean build
 
@@ -79,18 +88,22 @@ deps_core: ${WASI_SDK_FOLDER}
 
 ${CORE_BUILD}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
 	cd core && cargo build --package superface_core --target wasm32-wasi ${CORE_FLAGS}
+
 ${CORE_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
 	@echo 'Optimizing wasm...'
 	wasm-opt -Oz ${CORE_BUILD} --output ${CORE_WASM}
+
 ${CORE_ASYNCIFY_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
 	@echo 'Running asyncify...'
 	wasm-opt --strip-debug --strip-producers --strip-target-features -Oz --asyncify ${CORE_BUILD} --output ${CORE_ASYNCIFY_WASM}
+
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
 
 test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
 	cd core && cargo test -- -- --nocapture
 endif
+
 build_core: ${CORE_WASM} ${CORE_ASYNCIFY_WASM}
 
 ${CORE_JS_ASSETS_MAP_STD}: ${MAP_STD}

@@ -9,6 +9,7 @@ crate-type = ["cdylib"]
 [features]
 default = ["asyncify"]
 asyncify = []
+core_mock = []
 
 [dependencies]
 anyhow = "1"

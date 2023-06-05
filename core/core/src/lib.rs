@@ -10,6 +10,9 @@ use sf_std::{
     },
 };
 
+#[cfg(feature = "core_mock")]
+use sf_std::unstable::HostValue;
+
 mod sf_core;
 use sf_core::{CoreConfiguration, SuperfaceCore};
 
@@ -88,6 +91,16 @@ pub extern "C" fn __export_superface_core_teardown() {
 ///
 /// All information about map to be performed will be retrieved through messages.
 pub extern "C" fn __export_superface_core_perform() {
+    #[cfg(feature = "core_mock")]
+    {
+        let val = std::env::var("core_perform").unwrap();
+
+        return match val.as_str() {
+            "panic" => panic!("Requested panic!"),
+            _ => set_perform_output_result_in(HostValue::Bool(true), MessageExchangeFfi),
+        };
+    }
+
     let mut lock = GLOBAL_STATE.lock().unwrap();
     let state: &mut SuperfaceCore = lock
         .as_mut()
