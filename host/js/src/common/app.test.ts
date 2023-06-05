@@ -64,7 +64,7 @@ async function createApp(env: Record<string, string>): Promise<[App, jest.SpiedF
     await readFile(createRequire(import.meta.url).resolve('../../assets/test-core-async.wasm'))
   );
 
-  await app.setup();
+  await app.init();
 
   const handleMessage = jest.spyOn(app, 'handleMessage');
   handleMessage.mockImplementation(async (message) => {
@@ -98,7 +98,7 @@ describe('App', () => {
     } catch (e) {
       expect(e).toBeInstanceOf(UnexpectedError);
     } finally {
-      await app.teardown();
+      await app.destroy();
     }
   });
 });

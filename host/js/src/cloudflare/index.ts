@@ -209,23 +209,19 @@ class InternalClient {
     }, { metricsTimeout: 0 });
   }
 
-  public destroy() {
-    void this.teardown();
-  }
-
-  private async setup() {
+  public async init() {
     if (this.ready) {
       return;
     }
 
     await this.app.loadCoreModule(coreModule);
-    await this.app.setup();
+    await this.app.init();
 
     this.ready = true;
   }
 
-  private async teardown() {
-    await this.app.teardown();
+  public async destroy() {
+    await this.app.destroy();
     this.ready = false;
   }
 
@@ -237,7 +233,7 @@ class InternalClient {
     parameters: Record<string, string> = {},
     security: SecurityValuesMap = {}
   ): Promise<any> {
-    await this.setup();
+    await this.init();
 
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
     const assetsPath = this.options.assetsPath ?? 'superface'; // TODO: path join? - not sure if we are going to stick with this VFS
@@ -261,8 +257,12 @@ export class OneClient {
     this.internal = new InternalClient(options);
   }
 
-  public destroy() {
-    this.internal.destroy();
+  public async init() {
+    await this.internal.init();
+  }
+
+  public async destroy() {
+    await this.internal.destroy();
   }
 
   public async getProfile(name: string): Promise<Profile> {

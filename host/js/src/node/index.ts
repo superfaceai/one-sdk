@@ -170,8 +170,32 @@ class InternalClient {
     }, { metricsTimeout: 1000 });
   }
 
-  public destroy() {
-    void this.teardown();
+  public async init() {
+    return this.readyState.withLock(async (readyState) => {
+      if (readyState.ready === true) {
+        return;
+      }
+
+      await this.app.loadCore(
+        await fs.readFile(this.corePath)
+      );
+      await this.app.init();
+
+      this.initProcessHooks();
+
+      readyState.ready = true;
+    });
+  }
+
+  public async destroy() {
+    return this.readyState.withLock(async (readyState) => {
+      if (readyState.ready === false) {
+        return;
+      }
+
+      await this.app.destroy();
+      readyState.ready = false;
+    });
   }
 
   public async perform(
@@ -182,7 +206,7 @@ class InternalClient {
     parameters: Record<string, string> = {},
     security: SecurityValuesMap = {}
   ): Promise<unknown> {
-    await this.setup();
+    await this.init();
 
     const profileUrl = await this.resolveProfileUrl(profile);
     const providerUrl = await this.resolveProviderUrl(provider);
@@ -211,37 +235,9 @@ class InternalClient {
     return `file://${path}`;
   }
 
-  private async setup() {
-    return this.readyState.withLock(async (readyState) => {
-      if (readyState.ready === true) {
-        return;
-      }
-
-      await this.app.loadCore(
-        await fs.readFile(this.corePath)
-      );
-      await this.app.setup();
-
-      this.initProcessHooks();
-
-      readyState.ready = true;
-    });
-  }
-
   private initProcessHooks() {
     process.on('beforeExit', async () => {
-      await this.teardown();
-    });
-  }
-
-  private async teardown() {
-    return this.readyState.withLock(async (readyState) => {
-      if (readyState.ready === false) {
-        return;
-      }
-
-      await this.app.teardown();
-      readyState.ready = false;
+      await this.destroy();
     });
   }
 }
@@ -251,6 +247,10 @@ export class OneClient {
 
   constructor(readonly options: ClientOptions = {}) {
     this.internal = new InternalClient(options);
+  }
+
+  public async init() {
+    await this.internal.init();
   }
 
   public async destroy() {

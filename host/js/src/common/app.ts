@@ -310,33 +310,12 @@ export class App implements AppContext {
     this.metricsState = { timeout: options.metricsTimeout ?? 1000, handle: 0 };
   }
 
-  private importObject(asyncify: Asyncify): WebAssembly.Imports {
-    return {
-      wasi_snapshot_preview1: this.wasi.wasiImport,
-      ...sf_host.link(this, this.textCoder, asyncify)
-    }
-  }
-
-  async loadCore(wasm: BufferSource) {
+  public async loadCore(wasm: BufferSource) {
     const module = await WebAssembly.compile(wasm);
     await this.loadCoreModule(module);
   }
 
-  wrapExport<A extends unknown[], R>(fn: (...arg: A) => R): (...arg: A) => Promise<R> {
-    return async (...args: A) => {
-      try {
-        return await fn(...args);
-      } catch (err: unknown) {
-        if (err instanceof WebAssembly.RuntimeError) {
-          throw new UnexpectedError('WebAssemblyRuntimeError', `${err.message}`,);
-        }
-
-        throw new UnexpectedError('UnexpectedError', `${err}`);
-      }
-    }
-  }
-
-  async loadCoreModule(module: WebAssembly.Module) {
+  public async loadCoreModule(module: WebAssembly.Module) {
     const [instance, asyncify] = await Asyncify.instantiate(module, (asyncify) => this.importObject(asyncify));
 
     this.wasi.initialize(instance);
@@ -355,21 +334,25 @@ export class App implements AppContext {
     return this.core!.unsafeValue.instance.exports.memory as WebAssembly.Memory;
   }
 
-  get memoryBytes(): Uint8Array {
+  public get memoryBytes(): Uint8Array {
     return new Uint8Array(this.memory.buffer);
   }
 
-  get memoryView(): DataView {
+  public get memoryView(): DataView {
     return new DataView(this.memory.buffer);
   }
 
-  public async setup(): Promise<void> {
-    return this.core!.withLock(core => core.setupFn());
+  public async init(): Promise<void> {
+    if (this.core !== undefined) {
+      return this.core.withLock(core => core.setupFn());
+    }
   }
 
-  public async teardown(): Promise<void> {
-    await this.sendMetrics();
-    return this.core!.withLock(core => core.teardownFn());
+  public async destroy(): Promise<void> {
+    if (this.core !== undefined) {
+      await this.sendMetrics();
+      return this.core.withLock(core => core.teardownFn());
+    }
   }
 
   /**
@@ -417,7 +400,7 @@ export class App implements AppContext {
     );
   }
 
-  async handleMessage(message: any): Promise<any> {
+  public async handleMessage(message: any): Promise<any> {
     switch (message['kind']) {
       case 'perform-input':
         return {
@@ -497,7 +480,7 @@ export class App implements AppContext {
     }
   }
 
-  async readStream(handle: number, out: Uint8Array): Promise<number> {
+  public async readStream(handle: number, out: Uint8Array): Promise<number> {
     const stream = this.streams.get(handle);
     if (stream === undefined) {
       throw new WasiError(WasiErrno.EBADF);
@@ -506,7 +489,7 @@ export class App implements AppContext {
     return stream.read(out);
   }
 
-  async writeStream(handle: number, data: Uint8Array): Promise<number> {
+  public async writeStream(handle: number, data: Uint8Array): Promise<number> {
     const stream = this.streams.get(handle);
     if (stream === undefined) {
       throw new WasiError(WasiErrno.EBADF);
@@ -522,6 +505,32 @@ export class App implements AppContext {
     }
 
     await stream.close();
+  }
+
+  private importObject(asyncify: Asyncify): WebAssembly.Imports {
+    return {
+      wasi_snapshot_preview1: this.wasi.wasiImport,
+      ...sf_host.link(this, this.textCoder, asyncify)
+    }
+  }
+
+  private wrapExport<A extends unknown[], R>(fn: (...arg: A) => R): (...arg: A) => Promise<R> {
+    return async (...args: A) => {
+      try {
+        return await fn(...args);
+      } catch (err: unknown) {
+        // TODO: get metrics from core
+
+        // unsetting core, we can't ensure memory integrity
+        this.core = undefined;
+
+        if (err instanceof WebAssembly.RuntimeError) {
+          throw new UnexpectedError('WebAssemblyRuntimeError', `${err.message}`,);
+        }
+
+        throw new UnexpectedError('UnexpectedError', `${err}`);
+      }
+    }
   }
 
   private async sendMetrics(): Promise<void> {

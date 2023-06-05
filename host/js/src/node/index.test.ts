@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 import { Server, createServer as httpCreateServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath, dirname } from 'node:path';
@@ -7,14 +5,11 @@ import { resolve as resolvePath, dirname } from 'node:path';
 import { OneClient } from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const assetsPath = resolvePath(__dirname, '../../../../examples/maps/src');
 
 describe('OneClient', () => {
   describe('Basic use', () => {
     let server: Server;
-
-    beforeEach(() => {
-      jest.useFakeTimers();
-    });
 
     beforeAll(async () => {
       server = httpCreateServer((req, res) => {
@@ -35,7 +30,7 @@ describe('OneClient', () => {
       server.close();
     });
 
-    test('works', async () => {
+    test('basic use', async () => {
       const client = new OneClient({ assetsPath: resolvePath(__dirname, '../../../../examples/comlinks/src') });
 
       const profile = await client.getProfile('wasm-sdk/example');
@@ -54,7 +49,7 @@ describe('OneClient', () => {
     });
 
     test('concurrent requests', async () => {
-      const client = new SuperfaceClient({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
+      const client = new OneClient({ assetsPath });
 
       const profile = await client.getProfile('wasm-sdk/example');
       const options = {
@@ -70,11 +65,11 @@ describe('OneClient', () => {
         usecase.perform({ id: 3 }, options),
       ]);
 
-      expect(results.filter(r => r.isOk()).length).toBe(3);
+      expect(results.length).toBe(3);
     });
 
     test('destroy without setup', async () => {
-      const client = new SuperfaceClient({ assetsPath: resolvePath(__dirname, '../../../../examples/maps/src') });
+      const client = new OneClient({ assetsPath });
       await expect(client.destroy()).resolves.not.toThrow();
     });
   });
