@@ -3,7 +3,7 @@ import { Asyncify } from './asyncify.js';
 
 import * as sf_host from './sf_host.js';
 import { SecurityValuesMap } from './security.js';
-import { PerformError, UnexpectedError } from './error.js';
+import { PerformError, UnexpectedError, UninitializedError } from './error.js';
 
 export interface WasiContext {
   wasiImport: WebAssembly.ModuleImports;
@@ -331,7 +331,10 @@ export class App implements AppContext {
   }
 
   private get memory(): WebAssembly.Memory {
-    return this.core!.unsafeValue.instance.exports.memory as WebAssembly.Memory;
+    if (this.core === undefined) {
+      throw new UninitializedError();
+    }
+    return this.core.unsafeValue.instance.exports.memory as WebAssembly.Memory;
   }
 
   public get memoryBytes(): Uint8Array {
@@ -498,7 +501,7 @@ export class App implements AppContext {
     return stream.write(data);
   }
 
-  async closeStream(handle: number): Promise<void> {
+  public async closeStream(handle: number): Promise<void> {
     const stream = this.streams.remove(handle);
     if (stream === undefined) {
       throw new WasiError(WasiErrno.EBADF);
@@ -537,7 +540,9 @@ export class App implements AppContext {
     this.timers.clearTimeout(this.metricsState.handle);
     this.metricsState.handle = 0;
 
-    await this.core!.withLock(core => core.sendMetricsFn());
+    if (this.core !== undefined) {
+      await this.core.withLock(core => core.sendMetricsFn());
+    }
   }
 
   private setSendMetricsTimeout() {

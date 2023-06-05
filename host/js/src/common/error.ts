@@ -16,3 +16,9 @@ export class UnexpectedError extends BaseError {
     super(name, message);
   }
 }
+
+export class UninitializedError extends BaseError {
+  constructor() {
+    super('Uninitialized', "SuperfaceClient isn't initialized.");
+  }
+}
