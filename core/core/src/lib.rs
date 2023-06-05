@@ -43,6 +43,12 @@ pub extern "C" fn __export_superface_core_setup() {
 
     tracing::debug!("superface_core_setup called");
 
+    #[cfg(feature = "core_mock")]
+    {
+        tracing::debug!("mocked superface core setup");
+        return;
+    }
+
     let mut lock = GLOBAL_STATE.lock().unwrap();
     if lock.is_some() {
         panic!("Already setup");
@@ -68,6 +74,13 @@ pub extern "C" fn __export_superface_core_setup() {
 ///
 /// This function must be called exactly once after calling core setup.
 pub extern "C" fn __export_superface_core_teardown() {
+    #[cfg(feature = "core_mock")]
+    {
+        tracing::debug!("mocked superface core teardown");
+        unsafe { __wasm_call_dtors() };
+        return;
+    }
+
     tracing::debug!("superface_core_teardown called");
 
     match GLOBAL_STATE.try_lock() {
@@ -93,7 +106,8 @@ pub extern "C" fn __export_superface_core_teardown() {
 pub extern "C" fn __export_superface_core_perform() {
     #[cfg(feature = "core_mock")]
     {
-        let val = std::env::var("core_perform").unwrap();
+        let val = std::env::var("CORE_PERFORM").unwrap_or_default();
+        tracing::debug!("mocked superface core perform {}", val);
 
         return match val.as_str() {
             "panic" => panic!("Requested panic!"),
@@ -121,6 +135,12 @@ pub extern "C" fn __export_superface_core_perform() {
 ///
 /// The host should call this export periodically to send batched insights.
 pub extern "C" fn __export_superface_core_send_metrics() {
+    #[cfg(feature = "core_mock")]
+    {
+        tracing::debug!("mocked superface core send metrics");
+        return;
+    }
+
     let mut lock = GLOBAL_STATE.lock().unwrap();
     let state: &mut SuperfaceCore = lock
         .as_mut()
