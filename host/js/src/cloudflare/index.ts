@@ -7,7 +7,7 @@ export { PerformError, UnexpectedError } from '../common/error.js';
 
 // @ts-ignore
 import coreModule from '../assets/core-async.wasm';
-import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/app.js';
+import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/index.js';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();

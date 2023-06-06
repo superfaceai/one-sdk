@@ -1,11 +1,12 @@
 import { jest } from '@jest/globals';
 
-import { WASI } from 'wasi';
-import { createRequire } from 'module';
 import { readFile } from 'fs/promises';
+import { createRequire } from 'module';
+import { WASI } from 'wasi';
 
-import { App, FileSystem, Network, TextCoder, Timers } from './app.js';
+import { App } from './app.js';
 import { UnexpectedError } from './error.js';
+import { FileSystem, Network, TextCoder, Timers } from './interfaces.js';
 
 
 class TestNetwork implements Network {

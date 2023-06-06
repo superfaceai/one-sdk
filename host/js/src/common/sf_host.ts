@@ -1,4 +1,4 @@
-import type { TextCoder, AppContext } from './app';
+import type { TextCoder, AppContext } from './interfaces';
 import { HandleMap } from './handle_map.js';
 import { Asyncify, AsyncifyState } from './asyncify.js';
 
@@ -66,7 +66,7 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
     ));
     const response = await app.handleMessage(msg);
     // console.log('host: message-response:', response);
-  
+
     let messageHandle = 0;
     const responseBytes = textCoder.encodeUtf8(JSON.stringify(response));
     if (responseBytes.byteLength > out_len) {
@@ -75,7 +75,7 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
       const out = app.memoryBytes.subarray(out_ptr, out_ptr + out_len);
       writeBytes(responseBytes, out);
     }
-  
+
     app.memoryView.setInt32(ret_handle, messageHandle, true);
     return responseBytes.byteLength;
   }
@@ -90,23 +90,23 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
 
     const out = app.memoryBytes.subarray(out_ptr, out_ptr + out_len);
     writeBytes(responseBytes, out);
-    
+
     return abi_ok(responseBytes.byteLength);
   }
 
   async function __export_stream_read(handle: number, out_ptr: number, out_len: number): Promise<AbiResult> {
     const out = app.memoryBytes.subarray(out_ptr, out_ptr + out_len);
-    
+
     return app.readStream(handle, out).then(c => abi_ok(c), e => abi_err(e.errno ?? 1)); // TODO: errors
   }
   async function __export_stream_write(handle: number, in_ptr: number, in_len: number): Promise<AbiResult> {
     const data = app.memoryBytes.subarray(in_ptr, in_ptr + in_len);
-    
+
     return app.writeStream(handle, data).then(c => abi_ok(c), e => abi_err(e.errno ?? 1)); // TODO: errors
   }
   async function __export_stream_close(handle: number): Promise<AbiResult> {
     await app.closeStream(handle).then(_ => abi_ok(0), e => abi_err(e.errno ?? 1)); // TODO: errors
-    
+
     return abi_ok(0);
   }
 

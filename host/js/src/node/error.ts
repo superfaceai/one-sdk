@@ -1,4 +1,4 @@
-import { getSystemErrorMap } from 'util';
+import { getSystemErrorMap } from 'node:util';
 
 import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/index.js';
 
