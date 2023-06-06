@@ -51,55 +51,65 @@ class TestTimers implements Timers {
   }
 }
 
-async function createApp(env: Record<string, string>): Promise<[App, jest.SpiedFunction<(message: any) => Promise<any>>]> {
-  const wasi = new WASI({ env: { ...process.env, ...env } });
+describe('App', () => {
+  let app: App;
+  let handleMessage: jest.SpiedFunction<(message: any) => Promise<any>>;
 
-  const app = new App(wasi, {
-    network: new TestNetwork(),
-    fileSystem: new TestFileSystem(),
-    textCoder: new TestCoder(),
-    timers: new TestTimers(),
-  }, { metricsTimeout: 1000 });
+  beforeEach(async () => {
+    const wasi = new WASI({ env: process.env });
 
-  await app.loadCore(
-    await readFile(createRequire(import.meta.url).resolve('../../assets/test-core-async.wasm'))
-  );
+    app = new App(wasi, {
+      network: new TestNetwork(),
+      fileSystem: new TestFileSystem(),
+      textCoder: new TestCoder(),
+      timers: new TestTimers(),
+    }, { metricsTimeout: 1000 });
 
-  await app.init();
+    await app.loadCore(
+      await readFile(createRequire(import.meta.url).resolve('../../assets/test-core-async.wasm'))
+    );
 
-  const handleMessage = jest.spyOn(app, 'handleMessage');
-  handleMessage.mockImplementation(async (message) => {
-    switch (message.kind) {
-      case 'perform-output-result':
-        (app as any).performState.result = message.result;
-        return {
-          kind: 'ok'
-        }
-    }
+    await app.init();
+
+    handleMessage = jest.spyOn(app, 'handleMessage');
+    handleMessage.mockImplementation(async (message) => {
+      switch (message.kind) {
+        case 'perform-input':
+          const performState = (app as any).performState;
+
+          return {
+            'kind': 'ok',
+            'profile_url': performState.profileUrl,
+            'provider_url': performState.providerUrl,
+            'map_url': performState.mapUrl,
+            'usecase': performState.usecase,
+            'map_input': performState.input,
+            'map_parameters': performState.parameters,
+            'map_security': performState.security,
+          };
+
+        case 'perform-output-result':
+          (app as any).performState.result = message.result;
+          return {
+            kind: 'ok'
+          }
+      }
+    });
   });
 
-  return [app, handleMessage];
-}
+  afterEach(async () => {
+    await app.destroy();
+  });
 
-describe('App', () => {
   test('panicked core', async () => {
-    const [app] = await createApp({ CORE_PERFORM: 'panic' });
-
-    try {
-      await app.perform(
-        '',
-        '',
-        '',
-        '',
-        null,
-        {},
-        {},
-      );
-
-    } catch (e) {
-      expect(e).toBeInstanceOf(UnexpectedError);
-    } finally {
-      await app.destroy();
-    }
+    await expect(app.perform(
+      'profile',
+      'provider',
+      'map',
+      'CORE_PERFORM_PANIC',
+      null,
+      {},
+      {},
+    )).rejects.toThrow(UnexpectedError);
   });
 });

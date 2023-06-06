@@ -1,4 +1,13 @@
-use sf_std::unstable::{perform::set_perform_output_result_in, HostValue};
+//! Mocked behaviour of core to test Host applications
+//!
+//! Use usecase to request some behaviour for perform:
+//! - CORE_PERFORM_PANIC
+//! - CORE_PERFORM_TRUE
+
+use sf_std::unstable::{
+    perform::{set_perform_output_result_in, PerformInput},
+    HostValue,
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::bindings::MessageExchangeFfi;
@@ -26,12 +35,16 @@ pub fn __export_superface_core_teardown() {
 }
 
 pub fn __export_superface_core_perform() {
-    let val = std::env::var("CORE_PERFORM").unwrap_or_default();
-    tracing::debug!("mocked superface core perform {}", val);
+    let perform_input = PerformInput::take_in(MessageExchangeFfi);
 
-    match val.as_str() {
-        "panic" => panic!("Requested panic!"),
-        _ => set_perform_output_result_in(HostValue::Bool(true), MessageExchangeFfi),
+    tracing::debug!("mocked superface core perform {}", perform_input.usecase);
+
+    match perform_input.usecase.as_str() {
+        "CORE_PERFORM_PANIC" => panic!("Requested panic!"),
+        "CORE_PERFORM_TRUE" => {
+            set_perform_output_result_in(HostValue::Bool(true), MessageExchangeFfi)
+        }
+        _ => panic!("Unknown usecase: {}", perform_input.usecase),
     };
 }
 
