@@ -191,17 +191,11 @@ export type ClientPerformOptions = {
 };
 
 class InternalClient {
-  private readonly wasi: WASI;
   private readonly app: App;
   private ready = false;
 
   constructor(readonly options: ClientOptions = {}) {
-    const wasi = new WASI({
-      env: options.env
-    });
-
-    this.wasi = wasi;
-    this.app = new App(new CfwWasiCompat(wasi), {
+    this.app = new App({
       fileSystem: new CfwFileSystem(options.preopens ?? {}),
       textCoder: new CfwTextCoder(),
       timers: new CfwTimers(),
@@ -215,7 +209,10 @@ class InternalClient {
     }
 
     await this.app.loadCoreModule(coreModule);
-    await this.app.init();
+    const wasi = new WASI({
+      env: this.options.env
+    });
+    await this.app.init(new CfwWasiCompat(wasi));
 
     this.ready = true;
   }

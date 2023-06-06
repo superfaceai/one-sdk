@@ -147,7 +147,6 @@ class InternalClient {
   private token: string | undefined;
 
   private corePath: string;
-  private wasi: WASI;
   private app: App;
   private readyState: AsyncMutex<{ ready: boolean }>;
 
@@ -162,13 +161,9 @@ class InternalClient {
 
     this.corePath = CORE_PATH;
 
-    this.wasi = new WASI({
-      env: process.env
-    });
-
     this.readyState = new AsyncMutex({ ready: false });
 
-    this.app = new App(this.wasi, {
+    this.app = new App({
       network: new NodeNetwork(),
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
@@ -185,7 +180,7 @@ class InternalClient {
       await this.app.loadCore(
         await fs.readFile(this.corePath)
       );
-      await this.app.init();
+      await this.app.init(new WASI({ env: process.env }));
 
       this.initProcessHooks();
 

@@ -6,7 +6,7 @@ import { WASI } from 'wasi';
 
 import { App } from './app.js';
 import { UnexpectedError } from './error.js';
-import { FileSystem, Network, TextCoder, Timers } from './interfaces.js';
+import { FileSystem, Network, TextCoder, Timers, WasiContext } from './interfaces.js';
 
 
 class TestNetwork implements Network {
@@ -56,9 +56,7 @@ describe('App', () => {
   let handleMessage: jest.SpiedFunction<(message: any) => Promise<any>>;
 
   beforeEach(async () => {
-    const wasi = new WASI({ env: process.env });
-
-    app = new App(wasi, {
+    app = new App({
       network: new TestNetwork(),
       fileSystem: new TestFileSystem(),
       textCoder: new TestCoder(),
@@ -69,7 +67,7 @@ describe('App', () => {
       await readFile(createRequire(import.meta.url).resolve('../../assets/test-core-async.wasm'))
     );
 
-    await app.init();
+    await app.init(new WASI());
 
     handleMessage = jest.spyOn(app, 'handleMessage');
     handleMessage.mockImplementation(async (message) => {
@@ -111,5 +109,33 @@ describe('App', () => {
       {},
       {},
     )).rejects.toThrow(UnexpectedError);
+  });
+
+  test('recover from panicked core', async () => {
+    try {
+      await app.perform(
+        '',
+        '',
+        '',
+        'CORE_PERFORM_PANIC',
+        null,
+        {},
+        {},
+      );
+    } catch (e) { }
+
+    await app.init(new WASI());
+
+    const result = await app.perform(
+      '',
+      '',
+      '',
+      'CORE_PERFORM_TRUE',
+      null,
+      {},
+      {},
+    );
+
+    expect(result).toBe(true);
   });
 });

@@ -135,7 +135,6 @@ type AppCore = {
   sendMetricsFn: () => Promise<void>;
 };
 export class App implements AppContext {
-  private readonly wasi: WasiContext;
   private readonly textCoder: TextCoder;
   private readonly network: Network;
   private readonly fileSystem: FileSystem;
@@ -144,6 +143,7 @@ export class App implements AppContext {
   private readonly streams: HandleMap<Stream>;
   private readonly requests: HandleMap<Promise<Response>>;
 
+  private module: WebAssembly.Module | undefined = undefined;
   private core: AsyncMutex<AppCore> | undefined = undefined;
   private performState: {
     profileUrl: string,
@@ -164,11 +164,9 @@ export class App implements AppContext {
   };
 
   constructor(
-    wasi: WasiContext,
     dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers },
     options: { metricsTimeout?: number }
   ) {
-    this.wasi = wasi;
     this.textCoder = dependencies.textCoder;
     this.network = dependencies.network;
     this.fileSystem = dependencies.fileSystem;
@@ -179,23 +177,11 @@ export class App implements AppContext {
   }
 
   public async loadCore(wasm: BufferSource) {
-    const module = await WebAssembly.compile(wasm);
-    await this.loadCoreModule(module);
+    this.module = await WebAssembly.compile(wasm);
   }
 
   public async loadCoreModule(module: WebAssembly.Module) {
-    const [instance, asyncify] = await Asyncify.instantiate(module, (asyncify) => this.importObject(asyncify));
-
-    this.wasi.initialize(instance);
-
-    this.core = new AsyncMutex({
-      instance,
-      asyncify,
-      setupFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void)),
-      teardownFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void)),
-      performFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void)),
-      sendMetricsFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void))
-    });
+    this.module = module;
   }
 
   private get memory(): WebAssembly.Memory {
@@ -213,8 +199,24 @@ export class App implements AppContext {
     return new DataView(this.memory.buffer);
   }
 
-  public async init(): Promise<void> {
-    if (this.core !== undefined) {
+  public async init(wasi: WasiContext): Promise<void> {
+    if (this.module === undefined) {
+      throw new UnexpectedError('CoreNotLoaded', 'Call loadCore or loadCoreModule first.');
+    }
+
+    if (this.core === undefined) {
+      const [instance, asyncify] = await Asyncify.instantiate(this.module, (asyncify) => this.importObject(wasi, asyncify));
+      wasi.initialize(instance);
+
+      this.core = new AsyncMutex({
+        instance,
+        asyncify,
+        setupFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void)),
+        teardownFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void)),
+        performFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void)),
+        sendMetricsFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void))
+      });
+
       return this.core.withLock(core => core.setupFn());
     }
   }
@@ -378,9 +380,9 @@ export class App implements AppContext {
     await stream.close();
   }
 
-  private importObject(asyncify: Asyncify): WebAssembly.Imports {
+  private importObject(wasi: WasiContext, asyncify: Asyncify): WebAssembly.Imports {
     return {
-      wasi_snapshot_preview1: this.wasi.wasiImport,
+      wasi_snapshot_preview1: wasi.wasiImport,
       ...sf_host.link(this, this.textCoder, asyncify)
     }
   }
@@ -391,7 +393,6 @@ export class App implements AppContext {
         return await fn(...args);
       } catch (err: unknown) {
         // TODO: get metrics from core
-
         // unsetting core, we can't ensure memory integrity
         this.core = undefined;
 
