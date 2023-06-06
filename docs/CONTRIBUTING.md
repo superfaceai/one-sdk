@@ -20,7 +20,7 @@ If you have any question about this project (for example, how to use it) or if y
 
 ## Contribute by reporting bugs
 
-If you are experiencing bug or undocumented behavior please [open an issue](https://github.com/superfaceai/one-sdk-js/issues/new/choose) with Bug report template.
+If you are experiencing bug or undocumented behavior please [open an issue](https://github.com/superfaceai/one-sdk/issues/new/choose) with Bug report template.
 
 ## Contribute to the documentation
 
@@ -121,7 +121,7 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
     maps/ # example of how map authoring can look
       package.json # pulls in map-std types
       src/
-        [.suma.js files]
+        [.map.js files]
 ```
 
 ## Allowed Licenses

@@ -1,14 +1,14 @@
-import { SuperfaceClient, PerformError } from '@superfaceai/one-sdk/cloudflare';
+import { OneClient, PerformError } from '@superfaceai/one-sdk/cloudflare';
 
-import { GRID_IMPORTS } from './grid';
+import { COMLINK_IMPORTS } from './comlinks';
 
-const client = new SuperfaceClient({
+const client = new OneClient({
   env: {
     SF_LOG: 'trace',
     SF_CONFIG_CACHE_DURATION: '10'
   },
-  assetsPath: 'grid',
-  preopens: { ...GRID_IMPORTS }
+  assetsPath: 'superface',
+  preopens: { ...COMLINK_IMPORTS }
 });
 
 type Env = {

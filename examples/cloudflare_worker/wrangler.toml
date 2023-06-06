@@ -5,6 +5,6 @@ compatibility_date = "2023-04-18"
 workers_dev = true
 
 rules = [
-  # TODO: figure out the glob from grid folder only - not working for some reason
-  { type = "Data", globs = ["**/*.suma.js", "**/*.supr", "**/*.provider.json"], fallthrough = true }
+  # TODO: figure out the glob from superface folder only - not working for some reason
+  { type = "Data", globs = ["**/*.map.js", "**/*.profile", "**/*.provider.json"], fallthrough = true }
 ]

@@ -1,5 +1,5 @@
 import fs, { FileHandle } from 'fs/promises';
-import { resolve } from 'path';
+import { resolve as resolvePath } from 'path';
 import { WASI } from 'wasi';
 
 import { createRequire } from 'node:module';
@@ -8,11 +8,11 @@ import { App, HandleMap } from '../common/index.js';
 import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
 import { WasiErrno, WasiError } from '../common/app.js';
 import { PerformError, UnexpectedError } from '../common/error.js';
-import { Result, err, ok } from './result.js';
 
 import { systemErrorToWasiError, fetchErrorToHostError } from './error.js';
 
 const CORE_PATH = process.env.CORE_PATH ?? createRequire(import.meta.url).resolve('../assets/core-async.wasm');
+const ASSETS_FOLDER = 'superface';
 
 class NodeTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -127,7 +127,7 @@ export type ClientOptions = {
    * 
    * Manage tokens and see insights here: https://superface.ai/insights
    */
-  sdkAuthToken?: string;
+  token?: string;
 };
 
 export type ClientPerformOptions = {
@@ -137,7 +137,7 @@ export type ClientPerformOptions = {
 };
 
 class InternalClient {
-  public assetsPath: string = process.cwd(); // TODO: point to `superface` folder
+  public assetsPath: string = resolvePath(process.cwd(), ASSETS_FOLDER);
   private token: string | undefined;
 
   private corePath: string;
@@ -150,8 +150,8 @@ class InternalClient {
       this.assetsPath = options.assetsPath;
     }
 
-    if (options.sdkAuthToken !== undefined) {
-      this.token = options.sdkAuthToken;
+    if (options.token !== undefined) {
+      this.token = options.token;
     }
 
     this.corePath = CORE_PATH;
@@ -205,21 +205,21 @@ class InternalClient {
   }
 
   public async resolveProfileUrl(profile: string): Promise<string> {
-    const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
-    const path = resolve(this.assetsPath, `${resolvedProfile}.supr`);
+    const resolvedProfile = profile.replace(/\//g, '.');
+    const path = resolvePath(this.assetsPath, `${resolvedProfile}.profile`);
 
     return `file://${path}`;
   }
 
   public async resolveMapUrl(profile: string, provider?: string): Promise<string> {
-    const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
-    const path = resolve(this.assetsPath, `${resolvedProfile}.${provider}.suma.js`);
+    const resolvedProfile = profile.replace(/\//g, '.');
+    const path = resolvePath(this.assetsPath, `${resolvedProfile}.${provider}.map.js`);
 
     return `file://${path}`;
   }
 
   public async resolveProviderUrl(provider: string): Promise<string> {
-    const path = resolve(this.assetsPath, `${provider}.provider.json`);
+    const path = resolvePath(this.assetsPath, `${provider}.provider.json`);
 
     return `file://${path}`;
   }
@@ -236,7 +236,7 @@ class InternalClient {
   }
 }
 
-export class SuperfaceClient {
+export class OneClient {
   private internal: InternalClient;
 
   constructor(readonly options: ClientOptions = {}) {
@@ -270,25 +270,13 @@ export class UseCase {
   constructor(private readonly internal: InternalClient, private readonly profile: Profile, public readonly name: string) {
   }
 
-  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<Result<TResult, PerformError | UnexpectedError>> {
-    try {
-      const result = await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security);
-
-      return ok(result as TResult);
-    } catch (error: unknown) {
-      if (error instanceof PerformError) {
-        return err(error);
-      }
-
-      if (error instanceof UnexpectedError) {
-        return err(error);
-      }
-
-      if (error instanceof Error) {
-        return err(new UnexpectedError(error.name, error.message));
-      }
-
-      return err(new UnexpectedError('UnknownError', JSON.stringify(error)));
-    }
+  /**
+   * @param {*} input 
+   * @param {ClientPerformOptions} options 
+   * @returns {*}
+   * @throws {PerformError | UnexpectedError}
+   */
+  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<TResult> {
+    return await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security) as TResult;
   }
 }
