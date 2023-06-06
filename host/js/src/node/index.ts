@@ -1,15 +1,21 @@
-import fs, { FileHandle } from 'fs/promises';
-import { resolve as resolvePath } from 'path';
-import { WASI } from 'wasi';
-
+import fs, { FileHandle } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { resolve as resolvePath } from 'node:path';
+import { WASI } from 'node:wasi';
 
-import { App, HandleMap } from '../common/index.js';
-import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
-import { AsyncMutex, WasiErrno, WasiError } from '../common/app.js';
-import { PerformError, UnexpectedError } from '../common/error.js';
-
-import { systemErrorToWasiError, fetchErrorToHostError } from './error.js';
+import { AsyncMutex } from '../common/app.js';
+import {
+  App,
+  FileSystem,
+  HandleMap,
+  Network,
+  SecurityValuesMap,
+  TextCoder,
+  Timers,
+  WasiErrno,
+  WasiError
+} from '../common/index.js';
+import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 
 const CORE_PATH = process.env.CORE_PATH ?? createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 const ASSETS_FOLDER = 'superface';
