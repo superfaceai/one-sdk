@@ -16,7 +16,6 @@ import {
   WasiError
 } from '../common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
-import { Result, err, ok } from './result.js';
 
 const CORE_PATH = process.env.CORE_PATH ?? createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 const ASSETS_FOLDER = 'superface';

@@ -5,7 +5,7 @@ import { resolve as resolvePath, dirname } from 'node:path';
 import { OneClient } from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const assetsPath = resolvePath(__dirname, '../../../../examples/maps/src');
+const assetsPath = resolvePath(__dirname, '../../../../examples/comlinks/src');
 
 describe('OneClient', () => {
   describe('Basic use', () => {
@@ -31,7 +31,7 @@ describe('OneClient', () => {
     });
 
     test('basic use', async () => {
-      const client = new OneClient({ assetsPath: resolvePath(__dirname, '../../../../examples/comlinks/src') });
+      const client = new OneClient({ assetsPath });
 
       const profile = await client.getProfile('wasm-sdk/example');
       const result = await profile
