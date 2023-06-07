@@ -1,142 +1,10 @@
-import { HandleMap } from './handle_map.js';
 import { Asyncify } from './asyncify.js';
+import { HandleMap } from './handle_map.js';
 
-import * as sf_host from './sf_host.js';
+import { PerformError, UnexpectedError, UninitializedError, WasiErrno, WasiError } from './error.js';
+import { AppContext, FileSystem, Network, TextCoder, Timers, WasiContext } from './interfaces.js';
 import { SecurityValuesMap } from './security.js';
-import { PerformError, UnexpectedError } from './error.js';
-
-export interface WasiContext {
-  wasiImport: WebAssembly.ModuleImports;
-  initialize(instance: object): void;
-}
-export interface TextCoder {
-  decodeUtf8(buffer: ArrayBufferLike): string;
-  encodeUtf8(string: string): ArrayBuffer;
-}
-export interface FileSystem {
-  open(path: string, options: { createNew?: boolean, create?: boolean, truncate?: boolean, append?: boolean, write?: boolean, read?: boolean }): Promise<number>;
-  /** Read bytes and write them to `out`. Returns number of bytes read. */
-  read(handle: number, out: Uint8Array): Promise<number>;
-  /** Write bytes from `data`. Returns number of bytes written. */
-  write(handle: number, data: Uint8Array): Promise<number>;
-  close(handle: number): Promise<void>;
-}
-export interface Network {
-  fetch(
-    input: RequestInfo,
-    init?: RequestInit
-  ): Promise<Response>
-}
-export interface Timers {
-  setTimeout(callback: () => void, ms: number): number;
-  clearTimeout(handle: number): void;
-}
-export interface AppContext {
-  memoryBytes: Uint8Array;
-  memoryView: DataView;
-
-  handleMessage(message: any): Promise<any>;
-  readStream(handle: number, out: Uint8Array): Promise<number>;
-  writeStream(handle: number, data: Uint8Array): Promise<number>;
-  closeStream(handle: number): Promise<void>;
-}
-export class WasiError extends Error {
-  constructor(public readonly errno: WasiErrno) {
-    super(`WASI error: ${WasiErrno[errno]}`);
-  }
-}
-export enum WasiErrno {
-  SUCCESS = 0,
-  E2BIG = 1,
-  EACCES = 2,
-  EADDRINUSE = 3,
-  EADDRNOTAVAIL = 4,
-  EAFNOSUPPORT = 5,
-  EAGAIN = 6,
-  EALREADY = 7,
-  EBADF = 8,
-  EBADMSG = 9,
-  EBUSY = 10,
-  ECANCELED = 11,
-  ECHILD = 12,
-  ECONNABORTED = 13,
-  ECONNREFUSED = 14,
-  ECONNRESET = 15,
-  EDEADLK = 16,
-  EDESTADDRREQ = 17,
-  EDOM = 18,
-  EDQUOT = 19,
-  EEXIST = 20,
-  EFAULT = 21,
-  EFBIG = 22,
-  EHOSTUNREACH = 23,
-  EIDRM = 24,
-  EILSEQ = 25,
-  EINPROGRESS = 26,
-  EINTR = 27,
-  EINVAL = 28,
-  EIO = 29,
-  EISCONN = 30,
-  EISDIR = 31,
-  ELOOP = 32,
-  EMFILE = 33,
-  EMLINK = 34,
-  EMSGSIZE = 35,
-  EMULTIHOP = 36,
-  ENAMETOOLONG = 37,
-  ENETDOWN = 38,
-  ENETRESET = 39,
-  ENETUNREACH = 40,
-  ENFILE = 41,
-  ENOBUFS = 42,
-  ENODEV = 43,
-  ENOENT = 44,
-  ENOEXEC = 45,
-  ENOLCK = 46,
-  ENOLINK = 47,
-  ENOMEM = 48,
-  ENOMSG = 49,
-  ENOPROTOOPT = 50,
-  ENOSPC = 51,
-  ENOSYS = 52,
-  ENOTCONN = 53,
-  ENOTDIR = 54,
-  ENOTEMPTY = 55,
-  ENOTRECOVERABLE = 56,
-  ENOTSOCK = 57,
-  ENOTSUP = 58,
-  ENOTTY = 59,
-  ENXIO = 60,
-  EOVERFLOW = 61,
-  EOWNERDEAD = 62,
-  EPERM = 63,
-  EPIPE = 64,
-  EPROTO = 65,
-  EPROTONOSUPPORT = 66,
-  EPROTOTYPE = 67,
-  ERANGE = 68,
-  EROFS = 69,
-  ESPIPE = 70,
-  ESRCH = 71,
-  ESTALE = 72,
-  ETIMEDOUT = 73,
-  ETXTBSY = 74,
-  EXDEV = 75,
-  ENOTCAPABLE = 76,
-}
-export class HostError extends Error {
-  constructor(public readonly code: ErrorCode, message: string) {
-    super(message);
-    this.name = code;
-  }
-}
-/// Core counterpart in core/host_to_core_std/src/unstable/mod.rs
-export enum ErrorCode {
-  NetworkError = 'network:error', // generic network error
-  NetworkConnectionRefused = 'network:ECONNREFUSED',
-  NetworkHostNotFound = 'network:ENOTFOUND',
-  NetworkInvalidUrl = 'network:invalid_url'
-}
+import * as sf_host from './sf_host.js';
 
 class ReadableStreamAdapter implements Stream {
   private chunks: Uint8Array[];
@@ -190,7 +58,7 @@ class ReadableStreamAdapter implements Stream {
  * 
  * Note that this is not thread safe (concurrent), but merely task safe (asynchronous).
  */
-class AsyncMutex<T> {
+export class AsyncMutex<T> {
   /** Promise to be awaited to synchronize between tasks. */
   private condvar: Promise<void>;
   /** Indicator of whether the mutex is currently locked. */
@@ -220,7 +88,7 @@ class AsyncMutex<T> {
       // If there ever is threading or task preemption, we will need to use other means (atomics, spinlocks).
       await this.condvar;
     } while (this.isLocked);
-    
+
     this.isLocked = true;
     let notify: () => void;
     this.condvar = new Promise((resolve) => { notify = resolve; });
@@ -258,6 +126,7 @@ type Stream = {
   close(): Promise<void>;
 };
 type AppCore = {
+
   instance: WebAssembly.Instance;
   asyncify: Asyncify;
   setupFn: () => Promise<void>;
@@ -266,7 +135,6 @@ type AppCore = {
   sendMetricsFn: () => Promise<void>;
 };
 export class App implements AppContext {
-  private readonly wasi: WasiContext;
   private readonly textCoder: TextCoder;
   private readonly network: Network;
   private readonly fileSystem: FileSystem;
@@ -275,6 +143,7 @@ export class App implements AppContext {
   private readonly streams: HandleMap<Stream>;
   private readonly requests: HandleMap<Promise<Response>>;
 
+  private module: WebAssembly.Module | undefined = undefined;
   private core: AsyncMutex<AppCore> | undefined = undefined;
   private performState: {
     profileUrl: string,
@@ -295,11 +164,9 @@ export class App implements AppContext {
   };
 
   constructor(
-    wasi: WasiContext,
     dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers },
     options: { metricsTimeout?: number }
   ) {
-    this.wasi = wasi;
     this.textCoder = dependencies.textCoder;
     this.network = dependencies.network;
     this.fileSystem = dependencies.fileSystem;
@@ -309,52 +176,56 @@ export class App implements AppContext {
     this.metricsState = { timeout: options.metricsTimeout ?? 1000, handle: 0 };
   }
 
-  private importObject(asyncify: Asyncify): WebAssembly.Imports {
-    return {
-      wasi_snapshot_preview1: this.wasi.wasiImport,
-      ...sf_host.link(this, this.textCoder, asyncify)
-    }
+  public async loadCore(wasm: BufferSource) {
+    this.module = await WebAssembly.compile(wasm);
   }
 
-  async loadCore(wasm: BufferSource) {
-    const module = await WebAssembly.compile(wasm);
-    await this.loadCoreModule(module);
-  }
-
-  async loadCoreModule(module: WebAssembly.Module) {
-    const [instance, asyncify] = await Asyncify.instantiate(module, (asyncify) => this.importObject(asyncify));
-
-    this.wasi.initialize(instance);
-
-    this.core = new AsyncMutex({
-      instance,
-      asyncify,
-      setupFn: asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void),
-      teardownFn: asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void),
-      performFn: asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void),
-      sendMetricsFn: asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void)
-    });
+  public async loadCoreModule(module: WebAssembly.Module) {
+    this.module = module;
   }
 
   private get memory(): WebAssembly.Memory {
-    return this.core!.unsafeValue.instance.exports.memory as WebAssembly.Memory;
+    if (this.core === undefined) {
+      throw new UninitializedError();
+    }
+    return this.core.unsafeValue.instance.exports.memory as WebAssembly.Memory;
   }
 
-  get memoryBytes(): Uint8Array {
+  public get memoryBytes(): Uint8Array {
     return new Uint8Array(this.memory.buffer);
   }
 
-  get memoryView(): DataView {
+  public get memoryView(): DataView {
     return new DataView(this.memory.buffer);
   }
 
-  public async setup(): Promise<void> {
-    return this.core!.withLock(core => core.setupFn());
+  public async init(wasi: WasiContext): Promise<void> {
+    if (this.module === undefined) {
+      throw new UnexpectedError('CoreNotLoaded', 'Call loadCore or loadCoreModule first.');
+    }
+
+    if (this.core === undefined) {
+      const [instance, asyncify] = await Asyncify.instantiate(this.module, (asyncify) => this.importObject(wasi, asyncify));
+      wasi.initialize(instance);
+
+      this.core = new AsyncMutex({
+        instance,
+        asyncify,
+        setupFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void)),
+        teardownFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void)),
+        performFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void)),
+        sendMetricsFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void))
+      });
+
+      return this.core.withLock(core => core.setupFn());
+    }
   }
 
-  public async teardown(): Promise<void> {
-    await this.sendMetrics();
-    return this.core!.withLock(core => core.teardownFn());
+  public async destroy(): Promise<void> {
+    if (this.core !== undefined) {
+      await this.sendMetrics();
+      return this.core.withLock(core => core.teardownFn());
+    }
   }
 
   /**
@@ -402,9 +273,7 @@ export class App implements AppContext {
     );
   }
 
-  async handleMessage(message: any): Promise<any> {
-    // console.log('host: message:', message);
-
+  public async handleMessage(message: any): Promise<any> {
     switch (message['kind']) {
       case 'perform-input':
         return {
@@ -484,7 +353,7 @@ export class App implements AppContext {
     }
   }
 
-  async readStream(handle: number, out: Uint8Array): Promise<number> {
+  public async readStream(handle: number, out: Uint8Array): Promise<number> {
     const stream = this.streams.get(handle);
     if (stream === undefined) {
       throw new WasiError(WasiErrno.EBADF);
@@ -493,7 +362,7 @@ export class App implements AppContext {
     return stream.read(out);
   }
 
-  async writeStream(handle: number, data: Uint8Array): Promise<number> {
+  public async writeStream(handle: number, data: Uint8Array): Promise<number> {
     const stream = this.streams.get(handle);
     if (stream === undefined) {
       throw new WasiError(WasiErrno.EBADF);
@@ -502,7 +371,7 @@ export class App implements AppContext {
     return stream.write(data);
   }
 
-  async closeStream(handle: number): Promise<void> {
+  public async closeStream(handle: number): Promise<void> {
     const stream = this.streams.remove(handle);
     if (stream === undefined) {
       throw new WasiError(WasiErrno.EBADF);
@@ -511,11 +380,38 @@ export class App implements AppContext {
     await stream.close();
   }
 
+  private importObject(wasi: WasiContext, asyncify: Asyncify): WebAssembly.Imports {
+    return {
+      wasi_snapshot_preview1: wasi.wasiImport,
+      ...sf_host.link(this, this.textCoder, asyncify)
+    }
+  }
+
+  private wrapExport<A extends unknown[], R>(fn: (...arg: A) => R): (...arg: A) => Promise<R> {
+    return async (...args: A) => {
+      try {
+        return await fn(...args);
+      } catch (err: unknown) {
+        // TODO: get metrics from core
+        // unsetting core, we can't ensure memory integrity
+        this.core = undefined;
+
+        if (err instanceof WebAssembly.RuntimeError) {
+          throw new UnexpectedError('WebAssemblyRuntimeError', `${err.message}`,);
+        }
+
+        throw new UnexpectedError('UnexpectedError', `${err}`);
+      }
+    }
+  }
+
   private async sendMetrics(): Promise<void> {
     this.timers.clearTimeout(this.metricsState.handle);
     this.metricsState.handle = 0;
 
-    await this.core!.withLock(core => core.sendMetricsFn());
+    if (this.core !== undefined) {
+      await this.core.withLock(core => core.sendMetricsFn());
+    }
   }
 
   private setSendMetricsTimeout() {

@@ -1,15 +1,22 @@
-import fs, { FileHandle } from 'fs/promises';
-import { resolve as resolvePath } from 'path';
-import { WASI } from 'wasi';
-
+import fs, { FileHandle } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { resolve as resolvePath } from 'node:path';
+import { WASI } from 'node:wasi';
 
-import { App, HandleMap } from '../common/index.js';
-import type { TextCoder, FileSystem, Timers, Network, SecurityValuesMap } from '../common/index.js';
-import { WasiErrno, WasiError } from '../common/app.js';
-import { PerformError, UnexpectedError } from '../common/error.js';
-
-import { systemErrorToWasiError, fetchErrorToHostError } from './error.js';
+import { AsyncMutex } from '../common/app.js';
+import {
+  App,
+  FileSystem,
+  HandleMap,
+  Network,
+  SecurityValuesMap,
+  TextCoder,
+  Timers,
+  UnexpectedError,
+  WasiErrno,
+  WasiError
+} from '../common/index.js';
+import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 
 const CORE_PATH = process.env.CORE_PATH ?? createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 const ASSETS_FOLDER = 'superface';
@@ -141,9 +148,8 @@ class InternalClient {
   private token: string | undefined;
 
   private corePath: string;
-  private wasi: WASI;
   private app: App;
-  private ready = false;
+  private readyState: AsyncMutex<{ ready: boolean }>;
 
   constructor(readonly options: ClientOptions = {}) {
     if (options.assetsPath !== undefined) {
@@ -156,22 +162,42 @@ class InternalClient {
 
     this.corePath = CORE_PATH;
 
-    this.wasi = new WASI({
-      env: process.env
-    });
+    this.readyState = new AsyncMutex({ ready: false });
 
-    this.app = new App(this.wasi, {
+    this.app = new App({
       network: new NodeNetwork(),
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers()
     }, { metricsTimeout: 1000 });
-
-    this.initProcessHooks();
   }
 
-  public destroy() {
-    void this.teardown();
+  public async init() {
+    return this.readyState.withLock(async (readyState) => {
+      if (readyState.ready === true) {
+        return;
+      }
+
+      await this.app.loadCore(
+        await fs.readFile(this.corePath)
+      );
+      await this.app.init(new WASI({ env: process.env }));
+
+      this.initProcessHooks();
+
+      readyState.ready = true;
+    });
+  }
+
+  public async destroy() {
+    return this.readyState.withLock(async (readyState) => {
+      if (readyState.ready === false) {
+        return;
+      }
+
+      await this.app.destroy();
+      readyState.ready = false;
+    });
   }
 
   public async perform(
@@ -182,26 +208,22 @@ class InternalClient {
     parameters: Record<string, string> = {},
     security: SecurityValuesMap = {}
   ): Promise<unknown> {
-    await this.setup();
+    await this.init();
 
     const profileUrl = await this.resolveProfileUrl(profile);
     const providerUrl = await this.resolveProviderUrl(provider);
     const mapUrl = await this.resolveMapUrl(profile, provider);
 
-    return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
-  }
+    try {
+      return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
+    } catch (err: unknown) {
+      if (err instanceof UnexpectedError && (err.name === 'WebAssemblyRuntimeError')) {
+        await this.destroy();
+        await this.init();
+      }
 
-  private async setup() {
-    if (this.ready) {
-      return;
+      throw err;
     }
-
-    await this.app.loadCore(
-      await fs.readFile(this.corePath)
-    );
-    await this.app.setup();
-
-    this.ready = true;
   }
 
   public async resolveProfileUrl(profile: string): Promise<string> {
@@ -226,13 +248,8 @@ class InternalClient {
 
   private initProcessHooks() {
     process.on('beforeExit', async () => {
-      await this.teardown();
+      await this.destroy();
     });
-  }
-
-  private async teardown() {
-    await this.app.teardown();
-    this.ready = false;
   }
 }
 
@@ -243,8 +260,12 @@ export class OneClient {
     this.internal = new InternalClient(options);
   }
 
-  public destroy() {
-    this.internal.destroy();
+  public async init() {
+    await this.internal.init();
+  }
+
+  public async destroy() {
+    await this.internal.destroy();
   }
 
   public async getProfile(name: string): Promise<Profile> {

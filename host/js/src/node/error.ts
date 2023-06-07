@@ -1,6 +1,6 @@
-import { getSystemErrorMap } from 'util';
+import { getSystemErrorMap } from 'node:util';
 
-import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/app.js';
+import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/index.js';
 
 /** Builds a map from Node errno to WasiErrno by using error codes (such as EBADF) to match them */
 function systemErrnoToWasiErrnoMap(): Record<number, WasiErrno> {
@@ -22,7 +22,7 @@ export function systemErrorToWasiError(error: unknown): WasiError {
   if (typeof error !== 'object' || error === null || !('errno' in error)) {
     return new WasiError(WasiErrno.EINVAL);
   }
-  
+
   return new WasiError(
     SYSTEM_ERRNO_TO_WASI_ERRNO[error.errno as number] ?? WasiErrno.EINVAL
   );
@@ -39,7 +39,7 @@ export function fetchErrorToHostError(error: unknown): HostError {
         case 'ENOTFOUND': return new HostError(ErrorCode.NetworkHostNotFound, `Host not found: ${cause.hostname}`);
       }
     }
-    
+
     // otherwise we build a message and return a generic network error
     let cause = '';
     for (const [key, value] of Object.entries(error.cause ?? {})) {

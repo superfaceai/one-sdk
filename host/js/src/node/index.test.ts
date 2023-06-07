@@ -1,20 +1,16 @@
-import { jest } from '@jest/globals';
-
 import { Server, createServer as httpCreateServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath, dirname } from 'node:path';
 
 import { OneClient } from './index.js';
+import { UnexpectedError } from '../common/error.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const assetsPath = resolvePath(__dirname, '../../../../examples/comlinks/src');
 
 describe('OneClient', () => {
   describe('Basic use', () => {
     let server: Server;
-
-    beforeEach(() => {
-      jest.useFakeTimers();
-    });
 
     beforeAll(async () => {
       server = httpCreateServer((req, res) => {
@@ -35,8 +31,8 @@ describe('OneClient', () => {
       server.close();
     });
 
-    test('works', async () => {
-      const client = new OneClient({ assetsPath: resolvePath(__dirname, '../../../../examples/comlinks/src') });
+    test('basic use', async () => {
+      const client = new OneClient({ assetsPath });
 
       const profile = await client.getProfile('wasm-sdk/example');
       const result = await profile
@@ -51,6 +47,40 @@ describe('OneClient', () => {
         );
 
       expect(result.url).toContain('/api/1');
+    });
+
+    test('concurrent requests', async () => {
+      const client = new OneClient({ assetsPath });
+
+      const profile = await client.getProfile('wasm-sdk/example');
+      const options = {
+        provider: 'localhost',
+        parameters: { PARAM: 'parameter_value' },
+        security: { basic_auth: { username: 'username', password: 'password' } }
+      };
+
+      const usecase = profile.getUseCase('Example');
+      const results = await Promise.all([
+        usecase.perform({ id: 1 }, options),
+        usecase.perform({ id: 2 }, options),
+        usecase.perform({ id: 3 }, options),
+      ]);
+
+      expect(results.length).toBe(3);
+    });
+
+    test('destroy without setup', async () => {
+      const client = new OneClient({ assetsPath });
+      await expect(client.destroy()).resolves.not.toThrow();
+    });
+
+    test('panicked core', async () => {
+      const client = new OneClient({ assetsPath });
+      (client as any).internal.corePath = resolvePath(__dirname, '../../assets/test-core-async.wasm');
+
+      const profile = await client.getProfile('wasm-sdk/example');
+      await expect(profile.getUseCase('CORE_PERFORM_PANIC').perform({}, { provider: 'localhost' })).rejects.toThrow(UnexpectedError);
+      await expect(profile.getUseCase('CORE_PERFORM_TRUE').perform({}, { provider: 'localhost' })).resolves.toBe(true);
     });
   });
 });
