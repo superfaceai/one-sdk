@@ -12,6 +12,7 @@ import {
   SecurityValuesMap,
   TextCoder,
   Timers,
+  UnexpectedError,
   WasiErrno,
   WasiError
 } from '../common/index.js';
@@ -213,7 +214,16 @@ class InternalClient {
     const providerUrl = await this.resolveProviderUrl(provider);
     const mapUrl = await this.resolveMapUrl(profile, provider);
 
-    return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
+    try {
+      return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
+    } catch (err: unknown) {
+      if (err instanceof UnexpectedError && (err.name === 'WebAssemblyRuntimeError')) {
+        await this.destroy();
+        await this.init();
+      }
+
+      throw err;
+    }
   }
 
   public async resolveProfileUrl(profile: string): Promise<string> {
