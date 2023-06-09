@@ -89,7 +89,8 @@ export function resolveRequestUrl(url: string, options: { parameters: any, secur
 
 // https://fetch.spec.whatwg.org/#headers-class
 export type HeadersInit = Record<string, string> | [string, string][];
-export class Headers {
+
+export class Headers implements Iterable<[string, string[]]> {
   private guard: 'immutable' | 'request' | 'request-no-cors' | 'response' | 'none';
   private headersList: Map<string, string[]>;
 
@@ -100,6 +101,10 @@ export class Headers {
     if (init !== undefined) {
       this.fill(init);
     }
+  }
+
+  *[Symbol.iterator](): Iterator<[string, string[]], any, undefined> {
+    return this.headersList.entries();
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-append
@@ -142,16 +147,6 @@ export class Headers {
   // https://fetch.spec.whatwg.org/#dom-headers-set
   public set(name: string, value: string): void {
     this.headersList.set(name.toLowerCase(), [value]);
-  }
-
-  public toJson(): Record<string, string[]> {
-    const headers: Record<string, string[]> = {};
-
-    for (const [key, value] of this.headersList) {
-      headers[key] = value;
-    }
-
-    return headers;
   }
 
   private fill(object: HeadersInit) {
@@ -427,7 +422,7 @@ export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
     kind: 'http-call',
     url,
     method: init.method ?? 'GET',
-    headers: headers.toJson(), // TODO: serialize Headers to HeradersInit
+    headers: headersToJson(headers), // TODO: serialize Headers to HeradersInit
     query: ensureMultimap(init.query ?? {}),
     body: finalBody,
     security: init.security,
@@ -438,4 +433,14 @@ export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
   } else {
     throw responseErrorToError(response);
   }
+}
+
+function headersToJson(headers: Headers): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+
+  for (const [key, value] of headers) {
+    result[key] = value;
+  }
+
+  return result;
 }
