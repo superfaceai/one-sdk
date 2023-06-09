@@ -6,93 +6,9 @@ import { Buffer } from './internal/node_compat';
 
 export type { MultiMap, Encoding } from './internal/types';
 
-export type FetchOptions = {
-  method?: string,
-  headers?: MultiMap,
-  query?: MultiMap,
-  body?: string | number[] | Buffer,
-  security?: string,
-};
-
 // Can't use Record<string, AnyValue> but can use { [s in string]: AnyValue }. Typescript go brr.
 // The types here have defined message_exchange format and can safely be serialized and deserialized across the core<->map boundary.
 export type AnyValue = null | string | number | boolean | AnyValue[] | { [s in string]: AnyValue };
-
-export class HttpRequest {
-  #handle: number;
-  /** @internal */
-  constructor(handle: number) {
-    this.#handle = handle;
-  }
-
-  response(): HttpResponse {
-    const response = messageExchange({
-      kind: 'http-call-head',
-      handle: this.#handle
-    });
-
-    if (response.kind === 'ok') {
-      return new HttpResponse(response.status, response.headers, response.body_stream);
-    } else {
-      throw responseErrorToError(response);
-    }
-  }
-}
-export class HttpResponse {
-  public readonly status: number;
-  public readonly headers: MultiMap;
-  #bodyStream: ByteStream;
-
-  /** @internal */
-  constructor(status: number, headers: MultiMap, bodyStream: number) {
-    this.status = status;
-    this.headers = headers;
-    this.#bodyStream = new ByteStream(bodyStream);
-  }
-
-  // TODO: either make Bytes public or use a different type
-  private bodyBytes(): Bytes {
-    const buffer = this.#bodyStream.readToEnd();
-    this.#bodyStream.close();
-
-    return buffer;
-  }
-
-  public bodyText(): string {
-    const bytes = this.bodyBytes();
-    if (bytes.len === 0) {
-      return '';
-    }
-
-    // TODO: possibly infer encoding from headers?
-    return bytes.decode();
-  }
-
-  public bodyJson(): unknown {
-    const text = this.bodyText();
-    if (text === undefined || text === '') {
-      return undefined;
-    }
-
-    return JSON.parse(text);
-  }
-
-  public bodyAuto(): unknown {
-    if (this.status === 204) {
-      return undefined;
-    }
-
-    if (this.headers['content-type']?.some(ct => ct.indexOf(CONTENT_TYPE.JSON) >= 0) ?? false) {
-      return this.bodyJson();
-    }
-
-    if (this.headers['content-type']?.some(ct => CONTENT_TYPE.RE_BINARY.test(ct)) ?? false) {
-      return this.bodyBytes();
-    }
-
-    return this.bodyText();
-  }
-}
 
 export class MapError {
   constructor(public readonly errorResult: AnyValue) { }
@@ -167,13 +83,327 @@ export function resolveRequestUrl(url: string, options: { parameters: any, secur
 
   return url;
 }
-export function fetch(url: string, options: FetchOptions): HttpRequest {
-  const headers = ensureMultimap(options.headers ?? {}, true);
+
+// Fetch https://fetch.spec.whatwg.org/#fetch-api
+// Undici types (Node.js implementation) https://github.com/nodejs/undici/blob/main/types/fetch.d.ts
+
+// https://fetch.spec.whatwg.org/#headers-class
+export type HeadersInit = Record<string, string> | [string, string][];
+export class Headers {
+  private guard: 'immutable' | 'request' | 'request-no-cors' | 'response' | 'none';
+  private headersList: Map<string, string[]>;
+
+  constructor(init?: HeadersInit) {
+    this.guard = 'none';
+    this.headersList = new Map();
+
+    if (init !== undefined) {
+      this.fill(init);
+    }
+  }
+
+  // https://fetch.spec.whatwg.org/#dom-headers-append
+  public append(name: string, value: string): void {
+    const lowercasedName = name.toLowerCase();
+    // TODO: validate name and value
+    if (this.has(lowercasedName)) {
+      const originalValue = this.headersList.get(lowercasedName) ?? [];
+      this.headersList.set(lowercasedName, [...originalValue, value]);
+    } else {
+      this.headersList.set(lowercasedName, [value]);
+    }
+  }
+
+  // https://fetch.spec.whatwg.org/#dom-headers-delete
+  public delete(name: string): void {
+    this.headersList.delete(name.toLowerCase());
+  }
+
+  // https://fetch.spec.whatwg.org/#dom-headers-get
+  public get(name: string): string | null {
+    const values = this.headersList.get(name.toLowerCase());
+    if (values === undefined) {
+      return null;
+    }
+
+    return values.join(', ');
+  }
+
+  // https://fetch.spec.whatwg.org/#dom-headers-getsetcookie
+  public getSetCookie(): string[] {
+    return this.headersList.get('set-cookie') ?? [];
+  }
+
+  // https://fetch.spec.whatwg.org/#dom-headers-has
+  public has(name: string): boolean {
+    return this.headersList.has(name.toLowerCase());
+  }
+
+  // https://fetch.spec.whatwg.org/#dom-headers-set
+  public set(name: string, value: string): void {
+    this.headersList.set(name.toLowerCase(), [value]);
+  }
+
+  public toJson(): Record<string, string[]> {
+    const headers: Record<string, string[]> = {};
+
+    for (const [key, value] of this.headersList) {
+      headers[key] = value;
+    }
+
+    return headers;
+  }
+
+  private fill(object: HeadersInit) {
+    if (Array.isArray(object)) {
+      for (const header of object) {
+        if (header.length !== 2) {
+          throw new TypeError(`Expected name/value pair to be length 2, found ${header.length}.`)
+        }
+
+        this.append(header[0], header[1]);
+      }
+    } else if (typeof object === 'object' && object !== null) {
+      for (const [name, value] of Object.entries(object)) {
+        this.append(name, value);
+      }
+    } else {
+      throw new TypeError("Headers must be: { string: string[] } | [string, string][]");
+    }
+  }
+}
+
+/**
+ * Supports subset of https://fetch.spec.whatwg.org/#request-class
+ * - url
+ * - method
+ * - headers
+ * 
+ * Adds custom property **security**
+ */
+export class Request {
+  public readonly url: string;
+  public readonly method: string;
+  public readonly security: string | undefined;
+  public readonly headers: Headers;
+
+  constructor(input: RequestInfo, init: RequestInit = {}) {
+    if (typeof input === 'string') {
+      this.url = input;
+      this.method = init.method ?? 'GET';
+      this.headers = new Headers(init.headers);
+      this.security = init.security;
+    } else {
+      this.url = input.url;
+      this.method = input.method ?? init.headers ?? 'GET';
+      this.headers = input.headers ?? new Headers(init.headers);
+      this.security = input.security ?? init.security;
+    }
+  }
+}
+
+export type USVString = string;
+export type RequestInfo = USVString | Request;
+export interface RequestInit {
+  method?: string,
+  headers?: HeadersInit,
+  query?: MultiMap,
+  body?: string | number[] | Buffer,
+  security?: string,
+}
+
+// https://fetch.spec.whatwg.org/#response-class
+type ResponseMessage = {
+  kind: 'ok';
+  status: number,
+  headers: Record<string, string[]>,
+  body_stream?: number;
+} | {
+  kind: 'err',
+  error_code: number,
+  message: string,
+};
+
+export type XMLHttpRequestBodyInit = Buffer | USVString; // TODO: missing Blob, BufferSource, FormData, URLSearchParams
+export type BodyInit = XMLHttpRequestBodyInit; // TODO: missing ReadableStream
+
+export type ResponseInit = {
+  status: number,
+  statusText: string,
+  headers: HeadersInit,
+};
+export enum ResponseType { 'basic', 'cors', 'default', 'error', 'opaque', 'opaqueredirect' };
+export class Response implements Body {
+  #handle: number;
+  #response: ResponseMessage | undefined;
+  #body: BodyInit | undefined;
+  #init: ResponseInit;
+
+  #status: number | undefined;
+  #headers: Headers | undefined;
+  #bodyStream: ByteStream | undefined;
+
+  public readonly type: ResponseType;
+
+  constructor(
+    handle: number,
+    body?: BodyInit,
+    init: ResponseInit = { status: 200, statusText: '', headers: {} }
+  ) {
+    this.#handle = handle;
+    this.#body = body;
+    this.#init = init;
+    this.type = ResponseType.default;
+  }
+
+  public get url(): USVString {
+    return ''; // TODO: set it in fetch function
+  }
+
+  public get redirected(): boolean {
+    return false; // TODO: do we know from responsemessage?
+  }
+
+  public get status(): number {
+    if (this.#status === undefined) {
+      if (this.response.kind === 'ok') {
+        this.#status = this.response.status;
+      } else {
+        this.#status = 0;
+      }
+    }
+
+    return this.#status;
+  }
+
+  public get ok(): boolean {
+    if (this.status >= 200 && this.status <= 299) {
+      return true;
+    }
+    return false;
+  }
+
+  public get statusText(): string {
+    return '';
+  }
+
+  public get headers(): Headers {
+    if (this.#headers === undefined) {
+      if (this.response.kind === 'ok') {
+        this.#headers = new Headers();
+        for (const [name, values] of Object.entries(this.response.headers)) {
+          for (const value of values) {
+            this.#headers.append(name, value);
+          }
+        }
+      } else {
+        this.#headers = new Headers();
+      }
+    }
+
+    return this.#headers;
+  }
+
+  // Body mixin
+  public arrayBuffer(): ArrayBuffer {
+    throw new Error('Method not implemented.');
+  }
+
+  public blob(): Blob {
+    throw new Error('Method not implemented.');
+  }
+
+  public formData(): FormData {
+    throw new Error('Method not implemented.');
+  }
+
+  public json(): any {
+    const text = this.text();
+
+    if (text === undefined || text === '') {
+      return undefined;
+    }
+
+    return JSON.parse(text);
+  }
+
+  public text(): string {
+    const bytes = this.bodyBytes();
+    if (bytes.len === 0) {
+      return '';
+    }
+
+    // TODO: possibly infer encoding from headers?
+    return bytes.decode();
+  }
+
+  public get body(): ReadableStream | undefined {
+    return this.#bodyStream;
+  };
+
+  public get bodyUsed(): boolean {
+    // TODO: is body stream closed
+    throw new Error('Method not implemented.');
+  }
+
+  private get response(): ResponseMessage {
+    if (this.#response === undefined) {
+      this.#response = messageExchange({
+        kind: 'http-call-head',
+        handle: this.#handle
+      }) as ResponseMessage;
+    }
+
+    return this.#response;
+  }
+
+  private bodyBytes(): Bytes {
+    if (this.#bodyStream === undefined) {
+      if (this.response.kind === 'ok' && this.response.body_stream) {
+        this.#bodyStream = new ByteStream(this.response.body_stream);
+      } else {
+        return new Bytes(Uint8Array.from([]), 0);
+      }
+    }
+
+    const buffer = this.#bodyStream.readToEnd();
+    this.#bodyStream.close();
+
+    return buffer;
+  }
+}
+
+// https://fetch.spec.whatwg.org/#body-mixin
+export interface Body {
+  readonly body?: ReadableStream;
+  readonly bodyUsed: boolean;
+  arrayBuffer(): ArrayBuffer; // TODO: per specification is Promise<ArrayBuffer>
+  blob(): Blob;
+  formData(): FormData;
+  json(): any;
+  text(): USVString;
+}
+
+export class ReadableStream {
+}
+
+export class Blob {
+  // TODO implement
+}
+
+export class FormData {
+  // TODO implement
+}
+
+// https://fetch.spec.whatwg.org/#fetch-api
+export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
+  const url = typeof input === 'string' ? input : input.url;
+  const headers = new Headers(init.headers);
 
   let finalBody: number[] | undefined;
-  let body = options.body;
+  let body = init.body;
   if (body !== undefined && body !== null) {
-    const contentType = headers['content-type']?.[0] ?? 'application/json';
+    const contentType = headers.get('content-type') ?? 'application/json';
 
     let bodyBytes: Bytes;
     if (contentType.startsWith(CONTENT_TYPE.JSON)) {
@@ -195,16 +425,16 @@ export function fetch(url: string, options: FetchOptions): HttpRequest {
 
   const response = messageExchange({
     kind: 'http-call',
-    method: options.method ?? 'GET',
     url,
-    headers,
-    query: ensureMultimap(options.query ?? {}),
+    method: init.method ?? 'GET',
+    headers: headers.toJson(), // TODO: serialize Headers to HeradersInit
+    query: ensureMultimap(init.query ?? {}),
     body: finalBody,
-    security: options.security,
+    security: init.security,
   });
 
   if (response.kind === 'ok') {
-    return new HttpRequest(response.handle);
+    return new Response(response.handle);
   } else {
     throw responseErrorToError(response);
   }
