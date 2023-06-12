@@ -30,8 +30,8 @@ pub fn __export_superface_core_setup() {
 }
 
 pub fn __export_superface_core_teardown() {
-    unsafe { __wasm_call_dtors() };
     tracing::debug!("mocked superface core teardown");
+    unsafe { __wasm_call_dtors() };
 }
 
 pub fn __export_superface_core_perform() {
