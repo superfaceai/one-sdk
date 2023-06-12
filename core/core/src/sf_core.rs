@@ -71,7 +71,14 @@ impl OneClientCore {
 
     // TODO: Use thiserror and define specific errors
     pub fn new(config: CoreConfiguration) -> anyhow::Result<Self> {
-        tracing::info!(config = ?config);
+        tracing::info!(target: "@user", config = ?config);
+
+        // { "timestamp": "<time>", "kind": "core-init", "cache_duration": 123 } 
+        tracing::info!(
+            target: "@metrics",
+            kind = "core-init",
+            cache_duration = config.cache_duration.as_secs()
+        );
 
         Ok(Self {
             document_cache: DocumentCache::new(config.cache_duration),
@@ -131,6 +138,15 @@ impl OneClientCore {
 
     pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
         let perform_input = PerformInput::take_in(MessageExchangeFfi);
+
+        tracing::info!(
+            target: "@metrics",
+            kind = "perform-input",
+            profile_url = perform_input.profile_url,
+            provider_url = perform_input.provider_url,
+            map_url = perform_input.map_url,
+            usecase = perform_input.usecase
+        );
 
         self.document_cache.cache(&perform_input.profile_url)?;
         self.document_cache.cache(&perform_input.profile_url)?;

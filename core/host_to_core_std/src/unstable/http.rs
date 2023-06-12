@@ -103,6 +103,8 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
         message_exchange: Me,
         stream_exchange: Se,
     ) -> Result<Self, HttpCallError> {
+        let _span = tracing::debug_span!(target: "@user", "HttpRequest::fetch").entered();
+
         let mut url = Url::parse(url).map_err(|err| HttpCallError::InvalidUrl(err.to_string()))?;
         // merge query params already in the URL with the params passed in query
         // TODO: or we can assert here that the url doesn't contain any params -
@@ -111,6 +113,14 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
                 .iter()
                 .flat_map(|(key, values)| values.iter().map(move |value| (key, value))),
         );
+
+        if tracing::enabled!(tracing::Level::DEBUG, target: "@user") {
+            tracing::debug!(target: "@user", %method, %url);
+            for (header, value) in headers.iter() {
+                tracing::debug!(target: "@user", %header, ?value);
+            }
+            tracing::debug!(target: "@user", ?body);
+        }
 
         let response = HttpCallRequest {
             kind: HttpCallRequest::KIND,

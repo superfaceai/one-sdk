@@ -25,8 +25,7 @@ pub trait MessageExchange {
         &self,
         message: &M,
     ) -> Result<R, JsonMessageError> {
-        let _span = tracing::span!(tracing::Level::TRACE, "host/message_exchange");
-        let _span = _span.enter();
+        let _span = tracing::trace_span!("host/message_exchange").entered();
 
         let json_message =
             serde_json::to_string(message).map_err(JsonMessageError::SerializeFailed)?;

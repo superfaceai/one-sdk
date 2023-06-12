@@ -56,8 +56,7 @@ impl DocumentCache {
     }
 
     pub fn cache(&mut self, url: &str) -> Result<(), DocumentCacheError> {
-        let _span = tracing::span!(tracing::Level::DEBUG, "cache_document");
-        let _span = _span.enter();
+        let _span = tracing::debug_span!("cache_document").entered();
 
         tracing::debug!(url);
 
@@ -94,6 +93,13 @@ impl DocumentCache {
                 tracing::debug!(%utf8);
             }
         }
+
+        tracing::info!(
+            target: "@metrics",
+            kind = "cache-document",
+            url,
+            len = data.len()
+        );
 
         self.map.insert(
             url.to_string(),

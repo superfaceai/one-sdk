@@ -1,7 +1,6 @@
 use std::sync::Mutex;
 
 use bindings::MessageExchangeFfi;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use sf_std::{
     abi::{Ptr, Size},
@@ -26,6 +25,64 @@ extern "C" {
     fn __wasm_call_dtors();
 }
 
+fn init_tracing() {
+    use tracing::metadata::LevelFilter;
+    use tracing_subscriber::{
+        EnvFilter,
+        filter::FilterFn, layer::SubscriberExt, util::SubscriberInitExt, Layer, fmt::format::json
+    };
+
+    // we set up these layers:
+    // * user layer (@user) - output intended/relevant for users of the sdk
+    // * metrics layer (@metrics) - metrics sent to the dashboard
+    // * developer layer (everything) - output not relevant for normal users, but relevant when debugging and during development
+    // * dump layer (not @metrics) - output dumped after a panic, excluding metrics which are dumped separately
+
+    let user_layer = tracing_subscriber::fmt::layer()
+        .with_target(false)
+        .with_writer(std::io::stdout)
+        .with_filter(FilterFn::new(|metadata| {
+            metadata.target().starts_with("@user")
+        }))
+        .with_filter(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::WARN.into())
+                .with_env_var("SF_LOG")
+                .from_env_lossy()
+        );
+
+    let metrics_layer = tracing_subscriber::fmt::layer()
+        .event_format(
+            json().flatten_event(true).with_target(false).with_level(false)
+        )
+        // .with_writer(make_writer) // TODO: write where
+        .with_filter(FilterFn::new(|metadata| {
+            metadata.target().starts_with("@metrics")
+        }));
+
+    let developer_layer = tracing_subscriber::fmt::layer()
+        .with_writer(std::io::stderr)
+        .with_filter(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::OFF.into())
+                .with_env_var("SF_DEV_LOG")
+                .from_env_lossy()
+        );
+    
+    let dump_layer = tracing_subscriber::fmt::layer()
+        .with_writer(std::io::sink) // TODO: where to write? I'm thinking circular buffer which can be used to dump last logs in case of a panic
+        .with_filter(FilterFn::new(|metadata| {
+            !metadata.target().starts_with("@metrics")
+        }));
+
+    tracing_subscriber::registry()
+        .with(user_layer)
+        .with(metrics_layer)
+        .with(developer_layer)
+        .with(dump_layer)
+        .init();
+}
+
 #[no_mangle]
 #[export_name = "oneclient_core_setup"]
 /// Initializes persistent core state.
@@ -39,12 +96,9 @@ pub extern "C" fn __export_oneclient_core_setup() {
     unsafe { __wasm_call_ctors() };
 
     // initialize tracing
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::EnvFilter::from_env("SF_LOG"))
-        .init();
+    init_tracing();
 
-    tracing::debug!("oneclient_core_setup called");
+    tracing::debug!(target: "@user", "oneclient_core_setup called");
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
     if lock.is_some() {
@@ -56,6 +110,7 @@ pub extern "C" fn __export_oneclient_core_setup() {
         Ok(c) => c,
         Err(err) => {
             tracing::error!(
+                target: "@user",
                 "Failed to load core configuration from environment: {}",
                 err
             );
@@ -74,7 +129,7 @@ pub extern "C" fn __export_oneclient_core_teardown() {
     #[cfg(feature = "core_mock")]
     return mock::__export_oneclient_core_teardown();
 
-    tracing::debug!("oneclient_core_teardown called");
+    tracing::debug!(target: "@user", "oneclient_core_teardown called");
 
     match GLOBAL_STATE.try_lock() {
         Err(_) => panic!("Global state lock already locked: perform most likely panicked"),
@@ -133,7 +188,7 @@ pub extern "C" fn __export_oneclient_core_send_metrics() {
         // if there is an error here that means the core couldn't send a message
         // to the host
         // TODO: should be call teardown and abort or let the host call teardown?
-        tracing::error!("Send metrics error: {:#}", err);
+        tracing::error!(target: "@user", "Send metrics error: {:#}", err);
     }
 }
 
