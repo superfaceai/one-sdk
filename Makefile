@@ -24,13 +24,13 @@ ifeq ($(CORE_PROFILE),test)
 endif
 
 # WASI SDK
-WASI_SDK_VERSION=20
 WASI_SDK_OS=macos
-WASI_SDK_FOLDER=core/wasi-sdk-${WASI_SDK_VERSION}.0
-WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-${WASI_SDK_OS}.tar.gz"
 ifeq ($(OS),Linux)
 	WASI_SDK_OS=linux
 endif
+WASI_SDK_VERSION=20
+WASI_SDK_FOLDER=core/wasi-sdk-${WASI_SDK_VERSION}.0
+WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-${WASI_SDK_OS}.tar.gz"
 
 # Core
 CORE_DIST_FOLDER=core/dist
