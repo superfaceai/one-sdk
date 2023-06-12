@@ -1,3 +1,5 @@
+//! Entire implementation removese async nature of fetch API
+
 import { messageExchange, jsonReviverMapValue, jsonReplacerMapValue, responseErrorToError } from './internal/message';
 import { ensureMultimap } from './internal/util';
 import { Bytes, ByteStream } from './internal/bytes';
@@ -176,24 +178,68 @@ export class Headers implements Iterable<[string, string[]]> {
  * 
  * Adds custom property **security**
  */
-export class Request {
+class Request implements Body {
   public readonly url: string;
   public readonly method: string;
-  public readonly security: string | undefined;
   public readonly headers: Headers;
+  public readonly security: string | undefined;
+
+  #body?: BodyInit;
 
   constructor(input: RequestInfo, init: RequestInit = {}) {
-    if (typeof input === 'string') {
-      this.url = input;
-      this.method = init.method ?? 'GET';
-      this.headers = new Headers(init.headers);
-      this.security = init.security;
-    } else {
+    // TODO validate init for semantics eg. body with get method
+    // TODO validate request been instantiated correctly
+
+    this.method = init.method ?? 'GET';
+    this.headers = new Headers(init.headers);
+    this.security = init.security;
+    this.#body = init.body;
+
+    if (input instanceof Request) {
       this.url = input.url;
-      this.method = input.method ?? init.headers ?? 'GET';
-      this.headers = input.headers ?? new Headers(init.headers);
-      this.security = input.security ?? init.security;
+      this.method = this.method ?? input.method;
+      this.headers = this.headers ?? input.headers;
+      this.security = this.security ?? input.security;
+      this.#body = this.#body || init.body;
+    } else {
+      this.url = input;
     }
+  }
+
+  public get body(): ReadableStream | null {
+    if (this.#body === null) {
+      return null;
+    }
+
+    if (this.#body instanceof ReadableStream) {
+      return this.#body;
+    }
+
+    throw new Error(); // TODO
+  }
+
+  public get bodyUsed(): boolean {
+    throw new Error('BodyUsed not implemented.'); // TODO
+  }
+
+  public arrayBuffer(): ArrayBuffer {
+    throw new Error('Method arrayBuffer() not implemented.'); // TODO
+  }
+
+  public blob(): Blob {
+    throw new Error('Method blob() not implemented.'); // TODO
+  }
+
+  public formData(): FormData {
+    throw new Error('Method formData() not implemented.'); // TODO
+  }
+
+  public json() {
+    throw new Error('Method json() not implemented.'); // TODO
+  }
+
+  public text(): string {
+    throw new Error('Method text() not implemented.'); // TODO
   }
 }
 
@@ -203,7 +249,7 @@ export interface RequestInit {
   method?: string,
   headers?: HeadersInit,
   query?: MultiMap,
-  body?: string | number[] | Buffer,
+  body?: BodyInit,
   security?: string,
 }
 
@@ -220,7 +266,7 @@ type ResponseMessage = {
 };
 
 export type XMLHttpRequestBodyInit = Buffer | USVString; // TODO: missing Blob, BufferSource, FormData, URLSearchParams
-export type BodyInit = XMLHttpRequestBodyInit; // TODO: missing ReadableStream
+export type BodyInit = XMLHttpRequestBodyInit | ReadableStream;
 
 export type ResponseInit = {
   status: number,
@@ -299,17 +345,16 @@ export class Response implements Body {
     return this.#headers;
   }
 
-  // Body mixin
   public arrayBuffer(): ArrayBuffer {
-    throw new Error('Method not implemented.');
+    throw new Error('Method arrayBuffer() not implemented.'); // TODO
   }
 
   public blob(): Blob {
-    throw new Error('Method not implemented.');
+    throw new Error('Method blob() not implemented.'); // TODO
   }
 
   public formData(): FormData {
-    throw new Error('Method not implemented.');
+    throw new Error('Method formData() not implemented.'); // TODO
   }
 
   public json(): any {
@@ -332,13 +377,16 @@ export class Response implements Body {
     return bytes.decode();
   }
 
-  public get body(): ReadableStream | undefined {
-    return this.#bodyStream;
+  public get body(): ReadableStream | null {
+    if (this.#bodyStream === undefined) {
+      return null;
+    }
+
+    return new ReadableStream();
   };
 
   public get bodyUsed(): boolean {
-    // TODO: is body stream closed
-    throw new Error('Method not implemented.');
+    throw new Error('BodyUsed not implemented.'); // TODO
   }
 
   private get response(): ResponseMessage {
@@ -353,6 +401,8 @@ export class Response implements Body {
   }
 
   private bodyBytes(): Bytes {
+    // TODO work with #body
+
     if (this.#bodyStream === undefined) {
       if (this.response.kind === 'ok' && this.response.body_stream) {
         this.#bodyStream = new ByteStream(this.response.body_stream);
@@ -370,22 +420,45 @@ export class Response implements Body {
 
 // https://fetch.spec.whatwg.org/#body-mixin
 export interface Body {
-  readonly body?: ReadableStream;
+  readonly body: ReadableStream | null;
   readonly bodyUsed: boolean;
-  arrayBuffer(): ArrayBuffer; // TODO: per specification is Promise<ArrayBuffer>
+  // TODO: per specification all should be promises: Promise<ArrayBuffer>
+  arrayBuffer(): ArrayBuffer;
   blob(): Blob;
   formData(): FormData;
   json(): any;
   text(): USVString;
 }
 
-export class ReadableStream {
+export interface QueuingStrategy {
+  highWaterMark?: number;
+  size?: number;
 }
 
+// https://streams.spec.whatwg.org/#rs-class-definition
+/**
+ * Not supported
+ */
+export class ReadableStream {
+  constructor(private readonly underlyingSource?: any, private readonly strategy: QueuingStrategy = {}) {
+    throw new Error('ReadableStream is not implemented.');
+  }
+
+  public static from(): ReadableStream {
+    return new ReadableStream();
+  }
+}
+
+/**
+ * Not supported
+ */
 export class Blob {
   // TODO implement
 }
 
+/**
+ * Not supported
+ */
 export class FormData {
   // TODO implement
 }
@@ -396,7 +469,11 @@ export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
   const headers = new Headers(init.headers);
 
   let finalBody: number[] | undefined;
-  let body = init.body;
+  let body: BodyInit | ReadableStream | undefined = init.body;
+  if (input instanceof Request && input.body !== null) {
+    body = input.body;
+  }
+
   if (body !== undefined && body !== null) {
     const contentType = headers.get('content-type') ?? 'application/json';
 
@@ -412,7 +489,6 @@ export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
     } else {
       throw new Error(`Content type not supported: ${contentType}`);
     }
-    // TODO: support formdata
 
     // turn Bytes into number[] to serialize correctly
     finalBody = Array.from(bodyBytes.data);
