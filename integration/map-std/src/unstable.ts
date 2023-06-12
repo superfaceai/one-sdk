@@ -1,5 +1,3 @@
-//! Entire implementation removese async nature of fetch API
-
 import { messageExchange, jsonReviverMapValue, jsonReplacerMapValue, responseErrorToError } from './internal/message';
 import { ensureMultimap } from './internal/util';
 import { Bytes, ByteStream } from './internal/bytes';
@@ -72,7 +70,7 @@ export const CONTENT_TYPE = {
 };
 
 export function resolveRequestUrl(url: string, options: { parameters: any, security: any, serviceId?: string }): string {
-  const { parameters, security } = options;
+  const { parameters } = options;
   let serviceId = options.serviceId ?? parameters.__provider.defaultService;
 
   if (url === '') {
@@ -86,12 +84,8 @@ export function resolveRequestUrl(url: string, options: { parameters: any, secur
   return url;
 }
 
-// Fetch https://fetch.spec.whatwg.org/#fetch-api
-// Undici types (Node.js implementation) https://github.com/nodejs/undici/blob/main/types/fetch.d.ts
-
 // https://fetch.spec.whatwg.org/#headers-class
 export type HeadersInit = Record<string, string> | [string, string][];
-
 export class Headers implements Iterable<[string, string[]]> {
   private guard: 'immutable' | 'request' | 'request-no-cors' | 'response' | 'none';
   private headersList: Map<string, string[]>;
@@ -165,86 +159,12 @@ export class Headers implements Iterable<[string, string[]]> {
         this.append(name, value);
       }
     } else {
-      throw new TypeError("Headers must be: { string: string[] } | [string, string][]");
+      throw new TypeError("Headers must be: { string: string } | [string, string][]");
     }
-  }
-}
-
-/**
- * Supports subset of https://fetch.spec.whatwg.org/#request-class
- * - url
- * - method
- * - headers
- * 
- * Adds custom property **security**
- */
-class Request implements Body {
-  public readonly url: string;
-  public readonly method: string;
-  public readonly headers: Headers;
-  public readonly security: string | undefined;
-
-  #body?: BodyInit;
-
-  constructor(input: RequestInfo, init: RequestInit = {}) {
-    // TODO validate init for semantics eg. body with get method
-    // TODO validate request been instantiated correctly
-
-    this.method = init.method ?? 'GET';
-    this.headers = new Headers(init.headers);
-    this.security = init.security;
-    this.#body = init.body;
-
-    if (input instanceof Request) {
-      this.url = input.url;
-      this.method = this.method ?? input.method;
-      this.headers = this.headers ?? input.headers;
-      this.security = this.security ?? input.security;
-      this.#body = this.#body || init.body;
-    } else {
-      this.url = input;
-    }
-  }
-
-  public get body(): ReadableStream | null {
-    if (this.#body === null) {
-      return null;
-    }
-
-    if (this.#body instanceof ReadableStream) {
-      return this.#body;
-    }
-
-    throw new Error(); // TODO
-  }
-
-  public get bodyUsed(): boolean {
-    throw new Error('BodyUsed not implemented.'); // TODO
-  }
-
-  public arrayBuffer(): ArrayBuffer {
-    throw new Error('Method arrayBuffer() not implemented.'); // TODO
-  }
-
-  public blob(): Blob {
-    throw new Error('Method blob() not implemented.'); // TODO
-  }
-
-  public formData(): FormData {
-    throw new Error('Method formData() not implemented.'); // TODO
-  }
-
-  public json() {
-    throw new Error('Method json() not implemented.'); // TODO
-  }
-
-  public text(): string {
-    throw new Error('Method text() not implemented.'); // TODO
   }
 }
 
 export type USVString = string;
-export type RequestInfo = USVString | Request;
 export interface RequestInit {
   method?: string,
   headers?: HeadersInit,
@@ -252,6 +172,8 @@ export interface RequestInit {
   body?: BodyInit,
   security?: string,
 }
+export type Request = RequestInit & { url: USVString };
+export type RequestInfo = USVString | Request;
 
 // https://fetch.spec.whatwg.org/#response-class
 type ResponseMessage = {
@@ -265,21 +187,20 @@ type ResponseMessage = {
   message: string,
 };
 
-export type XMLHttpRequestBodyInit = Buffer | USVString; // TODO: missing Blob, BufferSource, FormData, URLSearchParams
-export type BodyInit = XMLHttpRequestBodyInit | ReadableStream;
+export type XMLHttpRequestBodyInit = Buffer | USVString; // TODO: Blob, BufferSource, FormData, URLSearchParams
+export type BodyInit = XMLHttpRequestBodyInit; // TODO ReadableStream
 
 export type ResponseInit = {
-  status: number,
-  statusText: string,
-  headers: HeadersInit,
+  status?: number,
+  statusText?: string,
+  headers?: HeadersInit,
 };
 export enum ResponseType { 'basic', 'cors', 'default', 'error', 'opaque', 'opaqueredirect' };
 export class Response implements Body {
   #handle: number;
-  #response: ResponseMessage | undefined;
+  #init: ResponseInit & { url: USVString };
   #body: BodyInit | undefined;
-  #init: ResponseInit;
-
+  #response: ResponseMessage | undefined;
   #status: number | undefined;
   #headers: Headers | undefined;
   #bodyStream: ByteStream | undefined;
@@ -287,22 +208,27 @@ export class Response implements Body {
   public readonly type: ResponseType;
 
   constructor(
-    handle: number,
     body?: BodyInit,
-    init: ResponseInit = { status: 200, statusText: '', headers: {} }
+    init?: ResponseInit,
   ) {
-    this.#handle = handle;
+    this.#handle = -1;
+    this.#init = { url: '', status: 200, statusText: '', headers: {}, ...init };
     this.#body = body;
-    this.#init = init;
     this.type = ResponseType.default;
   }
 
+  static handle(handle: number, init: ResponseInit & { url: USVString }): Response {
+    const response = new Response(undefined, init);
+    response.#handle = handle;
+    return response;
+  }
+
   public get url(): USVString {
-    return ''; // TODO: set it in fetch function
+    return this.#init.url;
   }
 
   public get redirected(): boolean {
-    return false; // TODO: do we know from responsemessage?
+    return false; // TODO: do we know from response message?
   }
 
   public get status(): number {
@@ -378,10 +304,6 @@ export class Response implements Body {
   }
 
   public get body(): ReadableStream | null {
-    if (this.#bodyStream === undefined) {
-      return null;
-    }
-
     return new ReadableStream();
   };
 
@@ -401,8 +323,6 @@ export class Response implements Body {
   }
 
   private bodyBytes(): Bytes {
-    // TODO work with #body
-
     if (this.#bodyStream === undefined) {
       if (this.response.kind === 'ok' && this.response.body_stream) {
         this.#bodyStream = new ByteStream(this.response.body_stream);
@@ -422,7 +342,8 @@ export class Response implements Body {
 export interface Body {
   readonly body: ReadableStream | null;
   readonly bodyUsed: boolean;
-  // TODO: per specification all should be promises: Promise<ArrayBuffer>
+  // Per specification all should be promises: Promise<ArrayBuffer>
+  // but we are trating all integration code as synchronous
   arrayBuffer(): ArrayBuffer;
   blob(): Blob;
   formData(): FormData;
@@ -449,28 +370,42 @@ export class ReadableStream {
   }
 }
 
+export type BufferSource = ArrayBuffer | ArrayBufferView;
+export type BlobPart = BufferSource | Blob | USVString;
 /**
  * Not supported
  */
 export class Blob {
-  // TODO implement
+  constructor(private readonly blobParts?: BlobPart[], private readonly options?: {}) {
+    throw new Error('Blob is not implemented.')
+  }
 }
 
 /**
  * Not supported
  */
 export class FormData {
-  // TODO implement
+  constructor(private readonly form?: {}, private readonly submitter?: {}) {
+    throw new Error('FormData is not implemented');
+  }
 }
 
 // https://fetch.spec.whatwg.org/#fetch-api
+/**
+ * Limited and synchronous implementation of [Fetch](https://fetch.spec.whatwg.org)
+ * for OneClient integration code.
+ * 
+ * @param input {RequestInfo}
+ * @param init  {RequestInit}
+ * @returns {Response}
+ */
 export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
   const url = typeof input === 'string' ? input : input.url;
   const headers = new Headers(init.headers);
 
   let finalBody: number[] | undefined;
   let body: BodyInit | ReadableStream | undefined = init.body;
-  if (input instanceof Request && input.body !== null) {
+  if (body === undefined && typeof input === 'object') {
     body = input.body;
   }
 
@@ -498,14 +433,14 @@ export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
     kind: 'http-call',
     url,
     method: init.method ?? 'GET',
-    headers: headersToJson(headers), // TODO: serialize Headers to HeradersInit
+    headers: headersToJson(headers),
     query: ensureMultimap(init.query ?? {}),
     body: finalBody,
     security: init.security,
   });
 
   if (response.kind === 'ok') {
-    return new Response(response.handle);
+    return Response.handle(response.handle, { url });
   } else {
     throw responseErrorToError(response);
   }
