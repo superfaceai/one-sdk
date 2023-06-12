@@ -1,4 +1,7 @@
-use std::sync::Mutex;
+use std::{
+    ops::DerefMut,
+    sync::{Mutex, OnceLock},
+};
 
 use bindings::MessageExchangeFfi;
 
@@ -12,75 +15,22 @@ use sf_std::{
 mod sf_core;
 use sf_core::{CoreConfiguration, OneClientCore};
 
+use crate::observability::buffer::{SharedEventBuffer, TracingEventBuffer, VecEventBuffer};
+
 mod bindings;
+mod observability;
 
 #[cfg(feature = "core_mock")]
 mod mock;
 
 static GLOBAL_STATE: Mutex<Option<OneClientCore>> = Mutex::new(None);
+static METRICS_BUFFER: OnceLock<SharedEventBuffer<VecEventBuffer>> = OnceLock::new();
+static DEVELOPER_DUMP_BUFFER: OnceLock<SharedEventBuffer<VecEventBuffer>> = OnceLock::new();
 
 // WASI functions which would be automatically called from `_start`, but we need to explicitly call them since we are a lib.
 extern "C" {
     fn __wasm_call_ctors();
     fn __wasm_call_dtors();
-}
-
-fn init_tracing() {
-    use tracing::metadata::LevelFilter;
-    use tracing_subscriber::{
-        EnvFilter,
-        filter::FilterFn, layer::SubscriberExt, util::SubscriberInitExt, Layer, fmt::format::json
-    };
-
-    // we set up these layers:
-    // * user layer (@user) - output intended/relevant for users of the sdk
-    // * metrics layer (@metrics) - metrics sent to the dashboard
-    // * developer layer (everything) - output not relevant for normal users, but relevant when debugging and during development
-    // * dump layer (not @metrics) - output dumped after a panic, excluding metrics which are dumped separately
-
-    let user_layer = tracing_subscriber::fmt::layer()
-        .with_target(false)
-        .with_writer(std::io::stdout)
-        .with_filter(FilterFn::new(|metadata| {
-            metadata.target().starts_with("@user")
-        }))
-        .with_filter(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::WARN.into())
-                .with_env_var("SF_LOG")
-                .from_env_lossy()
-        );
-
-    let metrics_layer = tracing_subscriber::fmt::layer()
-        .event_format(
-            json().flatten_event(true).with_target(false).with_level(false)
-        )
-        // .with_writer(make_writer) // TODO: write where
-        .with_filter(FilterFn::new(|metadata| {
-            metadata.target().starts_with("@metrics")
-        }));
-
-    let developer_layer = tracing_subscriber::fmt::layer()
-        .with_writer(std::io::stderr)
-        .with_filter(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::OFF.into())
-                .with_env_var("SF_DEV_LOG")
-                .from_env_lossy()
-        );
-    
-    let dump_layer = tracing_subscriber::fmt::layer()
-        .with_writer(std::io::sink) // TODO: where to write? I'm thinking circular buffer which can be used to dump last logs in case of a panic
-        .with_filter(FilterFn::new(|metadata| {
-            !metadata.target().starts_with("@metrics")
-        }));
-
-    tracing_subscriber::registry()
-        .with(user_layer)
-        .with(metrics_layer)
-        .with(developer_layer)
-        .with(dump_layer)
-        .init();
 }
 
 #[no_mangle]
@@ -95,9 +45,17 @@ pub extern "C" fn __export_oneclient_core_setup() {
     // call ctors first
     unsafe { __wasm_call_ctors() };
 
-    // initialize tracing
-    init_tracing();
-
+    // initialize observability
+    METRICS_BUFFER
+        .set(SharedEventBuffer::new(VecEventBuffer::new()))
+        .unwrap();
+    DEVELOPER_DUMP_BUFFER
+        .set(SharedEventBuffer::new(VecEventBuffer::new()))
+        .unwrap();
+    observability::init_tracing(
+        METRICS_BUFFER.get().unwrap().clone(),
+        DEVELOPER_DUMP_BUFFER.get().unwrap().clone(),
+    );
     tracing::debug!(target: "@user", "oneclient_core_setup called");
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
@@ -132,7 +90,14 @@ pub extern "C" fn __export_oneclient_core_teardown() {
     tracing::debug!(target: "@user", "oneclient_core_teardown called");
 
     match GLOBAL_STATE.try_lock() {
-        Err(_) => panic!("Global state lock already locked: perform most likely panicked"),
+        Err(_) => {
+            let developer_dump = DEVELOPER_DUMP_BUFFER.get().unwrap().lock();
+            for event in developer_dump.events() {
+                eprintln!("TODO: dump event after panic \"{}\"", event);
+            }
+
+            // panic!("Global state lock already locked: perform most likely panicked")
+        }
         Ok(lock) if lock.is_none() => panic!("Not setup or already torn down"),
         Ok(mut lock) => {
             let state = lock.take();
@@ -183,7 +148,7 @@ pub extern "C" fn __export_oneclient_core_send_metrics() {
         .as_mut()
         .expect("Global state missing: has oneclient_core_setup been called?");
 
-    let result = state.send_metrics();
+    let result = state.send_metrics(METRICS_BUFFER.get().unwrap().lock().deref_mut());
     if let Err(err) = result {
         // if there is an error here that means the core couldn't send a message
         // to the host

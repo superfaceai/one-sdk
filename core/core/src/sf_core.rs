@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use tracing::instrument;
-
 use sf_std::unstable::{
     perform::{PerformException, PerformInput},
     provider::ProviderJson,
@@ -15,6 +13,11 @@ use map_std::unstable::{
     MapValue, MapValueObject,
 };
 
+use crate::{
+    bindings::{MessageExchangeFfi, StreamExchangeFfi},
+    observability::buffer::TracingEventBuffer,
+};
+
 mod cache;
 mod config;
 mod map_std_impl;
@@ -25,7 +28,6 @@ use cache::{DocumentCache, DocumentCacheError};
 pub use config::CoreConfiguration;
 use map_std_impl::MapStdImpl;
 
-use crate::bindings::{MessageExchangeFfi, StreamExchangeFfi};
 type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
 type HttpRequest = sf_std::unstable::http::HttpRequest<MessageExchangeFfi, StreamExchangeFfi>;
 type IoStream = sf_std::unstable::IoStream<StreamExchangeFfi>;
@@ -73,7 +75,7 @@ impl OneClientCore {
     pub fn new(config: CoreConfiguration) -> anyhow::Result<Self> {
         tracing::info!(target: "@user", config = ?config);
 
-        // { "timestamp": "<time>", "kind": "core-init", "cache_duration": 123 } 
+        // { "timestamp": "<time>", "kind": "core-init", "cache_duration": 123 }
         tracing::info!(
             target: "@metrics",
             kind = "core-init",
@@ -130,9 +132,15 @@ impl OneClientCore {
     }
 
     // TODO: use thiserror
-    #[instrument(level = "Trace")]
-    pub fn send_metrics(&mut self) -> anyhow::Result<()> {
-        tracing::trace!("send metrics");
+    pub fn send_metrics(&mut self, metrics: &mut impl TracingEventBuffer) -> anyhow::Result<()> {
+        let _span = tracing::trace_span!("send_metrics").entered();
+
+        for event in metrics.events() {
+            // TODO: send metric here
+            tracing::trace!("TODO: send metric \"{}\"", event);
+        }
+        metrics.clear();
+
         Ok(())
     }
 
