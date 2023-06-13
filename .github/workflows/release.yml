@@ -47,6 +47,7 @@ jobs:
           key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}-release
           restore-keys: |
             cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}-
+            cargo-${{ runner.os }}-
       - name: Cache WASI SDK
         uses: actions/cache@v3
         with:
