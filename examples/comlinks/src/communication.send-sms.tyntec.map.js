@@ -17,8 +17,8 @@ function SendMessage({ input, parameters, services }) {
     security: 'apikey'
   };
 
-  const response = std.unstable.fetch(url, options).response();
-  const body = response.bodyAuto() ?? {};
+  const response = std.unstable.fetch(url, options);
+  const body = response.json() ?? {};
   if (response.status !== 202) {
     throw new std.unstable.MapError({
       title: `Unexpected response status ${response.status}`,

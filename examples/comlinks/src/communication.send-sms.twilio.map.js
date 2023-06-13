@@ -17,8 +17,8 @@ function SendMessage({ input, parameters, services }) {
     security: 'basic'
   };
 
-  const response = std.unstable.fetch(url, options).response();
-  const body = response.bodyAuto() ?? {};
+  const response = std.unstable.fetch(url, options);
+  const body = response.json() ?? {};
   if (response.status !== 201) {
     throw new std.unstable.MapError({
       title: 'Unexpected response',
