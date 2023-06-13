@@ -372,8 +372,9 @@ dependencies = [
 
 [[package]]
 name = "quickjs-wasm-rs"
-version = "0.1.4"
-source = "git+https://github.com/Shopify/javy.git?tag=v0.6.0#bbb1d6033eee25b8003d34102032f887105d14fa"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a318ed47e42082c11771620a1235231f34c10f775f4972dbc7753d4b07d8d568"
 dependencies = [
  "anyhow",
  "once_cell",
@@ -383,8 +384,9 @@ dependencies = [
 
 [[package]]
 name = "quickjs-wasm-sys"
-version = "0.1.2"
-source = "git+https://github.com/Shopify/javy.git?tag=v0.6.0#bbb1d6033eee25b8003d34102032f887105d14fa"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f72b064defce86eb257f5505ff22604f67d6b1036e995ac703cfdbe378e2df92"
 dependencies = [
  "bindgen",
  "cc",

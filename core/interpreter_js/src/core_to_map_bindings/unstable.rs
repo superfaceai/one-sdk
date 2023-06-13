@@ -2,17 +2,17 @@ use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
 use base64::Engine;
-use quickjs_wasm_rs::{Context, JSError, Value as JsValue};
+use quickjs_wasm_rs::{JSContextRef, JSError, JSValueRef, JSValue};
 
 use map_std::unstable::MapStdUnstable;
 use sf_std::MultiMap;
 
-use super::JsValueDebug;
+use super::JSValueDebug;
 
 pub const MODULE_NAME: &[&str] = &["__ffi", "unstable"];
 
 pub fn link<H: MapStdUnstable + 'static>(
-    context: &mut Context,
+    context: &mut JSContextRef,
     state: Rc<RefCell<H>>,
 ) -> anyhow::Result<()> {
     let global_object = context
@@ -43,95 +43,88 @@ pub fn link<H: MapStdUnstable + 'static>(
     Ok(())
 }
 
-fn __export_message_exchange<H: MapStdUnstable + 'static>(
+fn __export_message_exchange<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let message = ensure_arguments!("message_exchange" args; 0: str);
     let response = map_std::unstable::handle_message(state, message.as_bytes());
 
-    Ok(context.value_from_str(&response).unwrap())
+    Ok(JSValue::String(response))
 }
 
-fn __export_stream_read<H: MapStdUnstable + 'static>(
+fn __export_stream_read<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let (handle, buf) = ensure_arguments!("stream_read" args; 0: i32, 1: mut_bytes);
 
     match state.stream_read(handle as _, buf) {
-        Ok(count) => Ok(context.value_from_u64(count as u64).unwrap()),
+        Ok(count) => Ok(count.into()),
         Err(err) => Err(JSError::Type(format!("stream_read: {}", err))),
     }
 }
 
-fn __export_stream_write<H: MapStdUnstable + 'static>(
+fn __export_stream_write<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let (handle, buf) = ensure_arguments!("stream_write" args; 0: i32, 1: bytes);
 
     match state.stream_write(handle as _, buf) {
-        Ok(count) => Ok(context.value_from_u64(count as u64).unwrap()),
+        Ok(count) => Ok(count.into()),
         Err(err) => Err(JSError::Type(format!("stream_write: {}", err))),
     }
 }
 
-fn __export_stream_close<H: MapStdUnstable + 'static>(
+fn __export_stream_close<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let handle = ensure_arguments!("stream_close" args; 0: i32);
 
     match state.stream_close(handle as _) {
-        Ok(()) => Ok(context.undefined_value().unwrap()),
+        Ok(()) => Ok(JSValue::Undefined),
         Err(err) => Err(JSError::Type(format!("stream_close: {}", err))),
     }
 }
 
-fn __export_print<H: MapStdUnstable + 'static>(
+fn __export_print<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let message = ensure_arguments!("print" args; 0: str);
     state.print(message);
 
-    Ok(context.undefined_value().unwrap())
+    Ok(JSValue::Undefined)
 }
 
-fn __export_print_debug<H: MapStdUnstable + 'static>(
+fn __export_print_debug<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     use std::fmt::Write;
 
     let mut buffer = String::new();
     for arg in args {
-        write!(&mut buffer, "{:#?} ", JsValueDebug(arg)).unwrap();
+        write!(&mut buffer, "{:#?} ", JSValueDebug::Ref(*arg)).unwrap();
     }
     tracing::debug!("{}", buffer);
 
-    Ok(context.undefined_value().unwrap())
+    Ok(JSValue::Undefined)
 }
 
-fn __export_bytes_to_utf8<H: MapStdUnstable + 'static>(
+fn __export_bytes_to_utf8<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let bytes = ensure_arguments!("bytes_to_utf8" args; 0: bytes);
 
     match std::str::from_utf8(bytes) {
@@ -139,40 +132,37 @@ fn __export_bytes_to_utf8<H: MapStdUnstable + 'static>(
             "Could not decode bytes at UTF-8: {}",
             err
         ))),
-        Ok(s) => Ok(context.value_from_str(s).unwrap()),
+        Ok(s) => Ok(s.into()),
     }
 }
 
-fn __export_utf8_to_bytes<H: MapStdUnstable + 'static>(
+fn __export_utf8_to_bytes<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let string = ensure_arguments!("utf8_to_bytes" args; 0: str);
 
-    Ok(context.array_buffer_value(string.as_bytes()).unwrap())
+    Ok(JSValue::ArrayBuffer(string.into()))
 }
 
-fn __export_bytes_to_base64<H: MapStdUnstable + 'static>(
+fn __export_bytes_to_base64<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let bytes = ensure_arguments!("bytes_to_base64" args; 0: bytes);
 
     let result = base64::engine::general_purpose::STANDARD.encode(bytes);
 
-    Ok(context.value_from_str(&result).unwrap())
+    Ok(result.into())
 }
 
-fn __export_base64_to_bytes<H: MapStdUnstable + 'static>(
+fn __export_base64_to_bytes<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let string = ensure_arguments!("base64_to_bytes" args; 0: str);
 
     match base64::engine::general_purpose::STANDARD.decode(string) {
@@ -180,16 +170,15 @@ fn __export_base64_to_bytes<H: MapStdUnstable + 'static>(
             "Could not decode string as base64: {}",
             err
         ))),
-        Ok(bytes) => Ok(context.array_buffer_value(&bytes).unwrap()),
+        Ok(bytes) => Ok(JSValue::ArrayBuffer(bytes)),
     }
 }
 
-fn __export_record_to_urlencoded<H: MapStdUnstable + 'static>(
+fn __export_record_to_urlencoded<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    context: &Context,
-    _this: &JsValue,
-    args: &[JsValue],
-) -> Result<JsValue, JSError> {
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
     let value = ensure_arguments!("record_to_urlencoded" args; 0: value);
     let mut properties = value.properties().unwrap();
 
@@ -217,5 +206,5 @@ fn __export_record_to_urlencoded<H: MapStdUnstable + 'static>(
     }
     let result = sf_std::encode_query(&multimap);
 
-    Ok(context.value_from_str(&result).unwrap())
+    Ok(result.into())
 }

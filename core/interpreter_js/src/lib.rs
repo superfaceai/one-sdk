@@ -1,8 +1,8 @@
 use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
-use quickjs_wasm_rs::Context;
 use thiserror::Error;
+use quickjs_wasm_rs::JSContextRef;
 
 use map_std::MapStdFull;
 
@@ -22,13 +22,13 @@ pub enum JsInterpreterError {
 }
 
 pub struct JsInterpreter<S: MapStdFull + 'static> {
-    context: Context,
+    context: JSContextRef,
     #[allow(dead_code)]
     state: Rc<RefCell<S>>,
 }
 impl<S: MapStdFull + 'static> JsInterpreter<S> {
     pub fn new(state: S) -> Result<Self, JsInterpreterError> {
-        let mut context = Context::default();
+        let mut context = JSContextRef::default();
         let state = Rc::new(RefCell::new(state));
 
         // link ffi
