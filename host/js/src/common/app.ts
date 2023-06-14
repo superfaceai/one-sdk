@@ -13,25 +13,23 @@ class ReadableStreamAdapter implements Stream {
     this.reader = stream.getReader();
     this.chunks = [];
   }
-
   async read(out: Uint8Array): Promise<number> {
-    let chunk;
-    if (this.chunks.length > 0) {
-      chunk = this.chunks[0];
-      if (chunk.byteLength > out.byteLength) {
-        const remaining = chunk.subarray(out.byteLength);
-        chunk = chunk.subarray(0, out.byteLength);
-        this.chunks[0] = remaining;
-      }
-
-      // TODO: coalesce multiple smaller chunks into one
-    } else {
+    if (this.chunks.length === 0) {
       const readResult = await this.reader.read();
       if (readResult.value === undefined) {
         return 0;
       }
 
-      chunk = readResult.value;
+      this.chunks.push(readResult.value);
+    }
+
+    // TODO: coalesce multiple smaller chunks into one read
+    let chunk = this.chunks.shift()!;
+    if (chunk.byteLength > out.byteLength) {
+      const remaining = chunk.subarray(out.byteLength);
+      chunk = chunk.subarray(0, out.byteLength);
+
+      this.chunks.unshift(remaining);
     }
 
     const count = Math.min(chunk.byteLength, out.byteLength);
@@ -126,7 +124,6 @@ type Stream = {
   close(): Promise<void>;
 };
 type AppCore = {
-
   instance: WebAssembly.Instance;
   asyncify: Asyncify;
   setupFn: () => Promise<void>;
