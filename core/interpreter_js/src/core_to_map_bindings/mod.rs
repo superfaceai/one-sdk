@@ -113,7 +113,7 @@ fn traverse_object<'ctx>(
 /// Enum for formatting JsValues in a format suitable for debugging.
 enum JSValueDebug<'a> {
     Ref(JSValueRef<'a>),
-    Owned(&'a JSValue)
+    Owned(&'a JSValue),
 }
 impl<'a> JSValueDebug<'a> {
     fn fmt_ref(rf: JSValueRef<'a>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -123,8 +123,8 @@ impl<'a> JSValueDebug<'a> {
         if rf.is_big_int() {
             return match rf.as_big_int_unchecked() {
                 Err(_) => write!(f, "{}", rf.as_str().unwrap()),
-                Ok(bint) => write!(f, "{:?}", bint)
-            }
+                Ok(bint) => write!(f, "{:?}", bint),
+            };
         }
         if rf.is_array() || rf.is_object() {
             // only show functions when formatted with `{:#?}`
@@ -132,7 +132,8 @@ impl<'a> JSValueDebug<'a> {
 
             let mut map = f.debug_map();
             let mut properties = rf.properties().unwrap();
-            while let (Ok(Some(key)), Ok(value)) = (properties.next_key(), properties.next_value()) {
+            while let (Ok(Some(key)), Ok(value)) = (properties.next_key(), properties.next_value())
+            {
                 if value.is_function() && !show_functions {
                     continue;
                 }
@@ -144,7 +145,7 @@ impl<'a> JSValueDebug<'a> {
 
         match quickjs_wasm_rs::from_qjs_value(&rf) {
             Err(err) => write!(f, "conversion error: {}", err),
-            Ok(v) => Self::fmt_owned(&v, f)
+            Ok(v) => Self::fmt_owned(&v, f),
         }
     }
 
@@ -174,7 +175,17 @@ impl<'a> JSValueDebug<'a> {
             JSValue::Bool(b) => write!(f, "{}", b),
             JSValue::Null => write!(f, "null"),
             JSValue::Undefined => write!(f, "undefined"),
-            JSValue::Array(_) | JSValue::Object(_) => unreachable!()
+            // these are best effort. It is better to format them through `fmt_ref` as that can also show functions and bigint
+            JSValue::Array(array) => {
+                let mut list = f.debug_list();
+                list.entries(array.iter().map(|e| JSValueDebug::Owned(e)));
+                list.finish()
+            }
+            JSValue::Object(object) => {
+                let mut map = f.debug_map();
+                map.entries(object.iter().map(|(k, v)| (k, JSValueDebug::Owned(v))));
+                map.finish()
+            }
         }
     }
 }
@@ -182,7 +193,7 @@ impl std::fmt::Debug for JSValueDebug<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ref(rf) => Self::fmt_ref(*rf, f),
-            Self::Owned(v) => Self::fmt_owned(v, f)
+            Self::Owned(v) => Self::fmt_owned(v, f),
         }
     }
 }

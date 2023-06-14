@@ -2,7 +2,7 @@ use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
 use base64::Engine;
-use quickjs_wasm_rs::{JSContextRef, JSError, JSValueRef, JSValue};
+use quickjs_wasm_rs::{JSContextRef, JSError, JSValue, JSValueRef};
 
 use map_std::unstable::MapStdUnstable;
 use sf_std::MultiMap;

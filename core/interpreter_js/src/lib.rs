@@ -1,8 +1,8 @@
 use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
-use thiserror::Error;
 use quickjs_wasm_rs::JSContextRef;
+use thiserror::Error;
 
 use map_std::MapStdFull;
 
