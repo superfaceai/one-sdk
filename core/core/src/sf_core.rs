@@ -63,10 +63,10 @@ impl From<PerformExceptionError> for PerformException {
 }
 
 #[derive(Debug)]
-pub struct SuperfaceCore {
+pub struct OneClientCore {
     document_cache: DocumentCache,
 }
-impl SuperfaceCore {
+impl OneClientCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
 
     // TODO: Use thiserror and define specific errors

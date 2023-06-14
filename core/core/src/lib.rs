@@ -11,14 +11,14 @@ use sf_std::{
 };
 
 mod sf_core;
-use sf_core::{CoreConfiguration, SuperfaceCore};
+use sf_core::{CoreConfiguration, OneClientCore};
 
 mod bindings;
 
 #[cfg(feature = "core_mock")]
 mod mock;
 
-static GLOBAL_STATE: Mutex<Option<SuperfaceCore>> = Mutex::new(None);
+static GLOBAL_STATE: Mutex<Option<OneClientCore>> = Mutex::new(None);
 
 // WASI functions which would be automatically called from `_start`, but we need to explicitly call them since we are a lib.
 extern "C" {
@@ -27,13 +27,13 @@ extern "C" {
 }
 
 #[no_mangle]
-#[export_name = "superface_core_setup"]
+#[export_name = "oneclient_core_setup"]
 /// Initializes persistent core state.
 ///
 /// This function must not be called twice without calling teardown in between.
-pub extern "C" fn __export_superface_core_setup() {
+pub extern "C" fn __export_oneclient_core_setup() {
     #[cfg(feature = "core_mock")]
-    return mock::__export_superface_core_setup();
+    return mock::__export_oneclient_core_setup();
 
     // call ctors first
     unsafe { __wasm_call_ctors() };
@@ -44,7 +44,7 @@ pub extern "C" fn __export_superface_core_setup() {
         .with(tracing_subscriber::EnvFilter::from_env("SF_LOG"))
         .init();
 
-    tracing::debug!("superface_core_setup called");
+    tracing::debug!("oneclient_core_setup called");
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
     if lock.is_some() {
@@ -62,19 +62,19 @@ pub extern "C" fn __export_superface_core_setup() {
             CoreConfiguration::default()
         }
     };
-    lock.replace(SuperfaceCore::new(config).unwrap());
+    lock.replace(OneClientCore::new(config).unwrap());
 }
 
 #[no_mangle]
-#[export_name = "superface_core_teardown"]
+#[export_name = "oneclient_core_teardown"]
 /// Tears down persistent core state.
 ///
 /// This function must be called exactly once after calling core setup.
-pub extern "C" fn __export_superface_core_teardown() {
+pub extern "C" fn __export_oneclient_core_teardown() {
     #[cfg(feature = "core_mock")]
-    return mock::__export_superface_core_teardown();
+    return mock::__export_oneclient_core_teardown();
 
-    tracing::debug!("superface_core_teardown called");
+    tracing::debug!("oneclient_core_teardown called");
 
     match GLOBAL_STATE.try_lock() {
         Err(_) => panic!("Global state lock already locked: perform most likely panicked"),
@@ -90,20 +90,20 @@ pub extern "C" fn __export_superface_core_teardown() {
 }
 
 #[no_mangle]
-#[export_name = "superface_core_perform"]
+#[export_name = "oneclient_core_perform"]
 /// Executes perform.
 ///
-/// Must be called after [__export_superface_core_setup] and before [__export_superface_core_teardown].
+/// Must be called after [__export_oneclient_core_setup] and before [__export_oneclient_core_teardown].
 ///
 /// All information about map to be performed will be retrieved through messages.
-pub extern "C" fn __export_superface_core_perform() {
+pub extern "C" fn __export_oneclient_core_perform() {
     #[cfg(feature = "core_mock")]
-    return mock::__export_superface_core_perform();
+    return mock::__export_oneclient_core_perform();
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
-    let state: &mut SuperfaceCore = lock
+    let state: &mut OneClientCore = lock
         .as_mut()
-        .expect("Global state missing: has superface_core_setup been called?");
+        .expect("Global state missing: has oneclient_core_setup been called?");
 
     match state.perform() {
         Ok(Ok(result)) => set_perform_output_result_in(result, MessageExchangeFfi),
@@ -113,20 +113,20 @@ pub extern "C" fn __export_superface_core_perform() {
 }
 
 #[no_mangle]
-#[export_name = "superface_core_send_metrics"]
+#[export_name = "oneclient_core_send_metrics"]
 /// Periodically sends metrics.
 ///
-/// Must be called after [__export_superface_core_setup] and before [__export_superface_core_teardown].
+/// Must be called after [__export_oneclient_core_setup] and before [__export_oneclient_core_teardown].
 ///
 /// The host should call this export periodically to send batched insights.
-pub extern "C" fn __export_superface_core_send_metrics() {
+pub extern "C" fn __export_oneclient_core_send_metrics() {
     #[cfg(feature = "core_mock")]
-    return mock::__export_superface_core_send_metrics();
+    return mock::__export_oneclient_core_send_metrics();
 
     let mut lock = GLOBAL_STATE.lock().unwrap();
-    let state: &mut SuperfaceCore = lock
+    let state: &mut OneClientCore = lock
         .as_mut()
-        .expect("Global state missing: has superface_core_setup been called?");
+        .expect("Global state missing: has oneclient_core_setup been called?");
 
     let result = state.send_metrics();
     if let Err(err) = result {
@@ -140,7 +140,7 @@ pub extern "C" fn __export_superface_core_send_metrics() {
 #[no_mangle]
 #[export_name = "asyncify_alloc_stack"]
 #[cfg(feature = "asyncify")]
-pub extern "C" fn __export_superface_core_async_init(mut data_ptr: Ptr<Size>, stack_size: Size) {
+pub extern "C" fn __export_oneclient_core_async_init(mut data_ptr: Ptr<Size>, stack_size: Size) {
     // We allocate Size elements to ensure correct alignment, but size is in bytes.
     let len = stack_size / std::mem::size_of::<Size>();
 

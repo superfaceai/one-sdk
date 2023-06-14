@@ -208,10 +208,10 @@ export class App implements AppContext {
       this.core = new AsyncMutex({
         instance,
         asyncify,
-        setupFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_setup'] as () => void)),
-        teardownFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_teardown'] as () => void)),
-        performFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_perform'] as () => void)),
-        sendMetricsFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['superface_core_send_metrics'] as () => void))
+        setupFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['oneclient_core_setup'] as () => void)),
+        teardownFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['oneclient_core_teardown'] as () => void)),
+        performFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['oneclient_core_perform'] as () => void)),
+        sendMetricsFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['oneclient_core_send_metrics'] as () => void))
       });
 
       return this.core.withLock(core => core.setupFn());
