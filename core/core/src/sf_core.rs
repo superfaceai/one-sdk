@@ -14,8 +14,7 @@ use map_std::unstable::{
 };
 
 use crate::{
-    bindings::{MessageExchangeFfi, StreamExchangeFfi},
-    observability::buffer::TracingEventBuffer,
+    bindings::{MessageExchangeFfi, StreamExchangeFfi}
 };
 
 mod cache;
@@ -129,19 +128,6 @@ impl OneClientCore {
                     .map(|(k, v)| (k, self.map_value_to_host_value(v))),
             )),
         }
-    }
-
-    // TODO: use thiserror
-    pub fn send_metrics(&mut self, metrics: &mut impl TracingEventBuffer) -> anyhow::Result<()> {
-        let _span = tracing::trace_span!("send_metrics").entered();
-
-        for event in metrics.events() {
-            // TODO: send metric here
-            tracing::trace!("TODO: send metric \"{}\"", event);
-        }
-        metrics.clear();
-
-        Ok(())
     }
 
     pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {

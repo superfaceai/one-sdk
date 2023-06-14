@@ -1,16 +1,33 @@
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
-    filter::FilterFn, fmt::format::json, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
-    Layer,
+    filter::FilterFn, fmt::format::json, layer::SubscriberExt, EnvFilter,
+    Layer, util::SubscriberInitExt,
 };
 
-use self::buffer::{SharedEventBuffer, VecEventBuffer};
+use self::buffer::{SharedEventBuffer, VecEventBuffer, RingEventBuffer};
 
 pub mod buffer;
 
-pub fn init_tracing(
+static mut METRICS_BUFFER: Option<SharedEventBuffer<VecEventBuffer>> = None;
+static mut DEVELOPER_DUMP_BUFFER: Option<SharedEventBuffer<RingEventBuffer>> = None;
+
+/// SAFETY: must only be called once during initialization of the program
+pub(crate) unsafe fn init(ring_event_buffer_size: usize) {
+    // SAFETY: this is only called once and there is no asynchronous mutation
+    unsafe {
+        METRICS_BUFFER.replace(SharedEventBuffer::new(VecEventBuffer::new()));
+        DEVELOPER_DUMP_BUFFER.replace(SharedEventBuffer::new(RingEventBuffer::new(ring_event_buffer_size)));
+
+        init_tracing(
+            METRICS_BUFFER.as_ref().cloned().unwrap(),
+            DEVELOPER_DUMP_BUFFER.as_ref().cloned().unwrap()
+        );
+    }
+}
+
+fn init_tracing(
     metrics_buffer: SharedEventBuffer<VecEventBuffer>,
-    developer_dump_buffer: SharedEventBuffer<VecEventBuffer>,
+    developer_dump_buffer: SharedEventBuffer<RingEventBuffer>
 ) {
     // we set up these layers:
     // * user layer (@user) - output intended/relevant for users of the sdk
