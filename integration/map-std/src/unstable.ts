@@ -86,7 +86,7 @@ export function resolveRequestUrl(url: string, options: { parameters: any, secur
 
 // https://fetch.spec.whatwg.org/#headers-class
 export type HeadersInit = Record<string, string> | [string, string][];
-export class Headers implements Iterable<[string, string[]]> {
+export class Headers implements Iterable<[string, string]> {
   private guard: 'immutable' | 'request' | 'request-no-cors' | 'response' | 'none';
   private headersList: Map<string, string[]>;
 
@@ -99,8 +99,10 @@ export class Headers implements Iterable<[string, string[]]> {
     }
   }
 
-  *[Symbol.iterator](): Iterator<[string, string[]], any, undefined> {
-    return this.headersList.entries();
+  *[Symbol.iterator](): Iterator<[string, string], any, undefined> {
+    for (const [name, value] of this.headersList) {
+      yield [name, value.join(',')]
+    }
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-append
@@ -108,7 +110,7 @@ export class Headers implements Iterable<[string, string[]]> {
     const lowercasedName = name.toLowerCase();
     // TODO: validate name and value
     if (this.has(lowercasedName)) {
-      const originalValue = this.headersList.get(lowercasedName) ?? [];
+      const originalValue = this.headersList.get(lowercasedName) ?? '';
       this.headersList.set(lowercasedName, [...originalValue, value]);
     } else {
       this.headersList.set(lowercasedName, [value]);
@@ -122,12 +124,7 @@ export class Headers implements Iterable<[string, string[]]> {
 
   // https://fetch.spec.whatwg.org/#dom-headers-get
   public get(name: string): string | null {
-    const values = this.headersList.get(name.toLowerCase());
-    if (values === undefined) {
-      return null;
-    }
-
-    return values.join(', ');
+    return this.headersList.get(name.toLowerCase())?.join(',') ?? null;
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-getsetcookie
@@ -143,6 +140,30 @@ export class Headers implements Iterable<[string, string[]]> {
   // https://fetch.spec.whatwg.org/#dom-headers-set
   public set(name: string, value: string): void {
     this.headersList.set(name.toLowerCase(), [value]);
+  }
+
+  public forEach(
+    callbackfn: (key: string, value: string, iterable: Headers) => void,
+    thisArg?: Map<string, string>
+  ): void {
+    this.headersList.forEach((value, key) => {
+      callbackfn(value.join(','), key, this)
+    }, thisArg);
+  }
+
+  public keys() {
+    return this.headersList.keys();
+  }
+
+  public *values() {
+    // return this.headersList.values();
+    for (const values of this.headersList.values()) {
+      yield values.join(',');
+    }
+  }
+
+  public entries() {
+    return this.headersList.entries();
   }
 
   private fill(object: HeadersInit) {
@@ -446,8 +467,8 @@ export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
   }
 }
 
-function headersToJson(headers: Headers): Record<string, string[]> {
-  const result: Record<string, string[]> = {};
+function headersToJson(headers: Headers): Record<string, string> {
+  const result: Record<string, string> = {};
 
   for (const [key, value] of headers) {
     result[key] = value;
