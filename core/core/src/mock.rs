@@ -17,7 +17,7 @@ extern "C" {
     fn __wasm_call_dtors();
 }
 
-pub fn __export_superface_core_setup() {
+pub fn __export_oneclient_core_setup() {
     unsafe { __wasm_call_ctors() };
 
     // initialize tracing
@@ -26,18 +26,18 @@ pub fn __export_superface_core_setup() {
         .with(tracing_subscriber::EnvFilter::from_env("SF_LOG"))
         .init();
 
-    tracing::debug!("mocked superface core setup");
+    tracing::debug!("mocked oneclient core setup");
 }
 
-pub fn __export_superface_core_teardown() {
-    tracing::debug!("mocked superface core teardown");
+pub fn __export_oneclient_core_teardown() {
+    tracing::debug!("mocked oneclient core teardown");
     unsafe { __wasm_call_dtors() };
 }
 
-pub fn __export_superface_core_perform() {
+pub fn __export_oneclient_core_perform() {
     let perform_input = PerformInput::take_in(MessageExchangeFfi);
 
-    tracing::debug!("mocked superface core perform {}", perform_input.usecase);
+    tracing::debug!("mocked oneclient core perform {}", perform_input.usecase);
 
     match perform_input.usecase.as_str() {
         "CORE_PERFORM_PANIC" => panic!("Requested panic!"),
@@ -48,6 +48,6 @@ pub fn __export_superface_core_perform() {
     };
 }
 
-pub fn __export_superface_core_send_metrics() {
-    tracing::debug!("mocked superface core send metrics");
+pub fn __export_oneclient_core_send_metrics() {
+    tracing::debug!("mocked oneclient core send metrics");
 }

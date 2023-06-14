@@ -4,8 +4,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y binaryen clang libclang-dev && rm -rf /var/lib/apt/lists/*
 RUN rustup target add wasm32-wasi
 
-WORKDIR /usr/src/superface_core
-ENV QUICKJS_WASM_SYS_WASI_SDK_PATH=/usr/src/superface_core/wasi-sdk-20.0
+WORKDIR /usr/src/oneclient_core
+ENV QUICKJS_WASM_SYS_WASI_SDK_PATH=/usr/src/oneclient_core/wasi-sdk-20.0
 
 # inline scripts go brr
 ARG BUILDPLATFORM
@@ -25,8 +25,8 @@ ENV CARGO_HOME=/var/cache/cargo
 ENV CARGO_TARGET_DIR=/var/cache/target
 # TODO: also run tests?
 RUN --mount=type=cache,target=/var/cache/cargo --mount=type=cache,target=/var/cache/target \
-	cargo build --locked --package superface_core --release --target wasm32-wasi && \
-	mkdir -p /opt/superface/ && cp '/var/cache/target/wasm32-wasi/release/superface_core.wasm' '/opt/superface/core.wasm'
+	cargo build --locked --package oneclient_core --release --target wasm32-wasi && \
+	mkdir -p /opt/superface/ && cp '/var/cache/target/wasm32-wasi/release/oneclient_core.wasm' '/opt/superface/core.wasm'
 
 WORKDIR /opt/superface
 RUN wasm-opt -Oz ./core.wasm --output ./core.wasm

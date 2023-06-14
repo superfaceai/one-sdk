@@ -19,7 +19,7 @@ export class UnexpectedError extends BaseError {
 
 export class UninitializedError extends BaseError {
   constructor() {
-    super('Uninitialized', "SuperfaceClient isn't initialized.");
+    super('Uninitialized', "OneClient isn't initialized.");
   }
 }
 

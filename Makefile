@@ -34,14 +34,14 @@ WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk
 
 # Core
 CORE_DIST_FOLDER=core/dist
-CORE_BUILD=core/target/wasm32-wasi/${CORE_PROFILE}/superface_core.wasm
+CORE_BUILD=core/target/wasm32-wasi/${CORE_PROFILE}/oneclient_core.wasm
 CORE_WASM=${CORE_DIST_FOLDER}/core.wasm
 CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/core-async.wasm
 CORE_JS_ASSETS=core/core/assets/js
 CORE_JS_ASSETS_MAP_STD=${CORE_JS_ASSETS}/map_std.js
 CORE_JS_ASSETS_PROFILE_VALIDATOR=${CORE_JS_ASSETS}/profile_validator.js
 ifeq ($(CORE_PROFILE),test)
-	CORE_BUILD=core/target/wasm32-wasi/debug/superface_core.wasm
+	CORE_BUILD=core/target/wasm32-wasi/debug/oneclient_core.wasm
 	CORE_WASM=${CORE_DIST_FOLDER}/test-core.wasm
 	CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/test-core-async.wasm
 endif
@@ -87,7 +87,7 @@ deps_core: ${WASI_SDK_FOLDER}
 	curl https://wasmtime.dev/install.sh -sSf | bash
 
 ${CORE_BUILD}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
-	cd core && cargo build --package superface_core --target wasm32-wasi ${CORE_FLAGS}
+	cd core && cargo build --package oneclient_core --target wasm32-wasi ${CORE_FLAGS}
 
 ${CORE_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
 	@echo 'Optimizing wasm...'
