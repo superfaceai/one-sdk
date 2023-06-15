@@ -1,6 +1,6 @@
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
-    filter::FilterFn, fmt::format::json, layer::SubscriberExt, EnvFilter,
+    filter::FilterFn, fmt::format, layer::SubscriberExt, EnvFilter,
     Layer, util::SubscriberInitExt,
 };
 
@@ -12,7 +12,7 @@ static mut METRICS_BUFFER: Option<SharedEventBuffer<VecEventBuffer>> = None;
 static mut DEVELOPER_DUMP_BUFFER: Option<SharedEventBuffer<RingEventBuffer>> = None;
 
 /// SAFETY: must only be called once during initialization of the program
-pub(crate) unsafe fn init(ring_event_buffer_size: usize) {
+pub unsafe fn init(ring_event_buffer_size: usize) {
     // SAFETY: this is only called once and there is no asynchronous mutation
     unsafe {
         METRICS_BUFFER.replace(SharedEventBuffer::new(VecEventBuffer::new()));
@@ -50,7 +50,7 @@ fn init_tracing(
 
     let metrics_layer = tracing_subscriber::fmt::layer()
         .event_format(
-            json()
+            format::json()
                 .flatten_event(true)
                 .with_target(false)
                 .with_level(false),
@@ -70,7 +70,10 @@ fn init_tracing(
         );
 
     let developer_dump_layer = tracing_subscriber::fmt::layer()
-        .with_writer(developer_dump_buffer) // TODO: where to write? I'm thinking circular buffer which can be used to dump last logs in case of a panic
+        .event_format(
+            format::format().with_ansi(false) // disable ansi colors because this will usually go into a file
+        )
+        .with_writer(developer_dump_buffer)
         .with_filter(FilterFn::new(|metadata| {
             !metadata.target().starts_with("@metrics")
         }));
