@@ -51,7 +51,7 @@ pub extern "C" fn __export_oneclient_core_setup() {
 
     // initialize observability
     // SAFETY: setup is only allowed to be called once
-    unsafe { observability::init(config.developer_log_buffer_size) };
+    unsafe { observability::init(config.developer_dump_buffer_size) };
     
     // now that we have logging we can start printing stuff
     tracing::debug!(target: "@user", "oneclient_core_setup called");

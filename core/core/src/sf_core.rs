@@ -203,7 +203,7 @@ impl OneClientCore {
         let mut interpreter = JsInterpreter::new(MapStdImpl::new())?;
         // here we allow runtime stdlib replacement for development purposes
         // this might be removed in the future
-        match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
+        match std::env::var("OSDK_REPLACE_MAP_STDLIB").ok() {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
                 let replacement =

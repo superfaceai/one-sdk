@@ -34,7 +34,7 @@ impl ProfileValidator {
     pub fn new(profile: String, usecase: String) -> Result<Self, ProfileValidatorError> {
         let mut interpreter = JsInterpreter::new(MapStdImpl::new())?;
 
-        let validator_bytecode = match std::env::var("SF_REPLACE_PROFILE_VALIDATOR").ok() {
+        let validator_bytecode = match std::env::var("OSDK_REPLACE_PROFILE_VALIDATOR").ok() {
             None => interpreter.compile_code("profile_validator.js", Self::PROFILE_VALIDATOR_JS),
             Some(path) => {
                 let replacement = Fs::read_to_string(&path)

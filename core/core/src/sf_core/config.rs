@@ -9,7 +9,7 @@ pub enum CoreConfigurationEnvError {
 #[derive(Debug)]
 pub struct CoreConfiguration {
     pub cache_duration: Duration,
-    pub developer_log_buffer_size: usize
+    pub developer_dump_buffer_size: usize
 }
 impl CoreConfiguration {
     pub fn from_env() -> Result<Self, CoreConfigurationEnvError> {
@@ -34,11 +34,11 @@ impl CoreConfiguration {
             (__internal parse usize) => { |v| v.parse::<usize>() };
         }
 
-        if let Some(v) = get_env!("SF_CONFIG_CACHE_DURATION", u64 "seconds")? {
+        if let Some(v) = get_env!("OSDK_CONFIG_CACHE_DURATION", u64 "seconds")? {
             base.cache_duration = Duration::from_secs(v);
         }
-        if let Some(v) = get_env!("SF_CONFIG_DEV_LOG_BUFFER_SIZE", usize "buffer size")? {
-            base.developer_log_buffer_size = v;
+        if let Some(v) = get_env!("OSDK_CONFIG_DEV_DUMP_BUFFER_SIZE", usize "buffer size")? {
+            base.developer_dump_buffer_size = v;
         }
 
         Ok(base)
@@ -48,7 +48,7 @@ impl Default for CoreConfiguration {
     fn default() -> Self {
         Self {
             cache_duration: Duration::from_secs(60 * 60),
-            developer_log_buffer_size: 1024 * 1024 // 1 MiB
+            developer_dump_buffer_size: 1024 * 1024 // 1 MiB
         }
     }
 }

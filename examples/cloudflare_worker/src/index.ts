@@ -4,8 +4,8 @@ import { COMLINK_IMPORTS } from './comlinks';
 
 const client = new OneClient({
   env: {
-    SF_LOG: 'trace',
-    SF_CONFIG_CACHE_DURATION: '10'
+    OSDK_LOG: 'trace',
+    OSDK_CONFIG_CACHE_DURATION: '10'
   },
   assetsPath: 'superface',
   preopens: { ...COMLINK_IMPORTS }
