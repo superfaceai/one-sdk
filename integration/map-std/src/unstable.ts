@@ -88,11 +88,11 @@ export function resolveRequestUrl(url: string, options: { parameters: any, secur
 export type HeadersInit = Record<string, string> | [string, string][];
 export class Headers implements Iterable<[string, string]> {
   private guard: 'immutable' | 'request' | 'request-no-cors' | 'response' | 'none';
-  private headersList: Map<string, string[]>;
+  private headersList: [string, string][];
 
   constructor(init?: HeadersInit) {
     this.guard = 'none';
-    this.headersList = new Map();
+    this.headersList = [];
 
     if (init !== undefined) {
       this.fill(init);
@@ -100,70 +100,117 @@ export class Headers implements Iterable<[string, string]> {
   }
 
   *[Symbol.iterator](): Iterator<[string, string], any, undefined> {
-    for (const [name, value] of this.headersList) {
-      yield [name, value.join(',')]
+    for (const [name, value] of this.toMap()) {
+      yield [name, value];
     }
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-append
   public append(name: string, value: string): void {
-    const lowercasedName = name.toLowerCase();
-    // TODO: validate name and value
-    if (this.has(lowercasedName)) {
-      const originalValue = this.headersList.get(lowercasedName) ?? '';
-      this.headersList.set(lowercasedName, [...originalValue, value]);
-    } else {
-      this.headersList.set(lowercasedName, [value]);
-    }
+    this.headersList.push([name, value]);
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-delete
   public delete(name: string): void {
-    this.headersList.delete(name.toLowerCase());
+    const lowerCaseName = name.toLowerCase();
+    this.headersList = this.headersList.filter(([name]) => name.toLowerCase() !== lowerCaseName);
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-get
   public get(name: string): string | null {
-    return this.headersList.get(name.toLowerCase())?.join(',') ?? null;
+    const loweCaseName = name.toLowerCase();
+    const values = [];
+
+    for (const [headerName, headerValue] of this.headersList) {
+      if (headerName.toLowerCase() === loweCaseName) {
+        values.push(headerValue);
+      }
+    }
+
+    if (values.length === 0) {
+      return null;
+    }
+
+    return values.reduce(
+      (acc, curr) => { return acc === '' ? curr : this.foldValues(acc, curr); },
+      ''
+    );
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-getsetcookie
   public getSetCookie(): string[] {
-    return this.headersList.get('set-cookie') ?? [];
+    const cookies: string[] = [];
+
+    for (const [headerName, headerValue] of this.headersList) {
+      if (headerName.toLowerCase() === 'set-cookie') {
+        cookies.push(headerValue);
+      }
+    }
+
+    return cookies;
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-has
   public has(name: string): boolean {
-    return this.headersList.has(name.toLowerCase());
+    const lowerCaseName = name.toLowerCase();
+    for (const [headerName] of this.headersList) {
+      if (headerName.toLowerCase() === lowerCaseName) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-set
   public set(name: string, value: string): void {
-    this.headersList.set(name.toLowerCase(), [value]);
+    this.delete(name);
+    this.headersList.push([name, value]);
   }
 
   public forEach(
     callbackfn: (key: string, value: string, iterable: Headers) => void,
     thisArg?: Map<string, string>
   ): void {
-    this.headersList.forEach((value, key) => {
-      callbackfn(value.join(','), key, this)
-    }, thisArg);
+    this.toMap().forEach((value, key) => { callbackfn(value, key, this) }, thisArg);
   }
 
   public keys() {
-    return this.headersList.keys();
+    return this.toMap().keys();
   }
 
-  public *values() {
-    // return this.headersList.values();
-    for (const values of this.headersList.values()) {
-      yield values.join(',');
-    }
+  public values() {
+    return this.toMap().values();
   }
 
   public entries() {
-    return this.headersList.entries();
+    return this.toMap().entries();
+  }
+
+  public *raw() {
+    for (const header of this.headersList) {
+      yield header;
+    }
+  }
+
+  private toMap(): Map<string, string> {
+    const map = new Map<string, string>();
+
+    for (const [name, value] of this.headersList) {
+      const lowerCaseName = name.toLowerCase();
+      const originalValue = map.get(lowerCaseName);
+      if (originalValue) {
+        map.set(lowerCaseName, this.foldValues(originalValue, value));
+      } else {
+        map.set(lowerCaseName, value);
+      }
+    }
+
+    return map;
+  }
+
+  private foldValues(a: string, b: string, name?: string): string {
+    return `${a}, ${b}`;
   }
 
   private fill(object: HeadersInit) {
