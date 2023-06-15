@@ -8,7 +8,8 @@ use sf_std::unstable::{
     perform::{set_perform_output_result_in, PerformInput},
     HostValue,
 };
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing::metadata::LevelFilter;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 use crate::bindings::MessageExchangeFfi;
 
