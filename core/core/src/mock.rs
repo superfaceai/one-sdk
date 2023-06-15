@@ -29,7 +29,7 @@ pub fn __export_oneclient_core_setup() {
                 .with_filter(
                     EnvFilter::builder()
                         .with_default_directive(LevelFilter::TRACE.into())
-                        .with_env_var("OSDK_DEV_LOG")
+                        .with_env_var("ONESDK_DEV_LOG")
                         .from_env_lossy(),
                 )
         )

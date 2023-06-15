@@ -44,7 +44,7 @@ fn init_tracing(
         .with_filter(
             EnvFilter::builder()
                 .with_default_directive(LevelFilter::WARN.into())
-                .with_env_var("OSDK_LOG")
+                .with_env_var("ONESDK_LOG")
                 .from_env_lossy(),
         );
 
@@ -65,7 +65,7 @@ fn init_tracing(
         .with_filter(
             EnvFilter::builder()
                 .with_default_directive(LevelFilter::OFF.into())
-                .with_env_var("OSDK_DEV_LOG")
+                .with_env_var("ONESDK_DEV_LOG")
                 .from_env_lossy(),
         );
 

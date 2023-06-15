@@ -34,10 +34,10 @@ impl CoreConfiguration {
             (__internal parse usize) => { |v| v.parse::<usize>() };
         }
 
-        if let Some(v) = get_env!("OSDK_CONFIG_CACHE_DURATION", u64 "seconds")? {
+        if let Some(v) = get_env!("ONESDK_CONFIG_CACHE_DURATION", u64 "seconds")? {
             base.cache_duration = Duration::from_secs(v);
         }
-        if let Some(v) = get_env!("OSDK_CONFIG_DEV_DUMP_BUFFER_SIZE", usize "buffer size")? {
+        if let Some(v) = get_env!("ONESDK_CONFIG_DEV_DUMP_BUFFER_SIZE", usize "buffer size")? {
             base.developer_dump_buffer_size = v;
         }
 

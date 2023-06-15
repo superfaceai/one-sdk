@@ -78,7 +78,7 @@ impl DocumentCache {
                 {
                     Self::cache_http(&url)
                 } else {
-                    let url_base = std::env::var("OSDK_REGISTRY_URL")
+                    let url_base = std::env::var("ONESDK_REGISTRY_URL")
                         .unwrap_or("http://localhost:8321".to_string());
                     let url = format!("{}/{}.js", url_base, url);
 

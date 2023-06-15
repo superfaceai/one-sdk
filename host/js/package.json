@@ -23,7 +23,7 @@
     "prepack": "cp ../../LICENSE .",
     "postpack": "rm LICENSE",
     "build": "yarn clean && tsc -p tsconfig.json",
-    "test": "CORE_PATH=./assets/core-async.wasm OSDK_LOG=trace node --no-warnings --experimental-wasi-unstable-preview1 --experimental-vm-modules node_modules/.bin/jest"
+    "test": "CORE_PATH=./assets/core-async.wasm ONESDK_LOG=trace node --no-warnings --experimental-wasi-unstable-preview1 --experimental-vm-modules node_modules/.bin/jest"
   },
   "files": [
     "assets/**/*",
