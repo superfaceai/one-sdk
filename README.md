@@ -17,9 +17,19 @@ For more details about Superface, visit [How it Works](https://superface.ai/how-
 
 ## Try it out
 
-A simple demonstration can be run with `./examples/run.sh node [CORE_MODE=default|docker|lax]`. It builds entire projects and Node.js host, then runs the example.
+A simple demonstration can be run with `./examples/run.sh node [CORE_MODE=default|docker|lax]`. It builds the entire project and Node.js host, then runs the example.
 
 This will require to have Development requirements installed. In case of building the core in Docker `node` and `yarn` are still required.
+
+### Environment variables
+
+The OneSDK uses these environment variables:
+* `ONESDK_LOG=warn` - controls the level of logging intended for users, see [tracing_subscriber directives](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives) for full syntax
+* `ONESDK_REGISTRY_URL=http://localhost:8321` - Superface registry base URL
+* `ONESDK_CONFIG_CACHE_DURATION=3600` - duration in seconds of how long to cache documents (profiles, maps, providers) before downloading or reading them from the file system again
+* `ONESDK_CONFIG_DEV_DUMP_BUFFER_SIZE=1048576` - size of the developer log dump ring buffer
+* `ONESDK_DEV_LOG=off` - controls the level of logging intended for developers, see [tracing_subscriber directives](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives) for full syntax
+* `ONESDK_REPLACE_MAP_STDLIB=` - path to replacement map stdlib, intended for development only, may be removed at any time
 
 ## Supported languages
 

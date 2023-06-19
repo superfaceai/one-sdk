@@ -46,7 +46,7 @@ impl MapStdImpl {
 }
 impl MapStdUnstable for MapStdImpl {
     fn print(&mut self, message: &str) {
-        tracing::info!(map = %message);
+        tracing::info!(target: "@user", map = %message);
     }
 
     fn stream_read(&mut self, handle: Handle, buf: &mut [u8]) -> std::io::Result<usize> {

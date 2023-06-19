@@ -24,7 +24,7 @@ macro_rules! link_into {
         $({
             let state = $state.clone();
             let fun = $context.wrap_callback(move |_context, this, args| {
-                let _span = tracing::span!(tracing::Level::TRACE, concat!("map/", $key)).entered();
+                let __span = tracing::trace_span!(concat!("map/", $key)).entered();
 
                 // SAFETY: this is safe because JSValueRef now contains a lifetime of the context, but the authors of the crate forgot to update `inner_value`
                 let this = unsafe { this.inner_value() };

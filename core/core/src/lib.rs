@@ -1,7 +1,6 @@
 use std::sync::Mutex;
 
 use bindings::MessageExchangeFfi;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use sf_std::{
     abi::{Ptr, Size},
@@ -14,6 +13,7 @@ mod sf_core;
 use sf_core::{CoreConfiguration, OneClientCore};
 
 mod bindings;
+mod observability;
 
 #[cfg(feature = "core_mock")]
 mod mock;
@@ -38,30 +38,32 @@ pub extern "C" fn __export_oneclient_core_setup() {
     // call ctors first
     unsafe { __wasm_call_ctors() };
 
-    // initialize tracing
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::EnvFilter::from_env("SF_LOG"))
-        .init();
-
-    tracing::debug!("oneclient_core_setup called");
-
     let mut lock = GLOBAL_STATE.lock().unwrap();
     if lock.is_some() {
         panic!("Already setup");
     }
 
-    // here we panic on error because there is nothing to teardown
-    let config = match CoreConfiguration::from_env() {
-        Ok(c) => c,
-        Err(err) => {
-            tracing::error!(
-                "Failed to load core configuration from environment: {}",
-                err
-            );
-            CoreConfiguration::default()
-        }
+    // load config, but don't display the error yet since we haven't initialize logging yet
+    let (config, config_err) = match CoreConfiguration::from_env() {
+        Ok(c) => (c, None),
+        Err(err) => (CoreConfiguration::default(), Some(err))
     };
+
+    // initialize observability
+    // SAFETY: setup is only allowed to be called once
+    unsafe { observability::init(config.developer_dump_buffer_size) };
+    
+    // now that we have logging we can start printing stuff
+    tracing::debug!(target: "@user", "oneclient_core_setup called");
+    if let Some(err) = config_err {
+        tracing::error!(
+            target: "@user",
+            "Failed to load core configuration from environment: {}",
+            err
+        );
+    }
+
+    // here we panic on error because there is nothing to teardown
     lock.replace(OneClientCore::new(config).unwrap());
 }
 
@@ -74,7 +76,7 @@ pub extern "C" fn __export_oneclient_core_teardown() {
     #[cfg(feature = "core_mock")]
     return mock::__export_oneclient_core_teardown();
 
-    tracing::debug!("oneclient_core_teardown called");
+    tracing::debug!(target: "@user", "oneclient_core_teardown called");
 
     match GLOBAL_STATE.try_lock() {
         Err(_) => panic!("Global state lock already locked: perform most likely panicked"),
@@ -123,18 +125,7 @@ pub extern "C" fn __export_oneclient_core_send_metrics() {
     #[cfg(feature = "core_mock")]
     return mock::__export_oneclient_core_send_metrics();
 
-    let mut lock = GLOBAL_STATE.lock().unwrap();
-    let state: &mut OneClientCore = lock
-        .as_mut()
-        .expect("Global state missing: has oneclient_core_setup been called?");
-
-    let result = state.send_metrics();
-    if let Err(err) = result {
-        // if there is an error here that means the core couldn't send a message
-        // to the host
-        // TODO: should be call teardown and abort or let the host call teardown?
-        tracing::error!("Send metrics error: {:#}", err);
-    }
+    // TODO: this will be removed in favor of `superface_core_get_metrics_buffer`, `superface_core_clear_metrics_buffer` and `superface_core_get_devlog_buffer`
 }
 
 #[no_mangle]

@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use tracing::instrument;
-
 use sf_std::unstable::{
     perform::{PerformException, PerformInput},
     provider::ProviderJson,
@@ -15,6 +13,10 @@ use map_std::unstable::{
     MapValue, MapValueObject,
 };
 
+use crate::{
+    bindings::{MessageExchangeFfi, StreamExchangeFfi}
+};
+
 mod cache;
 mod config;
 mod map_std_impl;
@@ -25,7 +27,6 @@ use cache::{DocumentCache, DocumentCacheError};
 pub use config::CoreConfiguration;
 use map_std_impl::MapStdImpl;
 
-use crate::bindings::{MessageExchangeFfi, StreamExchangeFfi};
 type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
 type HttpRequest = sf_std::unstable::http::HttpRequest<MessageExchangeFfi, StreamExchangeFfi>;
 type IoStream = sf_std::unstable::IoStream<StreamExchangeFfi>;
@@ -71,7 +72,14 @@ impl OneClientCore {
 
     // TODO: Use thiserror and define specific errors
     pub fn new(config: CoreConfiguration) -> anyhow::Result<Self> {
-        tracing::info!(config = ?config);
+        tracing::info!(target: "@user", config = ?config);
+
+        // { "timestamp": "<time>", "kind": "core-init", "cache_duration": 123 }
+        tracing::info!(
+            target: "@metrics",
+            kind = "core-init",
+            cache_duration = config.cache_duration.as_secs()
+        );
 
         Ok(Self {
             document_cache: DocumentCache::new(config.cache_duration),
@@ -122,15 +130,17 @@ impl OneClientCore {
         }
     }
 
-    // TODO: use thiserror
-    #[instrument(level = "Trace")]
-    pub fn send_metrics(&mut self) -> anyhow::Result<()> {
-        tracing::trace!("send metrics");
-        Ok(())
-    }
-
     pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
         let perform_input = PerformInput::take_in(MessageExchangeFfi);
+
+        tracing::info!(
+            target: "@metrics",
+            kind = "perform-input",
+            profile_url = perform_input.profile_url,
+            provider_url = perform_input.provider_url,
+            map_url = perform_input.map_url,
+            usecase = perform_input.usecase
+        );
 
         self.document_cache.cache(&perform_input.profile_url)?;
         self.document_cache.cache(&perform_input.profile_url)?;
@@ -193,7 +203,7 @@ impl OneClientCore {
         let mut interpreter = JsInterpreter::new(MapStdImpl::new())?;
         // here we allow runtime stdlib replacement for development purposes
         // this might be removed in the future
-        match std::env::var("SF_REPLACE_MAP_STDLIB").ok() {
+        match std::env::var("ONESDK_REPLACE_MAP_STDLIB").ok() {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
                 let replacement =

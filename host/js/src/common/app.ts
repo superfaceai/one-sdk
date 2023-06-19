@@ -390,6 +390,9 @@ export class App implements AppContext {
         return await fn(...args);
       } catch (err: unknown) {
         // TODO: get metrics from core
+        // call tearndown which will detect that a panic has happened and attempt to dump developer log
+        // TODO: should this be under teardown or should we introduce a new function?
+        await this.core!.unsafeValue.teardownFn().catch(_ => undefined);
         // unsetting core, we can't ensure memory integrity
         this.core = undefined;
 
