@@ -142,6 +142,8 @@ impl OneClientCore {
             usecase = perform_input.usecase
         );
 
+        crate::observability::log_metric!();
+
         self.document_cache.cache(&perform_input.profile_url)?;
         self.document_cache.cache(&perform_input.profile_url)?;
         self.document_cache.cache(&perform_input.provider_url)?;
