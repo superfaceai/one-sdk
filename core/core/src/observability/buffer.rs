@@ -19,7 +19,7 @@ const EVENT_SEPARATOR: u8 = b'\0';
 /// Event buffer implementation.
 ///
 /// For example it can be an unbounded buffer or a ring buffer.
-pub(crate) trait TracingEventBuffer: Sized {
+pub trait TracingEventBuffer: Sized {
     type RawParts: Borrow<[(*const u8, usize)]>;
 
     /// Writes data into the buffer.
@@ -39,7 +39,7 @@ pub(crate) trait TracingEventBuffer: Sized {
 /// The event boundary is mentioned by this comment <https://github.com/tokio-rs/tracing/issues/1931#issuecomment-1042340765>
 /// and also mentioned in the docs <https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html#implementer-notes>,
 /// so it should be valid approach to add the boundary on drop.
-pub(crate) struct TracingEventBufferWriter<'a, B: TracingEventBuffer, R: DerefMut<Target = B> + 'a> {
+pub struct TracingEventBufferWriter<'a, B: TracingEventBuffer, R: DerefMut<Target = B> + 'a> {
     buffer: R,
     _phantom: std::marker::PhantomData<&'a mut B>,
 }
@@ -76,7 +76,7 @@ impl<'a, B: TracingEventBuffer, R: DerefMut<Target = B> + 'a> Drop
 
 /// Wrapper around a [`TracingEventBuffer`](TracingEventBuffer) that can be shared between tracing and a consumer.
 #[derive(Debug)]
-pub(crate) struct SharedEventBuffer<B: TracingEventBuffer + 'static>(Arc<Mutex<B>>);
+pub struct SharedEventBuffer<B: TracingEventBuffer + 'static>(Arc<Mutex<B>>);
 impl<B: TracingEventBuffer> SharedEventBuffer<B> {
     pub fn new(inner: B) -> Self {
         Self(Arc::new(Mutex::new(inner)))

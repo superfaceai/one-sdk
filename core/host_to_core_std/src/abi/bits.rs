@@ -10,6 +10,10 @@
 #[repr(transparent)]
 pub struct Ptr<T>(usize, std::marker::PhantomData<*mut T>);
 impl<T> Ptr<T> {
+    pub const fn null() -> Self {
+        Self(0, std::marker::PhantomData)
+    }
+
     pub fn ptr(&self) -> *const T {
         self.0 as *const T
     }

@@ -56,7 +56,3 @@ pub fn __export_oneclient_core_perform() {
         _ => panic!("Unknown usecase: {}", perform_input.usecase),
     };
 }
-
-pub fn __export_oneclient_core_send_metrics() {
-    tracing::debug!("mocked oneclient core send metrics");
-}
