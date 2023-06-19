@@ -1,7 +1,8 @@
 use std::{
+    borrow::Borrow,
     io::Write,
     ops::DerefMut,
-    sync::{Arc, Mutex, MutexGuard}, borrow::Borrow
+    sync::{Arc, Mutex, MutexGuard},
 };
 
 use tracing_subscriber::fmt::MakeWriter;
@@ -9,10 +10,7 @@ use tracing_subscriber::fmt::MakeWriter;
 mod ring;
 mod vec;
 
-pub use self::{
-    ring::RingEventBuffer,
-    vec::VecEventBuffer
-};
+pub use self::{ring::RingEventBuffer, vec::VecEventBuffer};
 
 const EVENT_SEPARATOR: u8 = b'\0';
 
@@ -98,4 +96,3 @@ impl<'a, B: TracingEventBuffer + 'static> MakeWriter<'a> for SharedEventBuffer<B
         TracingEventBufferWriter::new(self.lock())
     }
 }
-

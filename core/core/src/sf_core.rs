@@ -13,9 +13,7 @@ use map_std::unstable::{
     MapValue, MapValueObject,
 };
 
-use crate::{
-    bindings::{MessageExchangeFfi, StreamExchangeFfi}
-};
+use crate::bindings::{MessageExchangeFfi, StreamExchangeFfi};
 
 mod cache;
 mod config;

@@ -9,8 +9,8 @@ use sf_std::{
     },
 };
 
-mod observability;
 mod bindings;
+mod observability;
 
 mod sf_core;
 use sf_core::{CoreConfiguration, OneClientCore};
@@ -46,13 +46,13 @@ pub extern "C" fn __export_oneclient_core_setup() {
     // load config, but don't display the error yet since we haven't initialize logging yet
     let (config, config_err) = match CoreConfiguration::from_env() {
         Ok(c) => (c, None),
-        Err(err) => (CoreConfiguration::default(), Some(err))
+        Err(err) => (CoreConfiguration::default(), Some(err)),
     };
 
     // initialize observability
     // SAFETY: setup is only allowed to be called once
     unsafe { observability::init(config.developer_dump_buffer_size) };
-    
+
     // now that we have logging we can start printing stuff
     tracing::debug!(target: "@user", "oneclient_core_setup called");
     if let Some(err) = config_err {

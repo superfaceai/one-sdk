@@ -5,7 +5,7 @@ use super::TracingEventBuffer;
 /// Inbounded buffer backed by `Vec<u8>`.
 pub struct VecEventBuffer {
     /// Each event is terminated by a null byte. Otherwise there can be no null bytes in the strings because they are utf-8.
-    data: Vec<u8>
+    data: Vec<u8>,
 }
 impl VecEventBuffer {
     pub fn new() -> Self {
