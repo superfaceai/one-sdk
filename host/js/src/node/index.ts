@@ -265,7 +265,7 @@ class InternalClient {
     });
   }
 
-  private async processMetrics(events: string[]) {    
+  private async processMetrics(events: string[]) {
     const headers: Record<string, string> = {
       'content-type': 'application/json'
     };
@@ -292,7 +292,7 @@ class InternalClient {
       ).then(res => res.text().then(body => {
         const headers: [string, string][] = [];
         res.headers.forEach((value, key) => headers.push([key, value]));
-        console.trace(res, headers, body);
+        // console.trace(res, headers, body);
       }))
     ));
   }
