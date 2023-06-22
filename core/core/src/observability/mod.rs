@@ -6,10 +6,8 @@ use tracing_subscriber::{
 
 use self::buffer::{RingEventBuffer, SharedEventBuffer, TracingEventBuffer, VecEventBuffer};
 
-mod macros;
-pub(crate) use macros::log_metric;
-
 mod buffer;
+pub mod metrics;
 
 static mut METRICS_BUFFER: Option<SharedEventBuffer<VecEventBuffer>> = None;
 static mut DEVELOPER_DUMP_BUFFER: Option<SharedEventBuffer<RingEventBuffer>> = None;
@@ -24,14 +22,23 @@ pub unsafe fn init(ring_event_buffer_size: usize) {
         )));
 
         init_tracing(
-            METRICS_BUFFER.as_ref().cloned().unwrap(),
+            // METRICS_BUFFER.as_ref().cloned().unwrap(),
             DEVELOPER_DUMP_BUFFER.as_ref().cloned().unwrap(),
         );
     }
+
+    // add panic hook so we can log panics as metrics
+    std::panic::set_hook(Box::new(|info| {
+        metrics::log_metric!(
+            Panic
+            message = info.payload().downcast_ref::<&str>().unwrap_or(&"core panicked")
+        );
+    }));
 }
 
 fn init_tracing(
-    metrics_buffer: SharedEventBuffer<VecEventBuffer>,
+    // TODO: we don't use tracing to store metrics in the metrics buffer because we need more complex fields than tracing currently supports
+    // _metrics_buffer: SharedEventBuffer<VecEventBuffer>,
     developer_dump_buffer: SharedEventBuffer<RingEventBuffer>,
 ) {
     // we set up these layers:
@@ -53,24 +60,24 @@ fn init_tracing(
                 .from_env_lossy(),
         );
 
-    let metrics_layer = tracing_subscriber::fmt::layer()
-        .event_format(
-            format::json()
-                .without_time() // we add our own time as a field
-                .with_level(false)
-                .flatten_event(true)
-                .with_target(false)
-                .with_file(false)
-                .with_line_number(false)
-                .with_current_span(false)
-                .with_span_list(false)
-                .with_thread_names(false)
-                .with_thread_ids(false),
-        )
-        .with_writer(metrics_buffer)
-        .with_filter(FilterFn::new(|metadata| {
-            metadata.target().starts_with("@metrics")
-        }));
+    // let metrics_layer = tracing_subscriber::fmt::layer()
+    //     .event_format(
+    //         format::json()
+    //             .without_time() // we add our own time as a field
+    //             .with_level(false)
+    //             .flatten_event(true)
+    //             .with_target(false)
+    //             .with_file(false)
+    //             .with_line_number(false)
+    //             .with_current_span(false)
+    //             .with_span_list(false)
+    //             .with_thread_names(false)
+    //             .with_thread_ids(false),
+    //     )
+    //     .with_writer(metrics_buffer)
+    //     .with_filter(FilterFn::new(|metadata| {
+    //         metadata.target().starts_with("@metrics")
+    //     }));
 
     let developer_layer = tracing_subscriber::fmt::layer()
         .with_writer(std::io::stderr)
@@ -92,7 +99,7 @@ fn init_tracing(
 
     tracing_subscriber::registry()
         .with(user_layer)
-        .with(metrics_layer)
+        // .with(metrics_layer)
         .with(developer_layer)
         .with(developer_dump_layer)
         .init();

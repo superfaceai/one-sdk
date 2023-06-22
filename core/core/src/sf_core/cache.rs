@@ -94,13 +94,6 @@ impl DocumentCache {
             }
         }
 
-        tracing::info!(
-            target: "@metrics",
-            kind = "cache-document",
-            url,
-            len = data.len()
-        );
-
         self.map.insert(
             url.to_string(),
             DocumentCacheEntry {
