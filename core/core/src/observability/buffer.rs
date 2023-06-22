@@ -1,5 +1,4 @@
 use std::{
-    borrow::Borrow,
     io::Write,
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard},
@@ -18,15 +17,13 @@ const EVENT_SEPARATOR: u8 = b'\0';
 ///
 /// For example it can be an unbounded buffer or a ring buffer.
 pub trait TracingEventBuffer: Sized {
-    type RawParts: Borrow<[(*const u8, usize)]>;
-
     /// Writes data into the buffer.
     ///
     /// Writing a null byte marks an event boundary.
     fn write(&mut self, data: &[u8]);
 
     /// Returns raw pointer and size tuples which represent the memory of the buffer.
-    fn as_raw_parts(&self) -> Self::RawParts;
+    fn as_raw_parts(&self) -> [(*const u8, usize); 2];
 
     /// Clears the internal buffer and removes all events.
     fn clear(&mut self);

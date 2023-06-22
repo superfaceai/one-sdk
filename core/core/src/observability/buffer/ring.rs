@@ -33,8 +33,6 @@ impl RingEventBuffer {
     }
 }
 impl TracingEventBuffer for RingEventBuffer {
-    type RawParts = [(*const u8, usize); 2];
-
     fn write(&mut self, mut data: &[u8]) {
         // if data is longer than internal capacity we only retain the last bytes of the input
         if data.len() > self.data.capacity() {
@@ -49,7 +47,7 @@ impl TracingEventBuffer for RingEventBuffer {
         self.data.extend(data.into_iter().copied());
     }
 
-    fn as_raw_parts(&self) -> Self::RawParts {
+    fn as_raw_parts(&self) -> [(*const u8, usize); 2] {
         let (first, second) = self.data.as_slices();
 
         [

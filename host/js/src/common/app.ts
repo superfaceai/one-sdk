@@ -429,20 +429,22 @@ export class App implements AppContext {
    * 
    * Use this to retrieve metrics and developer dump from the wasm core.
    */
-  private getTracingEventsByArena(arenaPointer: number): string[] {
-    const buffer1Ptr = this.memoryView.getInt32(arenaPointer, true);
-    const buffer1Size = this.memoryView.getInt32(arenaPointer + 4, true);
-    const buffer2Ptr = this.memoryView.getInt32(arenaPointer + 8, true);
-    const buffer2Size = this.memoryView.getInt32(arenaPointer + 12, true);
+  private getTracingEventsByArena(memory: WebAssembly.Memory, arenaPointer: number): string[] {
+    const memoryView = new DataView(memory.buffer);
+    const buffer1Ptr = memoryView.getInt32(arenaPointer, true);
+    const buffer1Size = memoryView.getInt32(arenaPointer + 4, true);
+    const buffer2Ptr = memoryView.getInt32(arenaPointer + 8, true);
+    const buffer2Size = memoryView.getInt32(arenaPointer + 12, true);
 
+    const memoryBytes = new Uint8Array(memory.buffer);
     let buffer: Uint8Array;
     if (buffer2Size === 0) {
-      buffer = this.memoryBytes.subarray(buffer1Ptr, buffer1Ptr + buffer1Size);
+      buffer = memoryBytes.subarray(buffer1Ptr, buffer1Ptr + buffer1Size);
     } else {
       // need to copy the memory to make it contiguous
       buffer = new Uint8Array(buffer1Size + buffer2Size);
-      buffer.set(this.memoryBytes.subarray(buffer1Ptr, buffer1Ptr + buffer1Size), 0);
-      buffer.set(this.memoryBytes.subarray(buffer2Ptr, buffer2Ptr + buffer2Size), buffer1Size);
+      buffer.set(memoryBytes.subarray(buffer1Ptr, buffer1Ptr + buffer1Size), 0);
+      buffer.set(memoryBytes.subarray(buffer2Ptr, buffer2Ptr + buffer2Size), buffer1Size);
     }
 
     // now we split by null bytes and parse as strings
@@ -472,7 +474,7 @@ export class App implements AppContext {
 
     const events = await this.core.withLock(async (core) => {
       const arenaPointer = await core.getMetricsFn();
-      const events: string[] = this.getTracingEventsByArena(arenaPointer);
+      const events: string[] = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
 
       // this needs to be called under the same lock as getMetrics so we don't accidentally clear metrics
       // which we didn't read yet
@@ -488,14 +490,14 @@ export class App implements AppContext {
   /** The intended use is after the core has panicked. */
   private async sendMetricsOnPanic(core: AppCore) {
     const arenaPointer = await core.getMetricsFn();
-    const events = this.getTracingEventsByArena(arenaPointer);
+    const events = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
 
     return this.hostPlatform.processMetrics(events);
   }
   /** The intended use is after the core has panicked. */
   private async createDeveloperDump(core: AppCore) {
     const arenaPointer = await core.getDeveloperDumpFn();
-    const events = this.getTracingEventsByArena(arenaPointer);
+    const events = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
 
     return this.hostPlatform.processDeveloperDump(events);
   }

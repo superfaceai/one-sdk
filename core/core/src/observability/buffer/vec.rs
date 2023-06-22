@@ -13,14 +13,12 @@ impl VecEventBuffer {
     }
 }
 impl TracingEventBuffer for VecEventBuffer {
-    type RawParts = [(*const u8, usize); 1];
-
     fn write(&mut self, data: &[u8]) {
         self.data.extend(data.into_iter().copied())
     }
 
-    fn as_raw_parts(&self) -> Self::RawParts {
-        [(self.data.as_ptr(), self.data.len())]
+    fn as_raw_parts(&self) -> [(*const u8, usize); 2] {
+        [(self.data.as_ptr(), self.data.len()), (std::ptr::null(), 0)]
     }
 
     fn clear(&mut self) {

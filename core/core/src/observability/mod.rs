@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use sf_std::abi::{Ptr, Size};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
@@ -119,6 +121,28 @@ impl FatPointer {
     }
 }
 static mut BUFFER_RETURN_ARENA: [FatPointer; 2] = [FatPointer::null(), FatPointer::null()];
+unsafe fn clear_return_arena() -> Ptr<[FatPointer; 2]> {
+    unsafe {
+        BUFFER_RETURN_ARENA[0].ptr = Ptr::null();
+        BUFFER_RETURN_ARENA[0].size = 0;
+        BUFFER_RETURN_ARENA[1].ptr = Ptr::null();
+        BUFFER_RETURN_ARENA[1].size = 0;
+
+        Ptr::from((&BUFFER_RETURN_ARENA) as *const [FatPointer; 2])
+    }
+}
+unsafe fn set_return_arena_from(buffer: &impl TracingEventBuffer) -> Ptr<[FatPointer; 2]> {
+    let [(ptr1, size1), (ptr2, size2)] = buffer.as_raw_parts();
+
+    unsafe {
+        BUFFER_RETURN_ARENA[0].ptr = ptr1.into();
+        BUFFER_RETURN_ARENA[0].size = size1;
+        BUFFER_RETURN_ARENA[1].ptr = ptr2.into();
+        BUFFER_RETURN_ARENA[1].size = size2;
+
+        Ptr::from((&BUFFER_RETURN_ARENA) as *const [FatPointer; 2])
+    }
+}
 
 #[no_mangle]
 #[export_name = "oneclient_core_get_metrics"]
@@ -128,15 +152,11 @@ static mut BUFFER_RETURN_ARENA: [FatPointer; 2] = [FatPointer::null(), FatPointe
 /// The second one will point from the beginning buffer up to its tail. The second pointer may be null or have zero length.
 /// Each metric is a UTF-8 encoded JSON string and is terminated by a null byte.
 pub extern "C" fn __export_oneclient_core_get_metrics() -> Ptr<[FatPointer; 2]> {
-    let [(ptr, size)] = unsafe { METRICS_BUFFER.as_ref().unwrap().lock().as_raw_parts() };
-
     unsafe {
-        BUFFER_RETURN_ARENA[0].ptr = ptr.into();
-        BUFFER_RETURN_ARENA[0].size = size;
-        BUFFER_RETURN_ARENA[1].ptr = Ptr::null();
-        BUFFER_RETURN_ARENA[1].size = 0;
-
-        Ptr::from((&BUFFER_RETURN_ARENA) as *const [FatPointer; 2])
+        match METRICS_BUFFER {
+            Some(ref b) => set_return_arena_from(b.lock().deref()),
+            None => clear_return_arena()
+        }
     }
 }
 
@@ -147,7 +167,9 @@ pub extern "C" fn __export_oneclient_core_get_metrics() -> Ptr<[FatPointer; 2]> 
 /// This should be called after [__export_oneclient_core_get_metrics] is called and the metrics are processed.
 pub extern "C" fn __export_oneclient_core_clear_metrics() {
     unsafe {
-        METRICS_BUFFER.as_ref().unwrap().lock().clear();
+        if let Some(ref buffer) = METRICS_BUFFER {
+            buffer.lock().clear();
+        }
     }
 }
 
@@ -159,20 +181,10 @@ pub extern "C" fn __export_oneclient_core_clear_metrics() {
 /// The second one will point from the beginning buffer up to its tail. The second pointer may be null or have zero length.
 /// Each event is a UTF-8 encoded string and is terminated by a null byte.
 pub extern "C" fn __export_oneclient_core_get_developer_dump() -> Ptr<[FatPointer; 2]> {
-    let [(ptr1, size1), (ptr2, size2)] = unsafe {
-        DEVELOPER_DUMP_BUFFER
-            .as_ref()
-            .unwrap()
-            .lock()
-            .as_raw_parts()
-    };
-
     unsafe {
-        BUFFER_RETURN_ARENA[0].ptr = ptr1.into();
-        BUFFER_RETURN_ARENA[0].size = size1;
-        BUFFER_RETURN_ARENA[1].ptr = ptr2.into();
-        BUFFER_RETURN_ARENA[1].size = size2;
-
-        Ptr::from((&BUFFER_RETURN_ARENA) as *const [FatPointer; 2])
+        match DEVELOPER_DUMP_BUFFER {
+            Some(ref b) => set_return_arena_from(b.lock().deref()),
+            None => clear_return_arena()
+        }
     }
 }
