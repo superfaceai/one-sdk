@@ -13,6 +13,13 @@ use crate::{
     lowercase_headers_multimap, HeadersMultiMap, MultiMap,
 };
 
+struct AltDebug<T: std::fmt::Debug>(pub T);
+impl<T: std::fmt::Debug> std::fmt::Debug for AltDebug<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#?}", self.0)
+    }
+}
+
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
         kind: "http-call",
@@ -115,11 +122,7 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
         );
 
         if tracing::enabled!(tracing::Level::DEBUG, target: "@user") {
-            tracing::debug!(target: "@user", %method, %url);
-            for (header, value) in headers.iter() {
-                tracing::debug!(target: "@user", %header, ?value);
-            }
-            tracing::debug!(target: "@user", ?body);
+            tracing::debug!(target: "@user", %method, %url, headers = ?AltDebug(&headers), ?body);
         }
 
         let response = HttpCallRequest {
@@ -152,6 +155,8 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
     }
 
     pub fn into_response(self) -> Result<HttpResponse<Se>, HttpCallError> {
+        let _span = tracing::debug_span!(target: "@user", "HttpRequest::into_response").entered();
+
         let exchange_response = HttpCallHeadRequest::new(self.handle)
             .send_json_in(&self.message_exchange)
             .unwrap();
@@ -161,11 +166,17 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
                 status,
                 headers,
                 body_stream,
-            } => Ok(HttpResponse {
-                status,
-                headers: lowercase_headers_multimap(headers),
-                body: IoStream::<Se>::from_handle_in(body_stream, self.stream_exchange),
-            }),
+            } => {
+                if tracing::enabled!(tracing::Level::DEBUG, target: "@user") {
+                    tracing::debug!(target: "@user", %status, headers = ?AltDebug(&headers));
+                }
+
+                Ok(HttpResponse {
+                    status,
+                    headers: lowercase_headers_multimap(headers),
+                    body: IoStream::<Se>::from_handle_in(body_stream, self.stream_exchange),
+                })
+            }
             HttpCallHeadResponse::Err {
                 error_code,
                 message,
