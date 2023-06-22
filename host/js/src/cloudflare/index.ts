@@ -199,7 +199,15 @@ class InternalClient {
       fileSystem: new CfwFileSystem(options.preopens ?? {}),
       textCoder: new CfwTextCoder(),
       timers: new CfwTimers(),
-      network: new CfwNetwork()
+      network: new CfwNetwork(),
+      platform: {
+        processMetrics: async (events) => {
+          console.log("send metrics", events); // TODO
+        },
+        processDeveloperDump: async (events) => {
+          console.log("develoepr dump", events); // TODO
+        }
+      }
     }, { metricsTimeout: 0 });
   }
 

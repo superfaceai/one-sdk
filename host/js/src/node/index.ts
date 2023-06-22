@@ -135,6 +135,10 @@ export type ClientOptions = {
    * Manage tokens and see insights here: https://superface.ai/insights
    */
   token?: string;
+  /**
+   * URL where the Superface API can be reached.
+   */
+  superfaceApiUrl?: string;
 };
 
 export type ClientPerformOptions = {
@@ -144,8 +148,9 @@ export type ClientPerformOptions = {
 };
 
 class InternalClient {
-  public assetsPath: string = resolvePath(process.cwd(), ASSETS_FOLDER);
-  private token: string | undefined;
+  public readonly assetsPath: string = resolvePath(process.cwd(), ASSETS_FOLDER);
+  private readonly token: string | undefined;
+  private readonly insightsUrl: string = 'https://superface.ai/insights/sdk_event'
 
   private corePath: string;
   private app: App;
@@ -155,9 +160,11 @@ class InternalClient {
     if (options.assetsPath !== undefined) {
       this.assetsPath = options.assetsPath;
     }
-
     if (options.token !== undefined) {
       this.token = options.token;
+    }
+    if (options.superfaceApiUrl !== undefined) {
+      this.insightsUrl = `${options.superfaceApiUrl}/insights/sdk_event`;
     }
 
     this.corePath = CORE_PATH;
@@ -168,7 +175,13 @@ class InternalClient {
       network: new NodeNetwork(),
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
-      timers: new NodeTimers()
+      timers: new NodeTimers(),
+      platform: {
+        processMetrics: events => this.processMetrics(events),
+        processDeveloperDump: async (events) => {
+          console.log("develoepr dump", events); // TODO
+        }
+      }
     }, { metricsTimeout: 1000 });
   }
 
@@ -250,6 +263,38 @@ class InternalClient {
     process.on('beforeExit', async () => {
       await this.destroy();
     });
+  }
+
+  private async processMetrics(events: string[]) {    
+    const headers: Record<string, string> = {
+      'content-type': 'application/json'
+    };
+    if (this.token !== undefined) {
+      headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
+    }
+    
+    // await fetch(
+    //   `${this.insightsUrl}/batch`,
+    //   {
+    //     method: 'POST',
+    //     body: '[' + events.join(',') + ']',
+    //     headers
+    //   }
+    // ).then(res => console.trace(res));
+    await Promise.all(events.map(
+      event => fetch(
+        this.insightsUrl,
+        {
+          method: 'POST',
+          body: event,
+          headers
+        }
+      ).then(res => res.text().then(body => {
+        const headers: [string, string][] = [];
+        res.headers.forEach((value, key) => headers.push([key, value]));
+        console.trace(res, headers, body);
+      }))
+    ));
   }
 }
 

@@ -61,6 +61,10 @@ describe('App', () => {
       fileSystem: new TestFileSystem(),
       textCoder: new TestCoder(),
       timers: new TestTimers(),
+      platform: {
+        processMetrics: async (events) => {},
+        processDeveloperDump: async (events) => {}
+      }
     }, { metricsTimeout: 1000 });
 
     await app.loadCore(
