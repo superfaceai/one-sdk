@@ -7,7 +7,7 @@ export { PerformError, UnexpectedError } from '../common/error.js';
 
 // @ts-ignore
 import coreModule from '../assets/core-async.wasm';
-import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/index.js';
+import { ErrorCode, HostError, WasiErrno, WasiError, HostPlatform } from '../common/index.js';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -99,7 +99,6 @@ class CfwNetwork implements Network {
     return response;
   }
 }
-
 class CfwWasiCompat implements WasiContext {
   private readonly wasi: WASI;
   private memory: WebAssembly.Memory | undefined;
@@ -176,11 +175,58 @@ class CfwWasiCompat implements WasiContext {
     return 0;
   }
 }
+class CfwPlatform implements HostPlatform {
+  private readonly token: string | undefined;
+  private readonly insightsUrl: string;
+  
+  constructor(
+    token: string | undefined,
+    superfaceApiUrl: string | undefined
+  ) {
+    this.token = token;
+    if (superfaceApiUrl !== undefined) {
+      this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
+    } else {
+      this.insightsUrl = 'https://superface.ai/insights/sdk_event';
+    }
+  }
+
+  // TODO: investigate other ways of persisting metrics:
+  // 1. Tail Workers https://developers.cloudflare.com/workers/platform/tail-workers/
+  // 2. Logpush https://developers.cloudflare.com/workers/platform/logpush
+  async persistMetrics(events: string[]): Promise<void> {
+    const headers: Record<string, string> = {
+      'content-type': 'application/json'
+    };
+    if (this.token !== undefined) {
+      headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
+    }
+
+    // TODO: update to use batch endpoint when new brain is released
+    await Promise.all(events.map(
+      event => fetch(
+        this.insightsUrl,
+        {
+          method: 'POST',
+          body: event,
+          headers
+        }
+      )
+    ));
+  }
+
+  async persistDeveloperDump(events: string[]): Promise<void> {
+    for (const event of events) {
+      console.error(event);
+    }
+  }
+}
 
 export type ClientOptions = {
   env?: Record<string, string>;
   assetsPath?: string;
   token?: string;
+  superfaceApiUrl?: string;
   preopens?: Record<string, Uint8Array>;
 };
 
@@ -200,14 +246,7 @@ class InternalClient {
       textCoder: new CfwTextCoder(),
       timers: new CfwTimers(),
       network: new CfwNetwork(),
-      platform: {
-        processMetrics: async (events) => {
-          console.log("send metrics", events); // TODO
-        },
-        processDeveloperDump: async (events) => {
-          console.log("develoepr dump", events); // TODO
-        }
-      }
+      platform: new CfwPlatform(options.token, options.superfaceApiUrl)
     }, { metricsTimeout: 0 });
   }
 
@@ -253,6 +292,10 @@ class InternalClient {
       security
     );
   }
+
+  public async sendMetrics(): Promise<void> {
+    return this.app.sendMetrics();
+  }
 }
 
 export class OneClient {
@@ -272,6 +315,14 @@ export class OneClient {
 
   public async getProfile(name: string): Promise<Profile> {
     return await Profile.loadLocal(this.internal, name);
+  }
+
+  /** Send metrics to Superface.
+   * 
+   * If `token` was passed in `ClientOptions` then the metrics will be associated with that account and project.
+  */
+  public async sendMetricsToSuperface(): Promise<void> {
+    return this.internal.sendMetrics();
   }
 }
 

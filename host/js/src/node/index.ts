@@ -14,7 +14,8 @@ import {
   Timers,
   UnexpectedError,
   WasiErrno,
-  WasiError
+  WasiError,
+  HostPlatform
 } from '../common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 
@@ -124,6 +125,65 @@ class NodeNetwork implements Network {
   }
 }
 
+class NodePlatform implements HostPlatform {
+  private readonly token: string | undefined;
+  private readonly insightsUrl: string;
+  
+  constructor(
+    token: string | undefined,
+    superfaceApiUrl: string | undefined
+  ) {
+    this.token = token;
+    if (superfaceApiUrl !== undefined) {
+      this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
+    } else {
+      this.insightsUrl = 'https://superface.ai/insights/sdk_event';
+    }
+  }
+
+  async persistMetrics(events: string[]): Promise<void> {
+    const headers: Record<string, string> = {
+      'content-type': 'application/json'
+    };
+    if (this.token !== undefined) {
+      headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
+    }
+    
+    // TODO: update to use batch endpoint when new brain is released
+    // await fetch(
+    //   `${this.insightsUrl}/batch`,
+    //   {
+    //     method: 'POST',
+    //     body: '[' + events.join(',') + ']',
+    //     headers
+    //   }
+    // ).then(res => console.trace(res));
+    await Promise.all(events.map(
+      event => fetch(
+        this.insightsUrl,
+        {
+          method: 'POST',
+          body: event,
+          headers
+        }
+      )
+      // .then(res => res.text().then(body => {
+      //   const headers: [string, string][] = [];
+      //   res.headers.forEach((value, key) => headers.push([key, value]));
+      //   console.trace(res, headers, body);
+      // }))
+    ));
+  }
+
+  async persistDeveloperDump(events: string[]): Promise<void> {
+    const timestamp = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
+    const fileName = `onesdk_devlog_dump_${timestamp}.txt`;
+
+    // TOOD: where to create the dump?
+    await fs.writeFile(fileName, events.join('\n'));
+  }
+}
+
 export type ClientOptions = {
   /**
    * Path to folder with Comlink's assets.
@@ -160,12 +220,6 @@ class InternalClient {
     if (options.assetsPath !== undefined) {
       this.assetsPath = options.assetsPath;
     }
-    if (options.token !== undefined) {
-      this.token = options.token;
-    }
-    if (options.superfaceApiUrl !== undefined) {
-      this.insightsUrl = `${options.superfaceApiUrl}/insights/sdk_event`;
-    }
 
     this.corePath = CORE_PATH;
 
@@ -176,12 +230,7 @@ class InternalClient {
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers(),
-      platform: {
-        processMetrics: events => this.processMetrics(events),
-        processDeveloperDump: async (events) => {
-          console.log("develoepr dump", events); // TODO
-        }
-      }
+      platform: new NodePlatform(options.token, options.superfaceApiUrl)
     }, { metricsTimeout: 1000 });
   }
 
@@ -263,38 +312,6 @@ class InternalClient {
     process.on('beforeExit', async () => {
       await this.destroy();
     });
-  }
-
-  private async processMetrics(events: string[]) {
-    const headers: Record<string, string> = {
-      'content-type': 'application/json'
-    };
-    if (this.token !== undefined) {
-      headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
-    }
-    
-    // await fetch(
-    //   `${this.insightsUrl}/batch`,
-    //   {
-    //     method: 'POST',
-    //     body: '[' + events.join(',') + ']',
-    //     headers
-    //   }
-    // ).then(res => console.trace(res));
-    await Promise.all(events.map(
-      event => fetch(
-        this.insightsUrl,
-        {
-          method: 'POST',
-          body: event,
-          headers
-        }
-      ).then(res => res.text().then(body => {
-        const headers: [string, string][] = [];
-        res.headers.forEach((value, key) => headers.push([key, value]));
-        // console.trace(res, headers, body);
-      }))
-    ));
   }
 }
 

@@ -6,7 +6,7 @@ import { WASI } from 'wasi';
 
 import { App } from './app.js';
 import { UnexpectedError } from './error.js';
-import { FileSystem, Network, TextCoder, Timers, WasiContext } from './interfaces.js';
+import { FileSystem, HostPlatform, Network, TextCoder, Timers, WasiContext } from './interfaces.js';
 
 
 class TestNetwork implements Network {
@@ -51,6 +51,11 @@ class TestTimers implements Timers {
   }
 }
 
+class TestPlatform implements HostPlatform {
+  async persistMetrics(events: string[]): Promise<void> {}
+  async persistDeveloperDump(events: string[]): Promise<void> {}
+}
+
 describe('App', () => {
   let app: App;
   let handleMessage: jest.SpiedFunction<(message: any) => Promise<any>>;
@@ -61,10 +66,7 @@ describe('App', () => {
       fileSystem: new TestFileSystem(),
       textCoder: new TestCoder(),
       timers: new TestTimers(),
-      platform: {
-        processMetrics: async (events) => {},
-        processDeveloperDump: async (events) => {}
-      }
+      platform: new TestPlatform(),
     }, { metricsTimeout: 1000 });
 
     await app.loadCore(

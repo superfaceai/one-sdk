@@ -21,7 +21,10 @@ async function startLocalhostServer() {
 async function main() {
   const server = await startLocalhostServer();
 
-  const client = new OneClient({ assetsPath: '../examples/comlinks/src' });
+  const client = new OneClient({
+    assetsPath: '../examples/comlinks/src',
+    superfaceApiUrl: 'https://superface.dev'
+  });
   const profile = await client.getProfile('wasm-sdk/example');
   const result = await profile
     .getUseCase('Example')

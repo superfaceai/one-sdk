@@ -464,7 +464,7 @@ export class App implements AppContext {
       this.metricsState.handle = this.timers.setTimeout(() => this.sendMetrics(), this.metricsState.timeout);
     }
   }
-  private async sendMetrics(): Promise<void> {
+  public async sendMetrics(): Promise<void> {
     this.timers.clearTimeout(this.metricsState.handle);
     this.metricsState.handle = 0;
 
@@ -483,8 +483,7 @@ export class App implements AppContext {
       return events;
     });
 
-    // return this.sendMetricsToApi('[' + events.join(',') + ']');
-    return this.hostPlatform.processMetrics(events);
+    return this.hostPlatform.persistMetrics(events);
   }
 
   /** The intended use is after the core has panicked. */
@@ -492,13 +491,13 @@ export class App implements AppContext {
     const arenaPointer = await core.getMetricsFn();
     const events = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
 
-    return this.hostPlatform.processMetrics(events);
+    return this.hostPlatform.persistMetrics(events);
   }
   /** The intended use is after the core has panicked. */
   private async createDeveloperDump(core: AppCore) {
     const arenaPointer = await core.getDeveloperDumpFn();
     const events = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
 
-    return this.hostPlatform.processDeveloperDump(events);
+    return this.hostPlatform.persistDeveloperDump(events);
   }
 }
