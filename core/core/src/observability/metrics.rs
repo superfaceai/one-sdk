@@ -1,5 +1,7 @@
 /// Public module so that the macro can access it, but should not be used outside of the parent module.
 pub mod __private {
+    use std::collections::HashMap;
+
     use serde::Serialize;
 
     use tracing_subscriber::fmt::MakeWriter;
@@ -29,7 +31,11 @@ pub mod __private {
 
     #[derive(Debug, Serialize)]
     pub struct SdkInitData<'a> {
-        pub configuration: Option<&'a ()>
+        pub configuration: SdkInitDataConfiguration<'a>
+    }
+    #[derive(Debug, Serialize)]
+    pub struct SdkInitDataConfiguration<'a> {
+        pub profiles: HashMap<&'a str, ()>
     }
 
     #[derive(Debug, Serialize)]
@@ -76,7 +82,9 @@ macro_rules! log_metric {
                 Event::SdkInit {
                     occurred_at: &now,
                     configuration_hash: None,
-                    data: SdkInitData { configuration: None }
+                    data: SdkInitData {
+                        configuration: SdkInitDataConfiguration { profiles: Default::default() }
+                    }
                 }
             );
         }
