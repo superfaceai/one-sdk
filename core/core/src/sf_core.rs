@@ -13,9 +13,7 @@ use map_std::unstable::{
     MapValue, MapValueObject,
 };
 
-use crate::{
-    bindings::{MessageExchangeFfi, StreamExchangeFfi}
-};
+use crate::bindings::{MessageExchangeFfi, StreamExchangeFfi};
 
 mod cache;
 mod config;
@@ -74,11 +72,8 @@ impl OneClientCore {
     pub fn new(config: CoreConfiguration) -> anyhow::Result<Self> {
         tracing::info!(target: "@user", config = ?config);
 
-        // { "timestamp": "<time>", "kind": "core-init", "cache_duration": 123 }
-        tracing::info!(
-            target: "@metrics",
-            kind = "core-init",
-            cache_duration = config.cache_duration.as_secs()
+        crate::observability::metrics::log_metric!(
+            Init
         );
 
         Ok(Self {
@@ -132,17 +127,23 @@ impl OneClientCore {
 
     pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
         let perform_input = PerformInput::take_in(MessageExchangeFfi);
-
-        tracing::info!(
-            target: "@metrics",
-            kind = "perform-input",
-            profile_url = perform_input.profile_url,
-            provider_url = perform_input.provider_url,
-            map_url = perform_input.map_url,
-            usecase = perform_input.usecase
+        let profile_url = perform_input.profile_url.clone();
+        let provider_url = perform_input.provider_url.clone();
+        
+        let result = self.perform_inner(perform_input);
+        crate::observability::metrics::log_metric!(
+            Perform
+            // success is when the result is `Ok(Ok(_))`
+            success = result.as_ref().map(|inner| inner.is_ok()).unwrap_or(false),
+            profile = &profile_url,
+            provider = &provider_url
         );
 
-        self.document_cache.cache(&perform_input.profile_url)?;
+        result
+    }
+
+    /// Internal implementation of perform so we can have ergonomics of `?` operator while handling metrics outside
+    fn perform_inner(&mut self, perform_input: PerformInput) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
         self.document_cache.cache(&perform_input.profile_url)?;
         self.document_cache.cache(&perform_input.provider_url)?;
         self.document_cache.cache(&perform_input.map_url)?;

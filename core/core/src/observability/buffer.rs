@@ -1,7 +1,7 @@
 use std::{
     io::Write,
     ops::DerefMut,
-    sync::{Arc, Mutex, MutexGuard}, borrow::Borrow
+    sync::{Arc, Mutex, MutexGuard},
 };
 
 use tracing_subscriber::fmt::MakeWriter;
@@ -9,26 +9,21 @@ use tracing_subscriber::fmt::MakeWriter;
 mod ring;
 mod vec;
 
-pub use self::{
-    ring::RingEventBuffer,
-    vec::VecEventBuffer
-};
+pub use self::{ring::RingEventBuffer, vec::VecEventBuffer};
 
 const EVENT_SEPARATOR: u8 = b'\0';
 
 /// Event buffer implementation.
 ///
 /// For example it can be an unbounded buffer or a ring buffer.
-pub(crate) trait TracingEventBuffer: Sized {
-    type RawParts: Borrow<[(*const u8, usize)]>;
-
+pub trait TracingEventBuffer: Sized {
     /// Writes data into the buffer.
     ///
     /// Writing a null byte marks an event boundary.
     fn write(&mut self, data: &[u8]);
 
     /// Returns raw pointer and size tuples which represent the memory of the buffer.
-    fn as_raw_parts(&self) -> Self::RawParts;
+    fn as_raw_parts(&self) -> [(*const u8, usize); 2];
 
     /// Clears the internal buffer and removes all events.
     fn clear(&mut self);
@@ -39,7 +34,7 @@ pub(crate) trait TracingEventBuffer: Sized {
 /// The event boundary is mentioned by this comment <https://github.com/tokio-rs/tracing/issues/1931#issuecomment-1042340765>
 /// and also mentioned in the docs <https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html#implementer-notes>,
 /// so it should be valid approach to add the boundary on drop.
-pub(crate) struct TracingEventBufferWriter<'a, B: TracingEventBuffer, R: DerefMut<Target = B> + 'a> {
+pub struct TracingEventBufferWriter<'a, B: TracingEventBuffer, R: DerefMut<Target = B> + 'a> {
     buffer: R,
     _phantom: std::marker::PhantomData<&'a mut B>,
 }
@@ -76,7 +71,7 @@ impl<'a, B: TracingEventBuffer, R: DerefMut<Target = B> + 'a> Drop
 
 /// Wrapper around a [`TracingEventBuffer`](TracingEventBuffer) that can be shared between tracing and a consumer.
 #[derive(Debug)]
-pub(crate) struct SharedEventBuffer<B: TracingEventBuffer + 'static>(Arc<Mutex<B>>);
+pub struct SharedEventBuffer<B: TracingEventBuffer + 'static>(Arc<Mutex<B>>);
 impl<B: TracingEventBuffer> SharedEventBuffer<B> {
     pub fn new(inner: B) -> Self {
         Self(Arc::new(Mutex::new(inner)))
@@ -98,4 +93,3 @@ impl<'a, B: TracingEventBuffer + 'static> MakeWriter<'a> for SharedEventBuffer<B
         TracingEventBufferWriter::new(self.lock())
     }
 }
-

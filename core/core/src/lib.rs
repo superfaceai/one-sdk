@@ -9,11 +9,11 @@ use sf_std::{
     },
 };
 
-mod sf_core;
-use sf_core::{CoreConfiguration, OneClientCore};
-
 mod bindings;
 mod observability;
+
+mod sf_core;
+use sf_core::{CoreConfiguration, OneClientCore};
 
 #[cfg(feature = "core_mock")]
 mod mock;
@@ -46,13 +46,13 @@ pub extern "C" fn __export_oneclient_core_setup() {
     // load config, but don't display the error yet since we haven't initialize logging yet
     let (config, config_err) = match CoreConfiguration::from_env() {
         Ok(c) => (c, None),
-        Err(err) => (CoreConfiguration::default(), Some(err))
+        Err(err) => (CoreConfiguration::default(), Some(err)),
     };
 
     // initialize observability
     // SAFETY: setup is only allowed to be called once
     unsafe { observability::init(config.developer_dump_buffer_size) };
-    
+
     // now that we have logging we can start printing stuff
     tracing::debug!(target: "@user", "oneclient_core_setup called");
     if let Some(err) = config_err {
@@ -114,23 +114,9 @@ pub extern "C" fn __export_oneclient_core_perform() {
     }
 }
 
-#[no_mangle]
-#[export_name = "oneclient_core_send_metrics"]
-/// Periodically sends metrics.
-///
-/// Must be called after [__export_oneclient_core_setup] and before [__export_oneclient_core_teardown].
-///
-/// The host should call this export periodically to send batched insights.
-pub extern "C" fn __export_oneclient_core_send_metrics() {
-    #[cfg(feature = "core_mock")]
-    return mock::__export_oneclient_core_send_metrics();
-
-    // TODO: this will be removed in favor of `superface_core_get_metrics_buffer`, `superface_core_clear_metrics_buffer` and `superface_core_get_devlog_buffer`
-}
-
+#[cfg(feature = "asyncify")]
 #[no_mangle]
 #[export_name = "asyncify_alloc_stack"]
-#[cfg(feature = "asyncify")]
 pub extern "C" fn __export_oneclient_core_async_init(mut data_ptr: Ptr<Size>, stack_size: Size) {
     // We allocate Size elements to ensure correct alignment, but size is in bytes.
     let len = stack_size / std::mem::size_of::<Size>();
@@ -147,4 +133,6 @@ pub extern "C" fn __export_oneclient_core_async_init(mut data_ptr: Ptr<Size>, st
         data_ptr.mut_ptr().write(stack.start as Size);
         data_ptr.mut_ptr().offset(1).write(stack.end as Size)
     }
+
+    // TODO: if we allocate the stack so that the data structure is at its beginning we get the possibility of having multiple stacks without relying on undocumented compiler behavior
 }

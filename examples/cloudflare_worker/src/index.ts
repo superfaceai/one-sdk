@@ -8,7 +8,8 @@ const client = new OneClient({
     ONESDK_CONFIG_CACHE_DURATION: '10'
   },
   assetsPath: 'superface',
-  preopens: { ...COMLINK_IMPORTS }
+  preopens: { ...COMLINK_IMPORTS },
+  superfaceApiUrl: 'https://superface.dev'
 });
 
 type Env = {
@@ -21,7 +22,7 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: unknown // ExecutionContext
+    ctx: { waitUntil(task: Promise<unknown>): void }
   ): Promise<Response> {
     const url = new URL(request.url);
     const to = url.searchParams.get('to') ?? '';
@@ -60,22 +61,27 @@ export default {
         break;
 
       default:
+        ctx.waitUntil(client.sendMetricsToSuperface());
         return new Response(`Path ${url.pathname} not found`, { status: 404 });
     }
 
+    let response: Response;
     try {
       // result as defined in the profile
       const ok = await result;
-      return new Response(`Result: ${JSON.stringify(ok)}`);
+      response = new Response(`Result: ${JSON.stringify(ok)}`);
     } catch (error) {
       if (error instanceof PerformError) {
         // error as defined in the profile
         const err = error.errorResult as { title: string, detail: string };
-        return new Response(`${err.title}\n${err.detail}`, { status: 400 });
+        response = new Response(`${err.title}\n${err.detail}`, { status: 400 });
       } else {
         // exception - should not be part of a normal flow
-        return new Response(`${error.name}\n${error.message}`, { status: 500 });
+        response = new Response(`${error.name}\n${error.message}`, { status: 500 });
       }
     }
+
+    ctx.waitUntil(client.sendMetricsToSuperface());
+    return response;
   }
 };

@@ -31,7 +31,7 @@ pub fn __export_oneclient_core_setup() {
                         .with_default_directive(LevelFilter::TRACE.into())
                         .with_env_var("ONESDK_DEV_LOG")
                         .from_env_lossy(),
-                )
+                ),
         )
         .init();
 
@@ -55,8 +55,4 @@ pub fn __export_oneclient_core_perform() {
         }
         _ => panic!("Unknown usecase: {}", perform_input.usecase),
     };
-}
-
-pub fn __export_oneclient_core_send_metrics() {
-    tracing::debug!("mocked oneclient core send metrics");
 }

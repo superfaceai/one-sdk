@@ -2,7 +2,7 @@ import { Asyncify } from './asyncify.js';
 import { HandleMap } from './handle_map.js';
 
 import { PerformError, UnexpectedError, UninitializedError, WasiErrno, WasiError } from './error.js';
-import { AppContext, FileSystem, Network, TextCoder, Timers, WasiContext } from './interfaces.js';
+import { AppContext, FileSystem, Network, TextCoder, Timers, WasiContext, HostPlatform } from './interfaces.js';
 import { SecurityValuesMap } from './security.js';
 import * as sf_host from './sf_host.js';
 
@@ -78,7 +78,7 @@ export class AsyncMutex<T> {
     return this.value;
   }
 
-  public async withLock<R>(fn: (value: T) => Promise<R>): Promise<R> {
+  public async withLock<R>(fn: (value: T) => R): Promise<Awaited<R>> {
     do {
       // Under the assumption that we do not have concurrency it can never happen that two tasks
       // pass over the condition of this loop and think they both have a lock - that would imply there exists task preemption in synchronous code.
@@ -129,13 +129,16 @@ type AppCore = {
   setupFn: () => Promise<void>;
   teardownFn: () => Promise<void>;
   performFn: () => Promise<void>;
-  sendMetricsFn: () => Promise<void>;
+  getMetricsFn: () => Promise<number>;
+  clearMetricsFn: () => Promise<void>;
+  getDeveloperDumpFn: () => Promise<number>;
 };
 export class App implements AppContext {
   private readonly textCoder: TextCoder;
   private readonly network: Network;
   private readonly fileSystem: FileSystem;
   private readonly timers: Timers;
+  private readonly hostPlatform: HostPlatform;
 
   private readonly streams: HandleMap<Stream>;
   private readonly requests: HandleMap<Promise<Response>>;
@@ -155,22 +158,27 @@ export class App implements AppContext {
     exception?: UnexpectedError
   } | undefined = undefined;
 
+  // TODO: should the timer be part of the host platform instead?
   private metricsState: {
     timeout: number; // in ms
     handle: number; // timeout handle
   };
 
   constructor(
-    dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers },
+    dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers, platform: HostPlatform },
     options: { metricsTimeout?: number }
   ) {
     this.textCoder = dependencies.textCoder;
     this.network = dependencies.network;
     this.fileSystem = dependencies.fileSystem;
     this.timers = dependencies.timers;
+    this.hostPlatform = dependencies.platform;
     this.streams = new HandleMap();
     this.requests = new HandleMap();
-    this.metricsState = { timeout: options.metricsTimeout ?? 1000, handle: 0 };
+    this.metricsState = {
+      timeout: options.metricsTimeout ?? 1000,
+      handle: 0
+    };
   }
 
   public async loadCore(wasm: BufferSource) {
@@ -208,10 +216,14 @@ export class App implements AppContext {
       this.core = new AsyncMutex({
         instance,
         asyncify,
-        setupFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['oneclient_core_setup'] as () => void)),
-        teardownFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['oneclient_core_teardown'] as () => void)),
-        performFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['oneclient_core_perform'] as () => void)),
-        sendMetricsFn: this.wrapExport<[], void>(asyncify.wrapExport(instance.exports['oneclient_core_send_metrics'] as () => void))
+        setupFn: this.wrapExport(asyncify.wrapExport(instance.exports['oneclient_core_setup'] as () => void)),
+        teardownFn: this.wrapExport(asyncify.wrapExport(instance.exports['oneclient_core_teardown'] as () => void)),
+        performFn: this.wrapExport(asyncify.wrapExport(instance.exports['oneclient_core_perform'] as () => void)),
+        // if we fail during getting metrics, we want to skip dumping metrics but still attempt to create developer dump
+        getMetricsFn: this.wrapExport(instance.exports['oneclient_core_get_metrics'] as () => number),
+        clearMetricsFn: this.wrapExport(instance.exports['oneclient_core_clear_metrics'] as () => void), // this is not called when dumping metrics, so we can wrap it as normal
+        // if we fail during getting developer dump, we want to skip recursing, so we don't attempt to dump anything
+        getDeveloperDumpFn: this.wrapExport(instance.exports['oneclient_core_get_developer_dump'] as () => number)
       });
 
       return this.core.withLock(core => core.setupFn());
@@ -384,39 +396,108 @@ export class App implements AppContext {
     }
   }
 
-  private wrapExport<A extends unknown[], R>(fn: (...arg: A) => R): (...arg: A) => Promise<R> {
-    return async (...args: A) => {
+  private wrapExport<A extends unknown[], R>(fn: (...arg: A) => R): (...arg: A) => Promise<Awaited<R>> {
+    return async (...args: A): Promise<Awaited<R>> => {
       try {
         return await fn(...args);
       } catch (err: unknown) {
-        // TODO: get metrics from core
-        // call tearndown which will detect that a panic has happened and attempt to dump developer log
-        // TODO: should this be under teardown or should we introduce a new function?
-        await this.core!.unsafeValue.teardownFn().catch(_ => undefined);
-        // unsetting core, we can't ensure memory integrity
-        this.core = undefined;
+        // in case we got here while already attempting to dump during an error, this condition prevents recursion
+        if (this.core !== undefined) {
+          const core = this.core.unsafeValue;
+          // unsetting core, we can't ensure memory integrity
+          this.core = undefined;
+
+          try {
+            await this.createDeveloperDump(core);
+            await this.sendMetricsOnPanic(core);
+          } catch (dumpErr: unknown) {
+            throw new UnexpectedError('UnexpectedError', `${dumpErr} during dumping because of ${err}`);
+          }
+        }
 
         if (err instanceof WebAssembly.RuntimeError) {
           throw new UnexpectedError('WebAssemblyRuntimeError', `${err.message}`,);
         }
-
+    
         throw new UnexpectedError('UnexpectedError', `${err}`);
       }
     }
   }
 
-  private async sendMetrics(): Promise<void> {
-    this.timers.clearTimeout(this.metricsState.handle);
-    this.metricsState.handle = 0;
+  /**
+   * Returns tracing events stored in possibly disjoint memory for which there are two fat pointer in memory at `arenaPointer`.
+   * 
+   * Use this to retrieve metrics and developer dump from the wasm core.
+   */
+  private getTracingEventsByArena(memory: WebAssembly.Memory, arenaPointer: number): string[] {
+    const memoryView = new DataView(memory.buffer);
+    const buffer1Ptr = memoryView.getInt32(arenaPointer, true);
+    const buffer1Size = memoryView.getInt32(arenaPointer + 4, true);
+    const buffer2Ptr = memoryView.getInt32(arenaPointer + 8, true);
+    const buffer2Size = memoryView.getInt32(arenaPointer + 12, true);
 
-    if (this.core !== undefined) {
-      await this.core.withLock(core => core.sendMetricsFn());
+    const memoryBytes = new Uint8Array(memory.buffer);
+    let buffer: Uint8Array;
+    if (buffer2Size === 0) {
+      buffer = memoryBytes.subarray(buffer1Ptr, buffer1Ptr + buffer1Size);
+    } else {
+      // need to copy the memory to make it contiguous
+      buffer = new Uint8Array(buffer1Size + buffer2Size);
+      buffer.set(memoryBytes.subarray(buffer1Ptr, buffer1Ptr + buffer1Size), 0);
+      buffer.set(memoryBytes.subarray(buffer2Ptr, buffer2Ptr + buffer2Size), buffer1Size);
     }
+
+    // now we split by null bytes and parse as strings
+    const events: string[] = [];
+    while (buffer.length > 0) {
+      // event length without the null byte
+      const eventLength = buffer.findIndex(b => b === 0);
+      events.push(this.textCoder.decodeUtf8(buffer.subarray(0, eventLength)));
+      buffer = buffer.subarray(eventLength + 1);
+    }
+
+    return events;
   }
 
   private setSendMetricsTimeout() {
     if (this.metricsState.handle === 0) {
       this.metricsState.handle = this.timers.setTimeout(() => this.sendMetrics(), this.metricsState.timeout);
     }
+  }
+  public async sendMetrics(): Promise<void> {
+    this.timers.clearTimeout(this.metricsState.handle);
+    this.metricsState.handle = 0;
+
+    if (this.core === undefined) {
+      return;
+    }
+
+    const events = await this.core.withLock(async (core) => {
+      const arenaPointer = await core.getMetricsFn();
+      const events: string[] = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
+
+      // this needs to be called under the same lock as getMetrics so we don't accidentally clear metrics
+      // which we didn't read yet
+      await core.clearMetricsFn();
+
+      return events;
+    });
+
+    return this.hostPlatform.persistMetrics(events);
+  }
+
+  /** The intended use is after the core has panicked. */
+  private async sendMetricsOnPanic(core: AppCore) {
+    const arenaPointer = await core.getMetricsFn();
+    const events = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
+
+    return this.hostPlatform.persistMetrics(events);
+  }
+  /** The intended use is after the core has panicked. */
+  private async createDeveloperDump(core: AppCore) {
+    const arenaPointer = await core.getDeveloperDumpFn();
+    const events = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
+
+    return this.hostPlatform.persistDeveloperDump(events);
   }
 }

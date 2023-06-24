@@ -9,7 +9,7 @@ pub enum CoreConfigurationEnvError {
 #[derive(Debug)]
 pub struct CoreConfiguration {
     pub cache_duration: Duration,
-    pub developer_dump_buffer_size: usize
+    pub developer_dump_buffer_size: usize,
 }
 impl CoreConfiguration {
     pub fn from_env() -> Result<Self, CoreConfigurationEnvError> {
@@ -48,7 +48,7 @@ impl Default for CoreConfiguration {
     fn default() -> Self {
         Self {
             cache_duration: Duration::from_secs(60 * 60),
-            developer_dump_buffer_size: 1024 * 1024 // 1 MiB
+            developer_dump_buffer_size: 1024 * 1024, // 1 MiB
         }
     }
 }

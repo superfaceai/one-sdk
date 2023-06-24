@@ -65,7 +65,6 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
       app.memoryBytes.subarray(msg_ptr, msg_ptr + msg_len)
     ));
     const response = await app.handleMessage(msg);
-    // console.log('host: message-response:', response);
 
     let messageHandle = 0;
     const responseBytes = textCoder.encodeUtf8(JSON.stringify(response));
