@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use sf_std::unstable::{
-    perform::{PerformException, PerformInput},
+    perform::{PerformException, PerformInput, TakePerformInputError},
     provider::ProviderJson,
     HostValue,
 };
@@ -30,11 +30,13 @@ type HttpRequest = sf_std::unstable::http::HttpRequest<MessageExchangeFfi, Strea
 type IoStream = sf_std::unstable::IoStream<StreamExchangeFfi>;
 
 pub struct PerformExceptionError {
+    pub error_core: String,
     pub message: String,
 }
 impl From<DocumentCacheError> for PerformExceptionError {
     fn from(value: DocumentCacheError) -> Self {
         PerformExceptionError {
+            error_core: "DocumentCacheError".to_string(),
             message: value.to_string(),
         }
     }
@@ -42,6 +44,7 @@ impl From<DocumentCacheError> for PerformExceptionError {
 impl From<PrepareSecurityMapError> for PerformExceptionError {
     fn from(value: PrepareSecurityMapError) -> Self {
         PerformExceptionError {
+            error_core: "PrepareSecurityMapError".to_string(),
             message: value.to_string(),
         }
     }
@@ -49,6 +52,15 @@ impl From<PrepareSecurityMapError> for PerformExceptionError {
 impl From<JsInterpreterError> for PerformExceptionError {
     fn from(value: JsInterpreterError) -> Self {
         PerformExceptionError {
+            error_core: "JsInterpreterError".to_string(),
+            message: value.to_string(),
+        }
+    }
+}
+impl From<TakePerformInputError> for PerformExceptionError {
+    fn from(value: TakePerformInputError) -> Self {
+        PerformExceptionError {
+            error_core: "TakePerformInputError".to_string(),
             message: value.to_string(),
         }
     }
@@ -56,6 +68,7 @@ impl From<JsInterpreterError> for PerformExceptionError {
 impl From<PerformExceptionError> for PerformException {
     fn from(value: PerformExceptionError) -> Self {
         PerformException {
+            error_code: value.error_core,
             message: value.message,
         }
     }
@@ -126,7 +139,7 @@ impl OneClientCore {
     }
 
     pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
-        let perform_input = PerformInput::take_in(MessageExchangeFfi);
+        let perform_input = PerformInput::take_in(MessageExchangeFfi)?;
         let profile_url = perform_input.profile_url.clone();
         let provider_url = perform_input.provider_url.clone();
         
@@ -157,6 +170,7 @@ impl OneClientCore {
             HostValue::None => MapValueObject::new(),
             _ => {
                 return Err(PerformExceptionError {
+                    error_core: "PerformInputParametersFormatError".to_string(),
                     message: "Parameters must be an Object or None".to_string(),
                 })
             }
@@ -169,6 +183,7 @@ impl OneClientCore {
         let provider_json = match serde_json::from_slice::<ProviderJson>(provider_json) {
             Err(err) => {
                 return Err(PerformExceptionError {
+                    error_core: "ProviderJsonFormatError".to_string(),
                     message: format!("Failed to deserialize provider JSON: {}", err),
                 })
             }
@@ -209,6 +224,7 @@ impl OneClientCore {
             Some(path) => {
                 let replacement =
                     Fs::read_to_string(&path).map_err(|err| PerformExceptionError {
+                        error_core: "ReplacementStdlibError".to_string(),
                         message: format!("Failed to load replacement map_std: {}", err),
                     })?;
 
@@ -220,6 +236,7 @@ impl OneClientCore {
             match std::str::from_utf8(self.document_cache.get(&perform_input.map_url).unwrap()) {
                 Err(err) => {
                     return Err(PerformExceptionError {
+                        error_core: "MapFormatError".to_string(),
                         message: format!("Failed to parse map as utf8: {}", err),
                     })
                 }

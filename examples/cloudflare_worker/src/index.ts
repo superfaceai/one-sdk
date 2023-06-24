@@ -4,7 +4,8 @@ import { COMLINK_IMPORTS } from './comlinks';
 
 const client = new OneClient({
   env: {
-    ONESDK_LOG: 'trace',
+    ONESDK_LOG: 'info',
+    ONESDK_DEV_LOG: 'off',
     ONESDK_CONFIG_CACHE_DURATION: '10'
   },
   assetsPath: 'superface',

@@ -44,7 +44,7 @@ pub fn __export_oneclient_core_teardown() {
 }
 
 pub fn __export_oneclient_core_perform() {
-    let perform_input = PerformInput::take_in(MessageExchangeFfi);
+    let perform_input = PerformInput::take_in(MessageExchangeFfi).unwrap();
 
     tracing::debug!("mocked oneclient core perform {}", perform_input.usecase);
 

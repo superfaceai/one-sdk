@@ -31,9 +31,17 @@ pub unsafe fn init(ring_event_buffer_size: usize) {
 
     // add panic hook so we can log panics as metrics
     std::panic::set_hook(Box::new(|info| {
+        let message = if let Some(message) = info.payload().downcast_ref::<&str>() {
+            message
+        } else if let Some(message) = info.payload().downcast_ref::<String>() {
+            message.as_str()
+        } else {
+            "core panicked"
+        };
+        
         metrics::log_metric!(
             Panic
-            message = info.payload().downcast_ref::<&str>().unwrap_or(&"core panicked")
+            message = message
         );
     }));
 }

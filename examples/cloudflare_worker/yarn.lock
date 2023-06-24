@@ -163,7 +163,7 @@
   integrity sha512-5/JuTd8OWW8UzEtyf19fbrtMJENza+C9JoPIkvItgTBQ1FO2ZLvjbPO6Xs54vk0s5JB5QsfieUEshRQfu7ZHow==
 
 "@superfaceai/one-sdk@file:../../host/js":
-  version "3.0.0-alpha.6"
+  version "3.0.0-alpha.11"
   dependencies:
     "@cloudflare/workers-wasi" "^0.0.5"
 
