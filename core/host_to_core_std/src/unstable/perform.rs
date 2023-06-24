@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{value::SecurityValuesMap, ErrorCode, HostValue};
-use crate::abi::MessageExchange;
+use crate::abi::{MessageExchange, JsonMessageError};
 
 define_exchange_core_to_host! {
     struct PerformInputRequest {
@@ -72,6 +72,14 @@ define_exchange_core_to_host! {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum TakePerformInputError {
+    #[error("Invalid input format: {0}")]
+    InvalidFormat(JsonMessageError),
+    #[error("Unknown perform input error: {0}")]
+    Unknown(String)
+}
+
 pub struct PerformInput {
     pub profile_url: String,
     pub provider_url: String,
@@ -82,11 +90,11 @@ pub struct PerformInput {
     pub map_security: SecurityValuesMap,
 }
 impl PerformInput {
-    pub fn take_in<E: MessageExchange>(message_exchange: E) -> PerformInput {
+    pub fn take_in<E: MessageExchange>(message_exchange: E) -> Result<PerformInput, TakePerformInputError> {
         let response = match PerformInputRequest::new().send_json_in(message_exchange) {
             Err(err) => {
                 tracing::error!("Failed to receive perform_input response: {:#}", err);
-                panic!("Failed to receive perform_input response: {}", err);
+                return Err(TakePerformInputError::InvalidFormat(err));
             }
             Ok(r) => r,
         };
@@ -100,7 +108,7 @@ impl PerformInput {
                 map_input,
                 map_parameters,
                 map_security,
-            } => PerformInput {
+            } => Ok(PerformInput {
                 profile_url,
                 provider_url,
                 map_url,
@@ -108,17 +116,18 @@ impl PerformInput {
                 map_input,
                 map_parameters,
                 map_security,
-            },
+            }),
             PerformInputResponse::Err {
                 error_code,
                 message,
-            } => panic!("perform-input error: {:?} {}", error_code, message),
+            } => Err(TakePerformInputError::Unknown(format!("{:?} {}", error_code, message)))
         }
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PerformException {
+    pub error_code: String, // TODO: should this be an enum?
     pub message: String,
 }
 

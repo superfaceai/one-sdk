@@ -1,6 +1,6 @@
 import { WASI } from '@cloudflare/workers-wasi';
 
-import { App, HandleMap } from '../common/index.js';
+import { App, HandleMap, UnexpectedError } from '../common/index.js';
 import type { TextCoder, FileSystem, Timers, Network, WasiContext, SecurityValuesMap } from '../common/index.js';
 
 export { PerformError, UnexpectedError } from '../common/error.js';
@@ -99,14 +99,42 @@ class CfwNetwork implements Network {
     return response;
   }
 }
+class CfwTextStreamDecoder {
+  private decoder: TextDecoder = new TextDecoder();
+  private decoderBuffer: string = '';
+
+  /** Decodes streaming data and splits it by newline. */
+  decodeUtf8Lines(buffer: ArrayBufferLike): string[] {
+    this.decoderBuffer += this.decoder.decode(buffer, { stream: true });
+
+    return this.getLines();
+  }
+
+  flush(): string[] {
+    this.decoderBuffer += this.decoder.decode();
+
+    return this.getLines();
+  }
+
+  private getLines() {
+    const lines = this.decoderBuffer.split('\n');
+    if (lines.length > 1) {
+      this.decoderBuffer = lines[lines.length - 1];
+      return lines.slice(0, -1);
+    }
+    
+    return [];
+  }
+}
 class CfwWasiCompat implements WasiContext {
   private readonly wasi: WASI;
   private memory: WebAssembly.Memory | undefined;
-  private readonly coder: CfwTextCoder;
+
+  private readonly stdoutDecoder = new CfwTextStreamDecoder();
+  private readonly stderrDecoder = new CfwTextStreamDecoder();
 
   constructor(wasi: WASI) {
     this.wasi = wasi;
-    this.coder = new CfwTextCoder();
   }
 
   get wasiImport(): WebAssembly.ModuleImports {
@@ -152,8 +180,8 @@ class CfwWasiCompat implements WasiContext {
     ciovs_len: number,
     retptr0: number
   ): Promise<number> | number {
-    // hijack stdout yolo
-    if (fd !== 1) {
+    // hijack stdout and stderr
+    if (fd !== 1 && fd !== 2) {
       return this.wasi.wasiImport.fd_write(fd, ciovs_ptr, ciovs_len, retptr0);
     }
 
@@ -170,9 +198,13 @@ class CfwWasiCompat implements WasiContext {
     }
     view.setUint32(retptr0, writeCount, true);
 
-    console.log(this.coder.decodeUtf8(buffer).trimEnd());
+    if (fd === 1) {
+      this.stdoutDecoder.decodeUtf8Lines(buffer).forEach(line => console.log(line));
+    } else {
+      this.stderrDecoder.decodeUtf8Lines(buffer).forEach(line => console.error(line));
+    }
 
-    return 0;
+    return 0; // SUCCESS
   }
 }
 class CfwPlatform implements HostPlatform {
@@ -217,7 +249,7 @@ class CfwPlatform implements HostPlatform {
 
   async persistDeveloperDump(events: string[]): Promise<void> {
     for (const event of events) {
-      console.error(event);
+      console.error(event.trim());
     }
   }
 }
@@ -251,6 +283,7 @@ class InternalClient {
   }
 
   public async init() {
+    // TODO: probably will need a lock like node platform has at some point
     if (this.ready) {
       return;
     }
@@ -282,15 +315,23 @@ class InternalClient {
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
     const assetsPath = this.options.assetsPath ?? 'superface'; // TODO: path join? - not sure if we are going to stick with this VFS
 
+    try {
     return await this.app.perform(
-      `file://${assetsPath}/${resolvedProfile}.profile`,
-      `file://${assetsPath}/${provider}.provider.json`,
-      `file://${assetsPath}/${resolvedProfile}.${provider}.map.js`,
-      usecase,
-      input,
-      parameters,
-      security
-    );
+        `file://${assetsPath}/${resolvedProfile}.profile`,
+        `file://${assetsPath}/${provider}.provider.json`,
+        `file://${assetsPath}/${resolvedProfile}.${provider}.map.js`,
+        usecase,
+        input,
+        parameters,
+        security
+      );
+    } catch (err: unknown) {
+      if (err instanceof UnexpectedError && (err.name === 'WebAssemblyRuntimeError')) {
+        await this.destroy();
+      }
+
+      throw err;
+    }
   }
 
   public async sendMetrics(): Promise<void> {
