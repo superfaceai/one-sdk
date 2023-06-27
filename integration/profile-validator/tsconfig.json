@@ -6,6 +6,11 @@
     "rootDir": "src/",
     "outDir": "dist/",
     "declaration": false,
+    "types": [
+      "superfaceai__core-ffi",
+    ]
   },
-	"include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }

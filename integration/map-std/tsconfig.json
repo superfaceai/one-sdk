@@ -2,6 +2,7 @@
   "compilerOptions": {
     "strict": true,
     "target": "ES2020",
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
     "rootDir": "src/",
     "outDir": "dist/",
@@ -9,7 +10,11 @@
       "ES2020"
     ],
     "declaration": true,
-    "declarationDir": "./types"
+    "declarationDir": "./types",
+    "types": [
+      "superfaceai__core-ffi",
+      "jest"
+    ]
   },
   "include": [
     "src/**/*.ts"
