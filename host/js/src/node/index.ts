@@ -148,31 +148,15 @@ class NodePlatform implements HostPlatform {
     if (this.token !== undefined) {
       headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
     }
-    
-    // TODO: update to use batch endpoint when new brain is released
-    // await fetch(
-    //   `${this.insightsUrl}/batch`,
-    //   {
-    //     method: 'POST',
-    //     body: '[' + events.join(',') + ']',
-    //     headers
-    //   }
-    // ).then(res => console.trace(res));
-    await Promise.all(events.map(
-      event => fetch(
-        this.insightsUrl,
-        {
-          method: 'POST',
-          body: event,
-          headers
-        }
-      )
-      // .then(res => res.text().then(body => {
-      //   const headers: [string, string][] = [];
-      //   res.headers.forEach((value, key) => headers.push([key, value]));
-      //   console.trace(res, headers, body);
-      // }))
-    ));
+
+    await fetch(
+      `${this.insightsUrl}/batch`,
+      {
+        method: 'POST',
+        body: '[' + events.join(',') + ']',
+        headers
+      }
+    );
   }
 
   async persistDeveloperDump(events: string[]): Promise<void> {

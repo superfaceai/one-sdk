@@ -234,17 +234,14 @@ class CfwPlatform implements HostPlatform {
       headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
     }
 
-    // TODO: update to use batch endpoint when new brain is released
-    await Promise.all(events.map(
-      event => fetch(
-        this.insightsUrl,
-        {
-          method: 'POST',
-          body: event,
-          headers
-        }
-      )
-    ));
+    await fetch(
+      `${this.insightsUrl}/batch`,
+      {
+        method: 'POST',
+        body: '[' + events.join(',') + ']',
+        headers
+      }
+    );
   }
 
   async persistDeveloperDump(events: string[]): Promise<void> {
