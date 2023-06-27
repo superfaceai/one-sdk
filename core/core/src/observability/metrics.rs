@@ -20,9 +20,6 @@ pub mod __private {
             configuration_hash: Option<&'a str>,
             data: MetricsData<'a>
         },
-        // ProviderChange {
-        //     data: ()
-        // }
         Panic {
             occurred_at: &'a str,
             data: PanicData<'a>
@@ -131,9 +128,19 @@ macro_rules! log_metric {
             use $crate::observability::metrics::{log_metric, __private::*};
 
             let now = log_metric!(__internal now());
-            log_metric!(
-                __internal common()
-                Event::Panic {
+            // log_metric!(
+            //     __internal common()
+            //     Event::Panic {
+            //         occurred_at: &now,
+            //         data: PanicData {
+            //             message: $message
+            //         }
+            //     }
+            // );
+            // TODO: implement Panic metric in brain?
+            tracing::info!(
+                target: "@metrics",
+                event = ?Event::Panic {
                     occurred_at: &now,
                     data: PanicData {
                         message: $message
