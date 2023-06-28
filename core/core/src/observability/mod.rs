@@ -38,7 +38,7 @@ pub unsafe fn init(ring_event_buffer_size: usize) {
         } else {
             "core panicked"
         };
-        
+
         metrics::log_metric!(
             Panic
             message = message
@@ -163,7 +163,7 @@ pub extern "C" fn __export_oneclient_core_get_metrics() -> Ptr<[FatPointer; 2]> 
     unsafe {
         match METRICS_BUFFER {
             Some(ref b) => set_return_arena_from(b.lock().deref()),
-            None => clear_return_arena()
+            None => clear_return_arena(),
         }
     }
 }
@@ -192,7 +192,7 @@ pub extern "C" fn __export_oneclient_core_get_developer_dump() -> Ptr<[FatPointe
     unsafe {
         match DEVELOPER_DUMP_BUFFER {
             Some(ref b) => set_return_arena_from(b.lock().deref()),
-            None => clear_return_arena()
+            None => clear_return_arena(),
         }
     }
 }

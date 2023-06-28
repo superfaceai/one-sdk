@@ -13,33 +13,33 @@ pub mod __private {
         SdkInit {
             occurred_at: &'a str,
             configuration_hash: Option<&'a str>,
-            data: SdkInitData<'a>
+            data: SdkInitData<'a>,
         },
         Metrics {
             occurred_at: &'a str,
             configuration_hash: Option<&'a str>,
-            data: MetricsData<'a>
+            data: MetricsData<'a>,
         },
         Panic {
             occurred_at: &'a str,
-            data: PanicData<'a>
-        }
+            data: PanicData<'a>,
+        },
     }
 
     #[derive(Debug, Serialize)]
     pub struct SdkInitData<'a> {
-        pub configuration: SdkInitDataConfiguration<'a>
+        pub configuration: SdkInitDataConfiguration<'a>,
     }
     #[derive(Debug, Serialize)]
     pub struct SdkInitDataConfiguration<'a> {
-        pub profiles: HashMap<&'a str, ()>
+        pub profiles: HashMap<&'a str, ()>,
     }
 
     #[derive(Debug, Serialize)]
     pub struct MetricsData<'a> {
         pub from: &'a str,
         pub to: &'a str,
-        pub metrics: [MetricsDataEntry<'a>; 1]
+        pub metrics: [MetricsDataEntry<'a>; 1],
     }
     #[derive(Debug, Serialize)]
     #[serde(tag = "type")]
@@ -48,18 +48,21 @@ pub mod __private {
             profile: &'a str,
             provider: &'a str,
             successful_performs: usize,
-            failed_performs: usize
-        }
+            failed_performs: usize,
+        },
     }
 
     #[derive(Debug, Serialize)]
     pub struct PanicData<'a> {
-        pub message: &'a str
+        pub message: &'a str,
     }
 
     pub fn log_metric_event(event: impl Serialize) {
         let writer = unsafe {
-            crate::observability::METRICS_BUFFER.as_ref().unwrap().make_writer()
+            crate::observability::METRICS_BUFFER
+                .as_ref()
+                .unwrap()
+                .make_writer()
         };
 
         serde_json::to_writer(writer, &event).unwrap();
@@ -86,12 +89,13 @@ macro_rules! log_metric {
             );
         }
     };
-    
+
     (
         Perform
         success = $is_success: expr,
         profile = $profile: expr,
         provider = $provider: expr
+        // TODO: other metadata
         $(,)?
     ) => {
         {
@@ -149,7 +153,7 @@ macro_rules! log_metric {
             );
         }
     };
-    
+
     (
         __internal common()
         $event: expr
