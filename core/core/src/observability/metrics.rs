@@ -94,8 +94,13 @@ macro_rules! log_metric {
         Perform
         success = $is_success: expr,
         profile = $profile: expr,
-        provider = $provider: expr
-        // TODO: other metadata
+        profile_url = $profile_url: expr,
+        profile_content_hash = $profile_content_hash: expr,
+        provider = $provider: expr,
+        provider_url = $provider_url: expr,
+        provider_content_hash = $provider_content_hash: expr,
+        map_url = $map_url: expr,
+        map_content_hash = $map_content_hash: expr
         $(,)?
     ) => {
         {
