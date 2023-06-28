@@ -42,9 +42,11 @@ function Example({ input, parameters, services }) {
 
     const u1 = new std.unstable.URL("schema://user:pass@domain.tld:8000/path?foo=1&bar=baz#hash");
     const u2 = new std.unstable.URL("schema://user:pass@127.0.0.1:8000/path?foo=1&bar=baz#hash");
-
     __ffi.unstable.printDebug('URL1', JSON.stringify(u1));
     __ffi.unstable.printDebug('URL2', JSON.stringify(u2));
+
+    const u3 = new std.unstable.URL("/new", "https://base.domain/path");
+    __ffi.unstable.printDebug('URL3', JSON.stringify(u3));
 
     return {
       url: body.url,

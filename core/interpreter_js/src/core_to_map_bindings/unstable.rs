@@ -216,10 +216,17 @@ fn __export_url_parse<'ctx, H: MapStdUnstable + 'static>(
     _this: JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
-    let value = ensure_arguments!("url_parse" args; 0: str);
-    let url = url_parse(value);
+    let url = ensure_arguments!("url_parse" args; 0: str);
 
-    println!("parsed url = {:?}", url);
+    // TODO: better way how to handle optional argument?
+    let mut base: Option<&str> = None;
+    if let Some(b) = args.get(1) {
+        if b.is_str() {
+            base = Some(b.as_str().unwrap());
+        }
+    }
+
+    let url = url_parse(url, base);
 
     match url {
         Err(err) => Err(JSError::Type(format!("Invalid URL: {}", err))),

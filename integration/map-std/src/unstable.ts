@@ -245,7 +245,7 @@ export class URL {
   public username: string;
 
   constructor(url: USVString, base?: USVString) {
-    const parts = __ffi.unstable.url_parse(url);
+    const parts = __ffi.unstable.url_parse(url, base);
 
     this.host = parts.host;
     this.hostname = parts.hostname;

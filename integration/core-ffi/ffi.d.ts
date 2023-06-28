@@ -17,7 +17,7 @@ declare type StdFfi = {
     print(message: string): void,
     printDebug(...data: unknown[]): void,
     // url
-    url_parse(url: string): any,
+    url_parse(url: string, base?: string): any,
     url_format(url: string): string,
   }
 };
