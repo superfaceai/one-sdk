@@ -103,7 +103,7 @@ pub mod unstable;
 
 pub type MultiMap = HashMap<String, Vec<String>>;
 // TODO: consider making the key always lowercase at the type level somehow
-pub type HeadersMultiMap = MultiMap;
+pub type HeadersList = Vec<(String, String)>;
 
 pub fn lowercase_headers_multimap(map: MultiMap) -> MultiMap {
     map.into_iter()

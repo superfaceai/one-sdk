@@ -100,16 +100,11 @@ export class AsyncMutex<T> {
   }
 }
 
-function headersToMultimap(headers: Headers): Record<string, string[]> {
-  const result: Record<string, string[]> = {};
+function headersToHeadersList(headers: Headers): [string, string][] {
+  const result: [string, string][] = [];
 
-  headers.forEach((value, key) => {
-    const k = key.toLowerCase();
-    if (!(k in result)) {
-      result[k] = [];
-    }
-
-    result[k].push(value);
+  headers.forEach((value, name) => {
+    result.push([name, value]);
   });
 
   return result;
@@ -341,7 +336,7 @@ export class App implements AppContext {
         try {
           const response = await this.requests.remove(message.handle)!;
           const bodyStream = new ReadableStreamAdapter(response.body!); // TODO: handle when they are missing
-          return { kind: 'ok', status: response.status, headers: headersToMultimap(response.headers), body_stream: this.streams.insert(bodyStream) };
+          return { kind: 'ok', status: response.status, headers: headersToHeadersList(response.headers), body_stream: this.streams.insert(bodyStream) };
         } catch (error: any) {
           return { kind: 'err', error_code: error.name, message: error.message };
         }

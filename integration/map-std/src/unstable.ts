@@ -514,11 +514,11 @@ export function fetch(input: RequestInfo, init: RequestInit = {}): Response {
   }
 }
 
-function headersToJson(headers: Headers): Record<string, string> {
-  const result: Record<string, string> = {};
+function headersToJson(headers: Headers): [string, string][] {
+  const result: [string, string][] = [];
 
-  for (const [key, value] of headers) {
-    result[key] = value;
+  for (const header of headers.raw()) {
+    result.push(header)
   }
 
   return result;

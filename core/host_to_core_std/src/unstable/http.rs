@@ -10,7 +10,7 @@ use crate::{
         Handle, MessageExchange, MessageExchangeFfiFn, StaticMessageExchange, StaticStreamExchange,
         StreamExchange, StreamExchangeFfiFn,
     },
-    lowercase_headers_multimap, HeadersMultiMap, MultiMap,
+    HeadersList, MultiMap,
 };
 
 struct AltDebug<T: std::fmt::Debug>(pub T);
@@ -29,7 +29,7 @@ define_exchange_core_to_host! {
         /// Headers.
         ///
         /// Multiple values for one key will not be joined.
-        headers: &'a HeadersMultiMap,
+        headers: &'a HeadersList,
         /// Body bytes to be sent.
         body: Option<&'a [u8]>
     } -> enum HttpCallResponse {
@@ -52,7 +52,7 @@ define_exchange_core_to_host! {
     } -> enum HttpCallHeadResponse {
         Ok {
             status: u16,
-            headers: HeadersMultiMap,
+            headers: HeadersList,
             body_stream: IoStreamHandle, // TODO: optional? in case response doesn't have a body
         },
         Err {
@@ -85,7 +85,7 @@ impl<Me: StaticMessageExchange, Se: StaticStreamExchange> HttpRequest<Me, Se> {
     pub fn fetch(
         method: &str,
         url: &str,
-        headers: &HeadersMultiMap,
+        headers: &HeadersList,
         query: &MultiMap,
         body: Option<&[u8]>,
     ) -> Result<Self, HttpCallError> {
@@ -104,7 +104,7 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
     fn fetch_in(
         method: &str,
         url: &str,
-        headers: &HeadersMultiMap,
+        headers: &HeadersList,
         query: &MultiMap,
         body: Option<&[u8]>,
         message_exchange: Me,
@@ -173,7 +173,7 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
 
                 Ok(HttpResponse {
                     status,
-                    headers: lowercase_headers_multimap(headers),
+                    headers,
                     body: IoStream::<Se>::from_handle_in(body_stream, self.stream_exchange),
                 })
             }
@@ -198,7 +198,7 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
 
 pub struct HttpResponse<Se: StreamExchange = StreamExchangeFfiFn> {
     status: u16,
-    headers: HeadersMultiMap,
+    headers: HeadersList,
     body: IoStream<Se>,
 }
 impl<Se: StreamExchange> HttpResponse<Se> {
@@ -206,7 +206,7 @@ impl<Se: StreamExchange> HttpResponse<Se> {
         self.status
     }
 
-    pub fn headers(&self) -> &HeadersMultiMap {
+    pub fn headers(&self) -> &HeadersList {
         &self.headers
     }
 
@@ -235,7 +235,7 @@ mod test {
         HttpRequest::fetch_in(
             "GET",
             "https://example.com/?foo=1&bar=2",
-            &HashMap::new(),
+            Vec::<(String, String)>::new().as_ref(),
             &HashMap::from_iter([
                 ("foo".to_string(), vec!["x".to_string(), "y".to_string()]),
                 ("quz".to_string(), vec!["b".to_string(), "c".to_string()]),

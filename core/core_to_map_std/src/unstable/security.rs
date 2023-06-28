@@ -259,21 +259,20 @@ pub fn resolve_security(
         }))) => {
             let encoded_crendentials = base64::engine::general_purpose::STANDARD
                 .encode(format!("{}:{}", username, password).as_bytes());
-            let basic_auth = vec![format!("Basic {}", encoded_crendentials)];
+            let basic_auth = format!("Basic {}", encoded_crendentials);
 
             params
                 .headers
-                .insert("Authorization".to_string(), basic_auth);
+                .push(("Authorization".to_string(), basic_auth));
         }
         Some(SecurityMapValue::Security(Security::Http(HttpSecurity::Bearer {
             bearer_format: _,
             token,
         }))) => {
-            let digest_auth = vec![format!("Bearer {}", token)];
-
+            let digest_auth = format!("Bearer {}", token);
             params
                 .headers
-                .insert("Authorization".to_string(), digest_auth);
+                .push(("Authorization".to_string(), digest_auth));
         }
         Some(SecurityMapValue::Security(Security::ApiKey {
             r#in,
@@ -282,9 +281,7 @@ pub fn resolve_security(
             body_type,
         })) => match (r#in, body_type) {
             (ApiKeyPlacement::Header, _) => {
-                params
-                    .headers
-                    .insert(name.to_string(), vec![apikey.to_string()]);
+                params.headers.push((name.to_string(), apikey.to_string()));
             }
             (ApiKeyPlacement::Path, _) => {
                 params.url = params.url.replace(&format!("{{{}}}", name), &apikey);
