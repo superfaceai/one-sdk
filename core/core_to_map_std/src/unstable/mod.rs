@@ -10,6 +10,7 @@ use sf_std::{
 
 pub mod security;
 pub mod services;
+pub mod url;
 
 #[allow(dead_code)]
 pub const MODULE_NAME: &str = "sf_core_unstable";

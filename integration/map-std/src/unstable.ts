@@ -232,6 +232,42 @@ export class Headers implements Iterable<[string, string]> {
   }
 }
 
+// https://url.spec.whatwg.org/#url-class
+export class URL {
+  public host: string;
+  public hostname: string;
+  public origin: string;
+  public password: string;
+  public pathname: string;
+  public port: string;
+  public protocol: string;
+  public search: string;
+  public username: string;
+
+  constructor(url: USVString, base?: USVString) {
+    const parts = __ffi.unstable.url_parse(url);
+
+    this.host = parts.host;
+    this.hostname = parts.hostname;
+    this.origin = parts.origin;
+    this.password = parts.password;
+    this.pathname = parts.pathname;
+    this.port = parts.port;
+    this.protocol = parts.protocol;
+    this.search = parts.search;
+    this.username = parts.username;
+  }
+
+  get href(): string {
+    return 'tbd';
+  }
+}
+
+// https://url.spec.whatwg.org/#interface-urlsearchparams
+export class URLSearchParams {
+
+}
+
 export type USVString = string;
 export interface RequestInit {
   method?: string,

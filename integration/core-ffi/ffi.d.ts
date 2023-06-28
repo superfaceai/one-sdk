@@ -15,6 +15,9 @@ declare type StdFfi = {
     record_to_urlencoded(value: Record<string, string[]>): string,
     // env
     print(message: string): void,
-    printDebug(...data: unknown[]): void
+    printDebug(...data: unknown[]): void,
+    // url
+    url_parse(url: string): any,
+    url_format(url: string): string,
   }
 };

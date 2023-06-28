@@ -1,10 +1,10 @@
-use std::{cell::RefCell, ops::DerefMut, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
 use base64::Engine;
 use quickjs_wasm_rs::{JSContextRef, JSError, JSValue, JSValueRef};
 
-use map_std::unstable::MapStdUnstable;
+use map_std::unstable::{url::parse as url_parse, MapStdUnstable};
 use sf_std::MultiMap;
 
 use super::JSValueDebug;
@@ -36,7 +36,9 @@ pub fn link<H: MapStdUnstable + 'static>(
             // streams
             "stream_read": __export_stream_read,
             "stream_write": __export_stream_write,
-            "stream_close": __export_stream_close
+            "stream_close": __export_stream_close,
+            // url
+            "url_parse": __export_url_parse,
         }
     );
 
@@ -207,4 +209,69 @@ fn __export_record_to_urlencoded<'ctx, H: MapStdUnstable + 'static>(
     let result = sf_std::encode_query(&multimap);
 
     Ok(result.into())
+}
+
+fn __export_url_parse<'ctx, H: MapStdUnstable + 'static>(
+    _state: &mut H,
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
+    let value = ensure_arguments!("url_parse" args; 0: str);
+    let url = url_parse(value);
+
+    println!("parsed url = {:?}", url);
+
+    match url {
+        Err(err) => Err(JSError::Type(format!("Invalid URL: {}", err))),
+        Ok(url) => {
+            let mut url_parts: HashMap<String, JSValue> = HashMap::new();
+
+            url_parts.insert(
+                "hostname".to_string(),
+                JSValue::String(url.host().unwrap().to_string()),
+            );
+            url_parts.insert(
+                "host".to_string(),
+                JSValue::String(url.host().unwrap().to_string()),
+            );
+            url_parts.insert(
+                "origin".to_string(),
+                JSValue::String(url.origin().ascii_serialization()),
+            );
+            url_parts.insert(
+                "protocol".to_string(),
+                JSValue::String(url.scheme().to_string()),
+            );
+            url_parts.insert(
+                "username".to_string(),
+                JSValue::String(url.username().to_string()),
+            );
+            url_parts.insert(
+                "pathname".to_string(),
+                JSValue::String(url.path().to_string()),
+            );
+
+            if let Some(password) = url.password() {
+                url_parts.insert(
+                    "password".to_string(),
+                    JSValue::String(password.to_string()),
+                );
+            }
+            if let Some(port) = url.port() {
+                url_parts.insert("port".to_string(), JSValue::String(port.to_string()));
+                url_parts.insert(
+                    "host".to_string(),
+                    JSValue::String(format!("{}:{}", url.host().unwrap(), port)),
+                );
+            }
+            if let Some(search) = url.query() {
+                url_parts.insert("search".to_string(), JSValue::String(search.to_string()));
+            }
+            if let Some(fragment) = url.fragment() {
+                url_parts.insert("search".to_string(), JSValue::String(fragment.to_string()));
+            }
+
+            Ok(JSValue::Object(url_parts))
+        }
+    }
 }

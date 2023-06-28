@@ -16,6 +16,7 @@ function Example({ input, parameters, services }) {
     method: 'GET',
     headers: {
       'Accept': 'application/json',
+      'accept': 'plain/text'
     },
     security: 'basic_auth',
     query: {
@@ -32,13 +33,18 @@ function Example({ input, parameters, services }) {
     const body = response.json();
     __ffi.unstable.printDebug('body:', body);
 
-
     if (response.status !== 200) {
       throw new std.unstable.MapError({
         title: 'Error response',
         detail: `${JSON.stringify(response)} - ${JSON.stringify(body)}`
       });
     }
+
+    const u1 = new std.unstable.URL("schema://user:pass@domain.tld:8000/path?foo=1&bar=baz#hash");
+    const u2 = new std.unstable.URL("schema://user:pass@127.0.0.1:8000/path?foo=1&bar=baz#hash");
+
+    __ffi.unstable.printDebug('URL1', JSON.stringify(u1));
+    __ffi.unstable.printDebug('URL2', JSON.stringify(u2));
 
     return {
       url: body.url,
