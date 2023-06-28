@@ -1,10 +1,6 @@
 use std::collections::BTreeMap;
 
-use sf_std::unstable::{
-    perform::PerformInput,
-    provider::ProviderJson,
-    HostValue,
-};
+use sf_std::unstable::{perform::PerformInput, provider::ProviderJson, HostValue};
 
 use interpreter_js::JsInterpreter;
 use map_std::unstable::{
@@ -17,16 +13,16 @@ use crate::bindings::{MessageExchangeFfi, StreamExchangeFfi};
 
 mod cache;
 mod config;
-mod map_std_impl;
-mod profile_validator;
 mod digest;
 mod exception;
+mod map_std_impl;
+mod profile_validator;
 
 // use crate::profile_validator::ProfileValidator;
 use cache::DocumentCache;
 pub use config::CoreConfiguration;
-use map_std_impl::MapStdImpl;
 use exception::PerformExceptionError;
+use map_std_impl::MapStdImpl;
 
 type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
 type HttpRequest = sf_std::unstable::http::HttpRequest<MessageExchangeFfi, StreamExchangeFfi>;
@@ -85,18 +81,18 @@ impl<'a> PerformMetricsData<'a> {
 #[derive(Debug, thiserror::Error)]
 enum ProfileCacheEntryError {
     #[error("Failed to parse profile data as utf8: {0}")]
-    ParseError(#[from] std::string::FromUtf8Error)
+    ParseError(#[from] std::string::FromUtf8Error),
 }
 #[derive(Debug)]
 struct ProfileCacheEntry {
     pub profile: String, // TODO: parsed
-    pub content_hash: String
+    pub content_hash: String,
 }
 impl ProfileCacheEntry {
     pub fn from_data(data: Vec<u8>) -> Result<Self, ProfileCacheEntryError> {
         Ok(Self {
             content_hash: digest::content_hash(&data),
-            profile: String::from_utf8(data)?
+            profile: String::from_utf8(data)?,
         })
     }
 }
@@ -104,18 +100,18 @@ impl ProfileCacheEntry {
 #[derive(Debug, thiserror::Error)]
 enum ProviderJsonCacheEntryError {
     #[error("Failed to deserialize provider JSON: {0}")]
-    ParseError(#[from] serde_json::Error)
+    ParseError(#[from] serde_json::Error),
 }
 #[derive(Debug)]
 struct ProviderJsonCacheEntry {
     pub provider_json: ProviderJson,
-    pub content_hash: String
+    pub content_hash: String,
 }
 impl ProviderJsonCacheEntry {
     pub fn from_data(data: Vec<u8>) -> Result<Self, ProviderJsonCacheEntryError> {
         Ok(Self {
             content_hash: digest::content_hash(&data),
-            provider_json: serde_json::from_slice::<ProviderJson>(&data)?
+            provider_json: serde_json::from_slice::<ProviderJson>(&data)?,
         })
     }
 }
@@ -123,18 +119,18 @@ impl ProviderJsonCacheEntry {
 #[derive(Debug, thiserror::Error)]
 enum MapCacheEntryError {
     #[error("Failed to parse map data as utf8: {0}")]
-    ParseError(#[from] std::string::FromUtf8Error)
+    ParseError(#[from] std::string::FromUtf8Error),
 }
 #[derive(Debug)]
 struct MapCacheEntry {
     pub map: String,
-    pub content_hash: String
+    pub content_hash: String,
 }
 impl MapCacheEntry {
     pub fn from_data(data: Vec<u8>) -> Result<Self, MapCacheEntryError> {
         Ok(Self {
             content_hash: digest::content_hash(&data),
-            map: String::from_utf8(data)?
+            map: String::from_utf8(data)?,
         })
     }
 }
@@ -143,7 +139,7 @@ impl MapCacheEntry {
 pub struct OneClientCore {
     profile_cache: DocumentCache<ProfileCacheEntry>,
     provider_cache: DocumentCache<ProviderJsonCacheEntry>,
-    map_cache: DocumentCache<MapCacheEntry>
+    map_cache: DocumentCache<MapCacheEntry>,
 }
 impl OneClientCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
@@ -250,9 +246,16 @@ impl OneClientCore {
         }
 
         // first cache documents
-        try_metrics!(self.profile_cache.cache(&perform_input.profile_url, ProfileCacheEntry::from_data));
-        try_metrics!(self.provider_cache.cache(&perform_input.provider_url, ProviderJsonCacheEntry::from_data));
-        try_metrics!(self.map_cache.cache(&perform_input.map_url, MapCacheEntry::from_data));
+        try_metrics!(self
+            .profile_cache
+            .cache(&perform_input.profile_url, ProfileCacheEntry::from_data));
+        try_metrics!(self.provider_cache.cache(
+            &perform_input.provider_url,
+            ProviderJsonCacheEntry::from_data
+        ));
+        try_metrics!(self
+            .map_cache
+            .cache(&perform_input.map_url, MapCacheEntry::from_data));
 
         // process map input and parameters
         let map_input = self.host_value_to_map_value(perform_input.map_input);
@@ -271,7 +274,10 @@ impl OneClientCore {
         };
 
         // parse provider json
-        let ProviderJsonCacheEntry { provider_json, content_hash: provider_json_content_hash } = self
+        let ProviderJsonCacheEntry {
+            provider_json,
+            content_hash: provider_json_content_hash,
+        } = self
             .provider_cache
             .get(&perform_input.provider_url)
             .unwrap();
@@ -304,7 +310,10 @@ impl OneClientCore {
         // if let Err(err) = profile_validator.validate_input(map_input.clone()) {
         //     tracing::error!("Input validation error: {}", err);
         // }
-        let ProfileCacheEntry { profile: _, content_hash: profile_content_hash } = self.profile_cache.get(&perform_input.profile_url).unwrap();
+        let ProfileCacheEntry {
+            profile: _,
+            content_hash: profile_content_hash,
+        } = self.profile_cache.get(&perform_input.profile_url).unwrap();
         metrics_data.profile_content_hash = Some(profile_content_hash);
 
         // start interpreting stdlib and then map code
@@ -328,7 +337,10 @@ impl OneClientCore {
             }
         });
 
-        let MapCacheEntry { map, content_hash: map_content_hash } = self.map_cache.get(&perform_input.map_url).unwrap();
+        let MapCacheEntry {
+            map,
+            content_hash: map_content_hash,
+        } = self.map_cache.get(&perform_input.map_url).unwrap();
         metrics_data.map_content_hash = Some(map_content_hash);
         let map_result = {
             interpreter.state_mut().set_context(

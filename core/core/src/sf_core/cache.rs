@@ -17,12 +17,12 @@ pub enum DocumentCacheError<PostProcessError: std::error::Error> {
     #[error("Failed to read http body: {0}")]
     HttpBodyReadFailed(std::io::Error),
     #[error("Failed to post process data: {0}")]
-    PostProcessError(PostProcessError)
+    PostProcessError(PostProcessError),
 }
 
 struct DocumentCacheEntry<E> {
     store_time: Instant,
-    data: E
+    data: E,
 }
 impl<E: std::fmt::Debug> std::fmt::Debug for DocumentCacheEntry<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -56,7 +56,11 @@ impl<E> DocumentCache<E> {
         self.map.get(url).map(|e| &e.data)
     }
 
-    pub fn cache<PostProcessError: std::error::Error>(&mut self, url: &str, post_process_fn: impl FnOnce(Vec<u8>) -> Result<E, PostProcessError>) -> Result<(), DocumentCacheError<PostProcessError>> {
+    pub fn cache<PostProcessError: std::error::Error>(
+        &mut self,
+        url: &str,
+        post_process_fn: impl FnOnce(Vec<u8>) -> Result<E, PostProcessError>,
+    ) -> Result<(), DocumentCacheError<PostProcessError>> {
         let _span = tracing::debug_span!("cache_document").entered();
 
         tracing::debug!(url);
@@ -99,13 +103,15 @@ impl<E> DocumentCache<E> {
             url.to_string(),
             DocumentCacheEntry {
                 store_time: Instant::now(),
-                data: post_process_fn(data).map_err(|e| DocumentCacheError::PostProcessError(e))?
+                data: post_process_fn(data).map_err(|e| DocumentCacheError::PostProcessError(e))?,
             },
         );
         Ok(())
     }
 
-    fn cache_file<PostProcessError: std::error::Error>(url: &str) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
+    fn cache_file<PostProcessError: std::error::Error>(
+        url: &str,
+    ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
         match url.strip_prefix(Self::FILE_URL_PREFIX) {
             None => Err(DocumentCacheError::FileLoadFailed(
                 url.to_string(),
@@ -116,7 +122,9 @@ impl<E> DocumentCache<E> {
         }
     }
 
-    fn cache_http<PostProcessError: std::error::Error>(url: &str) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
+    fn cache_http<PostProcessError: std::error::Error>(
+        url: &str,
+    ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
         let mut response =
             HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
                 .and_then(|v| v.into_response())
@@ -132,7 +140,9 @@ impl<E> DocumentCache<E> {
     }
 
     // TODO: for debugging only
-    fn cache_base64<PostProcessError: std::error::Error>(url: &str) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
+    fn cache_base64<PostProcessError: std::error::Error>(
+        url: &str,
+    ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
         use base64::Engine;
 
         match url.strip_prefix(Self::BASE64_URL_PREFIX) {
@@ -145,6 +155,9 @@ impl<E> DocumentCache<E> {
 }
 impl<E: std::fmt::Debug> std::fmt::Debug for DocumentCache<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DocumentCache").field("map", &self.map).field("cache_duration", &self.cache_duration).finish()
+        f.debug_struct("DocumentCache")
+            .field("map", &self.map)
+            .field("cache_duration", &self.cache_duration)
+            .finish()
     }
 }

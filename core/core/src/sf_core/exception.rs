@@ -1,6 +1,6 @@
 use interpreter_js::JsInterpreterError;
 use map_std::unstable::security::PrepareSecurityMapError;
-use sf_std::unstable::perform::{TakePerformInputError, PerformException};
+use sf_std::unstable::perform::{PerformException, TakePerformInputError};
 
 use super::cache::DocumentCacheError;
 
@@ -8,7 +8,9 @@ pub struct PerformExceptionError {
     pub error_core: String,
     pub message: String,
 }
-impl<PostProcessError: std::error::Error> From<DocumentCacheError<PostProcessError>> for PerformExceptionError {
+impl<PostProcessError: std::error::Error> From<DocumentCacheError<PostProcessError>>
+    for PerformExceptionError
+{
     fn from(value: DocumentCacheError<PostProcessError>) -> Self {
         PerformExceptionError {
             error_core: "DocumentCacheError".to_string(),
