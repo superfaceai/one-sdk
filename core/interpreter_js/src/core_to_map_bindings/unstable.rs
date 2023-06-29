@@ -4,7 +4,7 @@ use anyhow::Context as AnyhowContext;
 use base64::Engine;
 use quickjs_wasm_rs::{JSContextRef, JSError, JSValue, JSValueRef};
 
-use map_std::unstable::{url::parse as url_parse, MapStdUnstable};
+use map_std::unstable::{url::UrlParts, MapStdUnstable};
 use sf_std::MultiMap;
 
 use super::JSValueDebug;
@@ -226,59 +226,45 @@ fn __export_url_parse<'ctx, H: MapStdUnstable + 'static>(
         }
     }
 
-    let url = url_parse(url, base);
-
-    match url {
+    let url_parts = UrlParts::parse(url, base);
+    match url_parts {
         Err(err) => Err(JSError::Type(format!("Invalid URL: {}", err))),
-        Ok(url) => {
-            let mut url_parts: HashMap<String, JSValue> = HashMap::new();
+        Ok(url_parts) => {
+            let mut result: HashMap<String, JSValue> = HashMap::new();
 
-            url_parts.insert(
-                "hostname".to_string(),
-                JSValue::String(url.host().unwrap().to_string()),
-            );
-            url_parts.insert(
-                "host".to_string(),
-                JSValue::String(url.host().unwrap().to_string()),
-            );
-            url_parts.insert(
-                "origin".to_string(),
-                JSValue::String(url.origin().ascii_serialization()),
-            );
-            url_parts.insert(
-                "protocol".to_string(),
-                JSValue::String(url.scheme().to_string()),
-            );
-            url_parts.insert(
-                "username".to_string(),
-                JSValue::String(url.username().to_string()),
-            );
-            url_parts.insert(
-                "pathname".to_string(),
-                JSValue::String(url.path().to_string()),
-            );
+            result.insert("hostname".to_string(), JSValue::String(url_parts.hostname));
+            result.insert("host".to_string(), JSValue::String(url_parts.host));
+            result.insert("origin".to_string(), JSValue::String(url_parts.origin));
+            result.insert("protocol".to_string(), JSValue::String(url_parts.protocol));
+            result.insert("pathname".to_string(), JSValue::String(url_parts.pathname));
 
-            if let Some(password) = url.password() {
-                url_parts.insert(
-                    "password".to_string(),
-                    JSValue::String(password.to_string()),
-                );
+            if let Some(username) = url_parts.username {
+                result.insert("username".to_string(), JSValue::String(username));
             }
-            if let Some(port) = url.port() {
-                url_parts.insert("port".to_string(), JSValue::String(port.to_string()));
-                url_parts.insert(
-                    "host".to_string(),
-                    JSValue::String(format!("{}:{}", url.host().unwrap(), port)),
-                );
+            if let Some(password) = url_parts.password {
+                result.insert("password".to_string(), JSValue::String(password));
             }
-            if let Some(search) = url.query() {
-                url_parts.insert("search".to_string(), JSValue::String(search.to_string()));
+            if let Some(port) = url_parts.port {
+                result.insert("port".to_string(), JSValue::String(port));
             }
-            if let Some(fragment) = url.fragment() {
-                url_parts.insert("search".to_string(), JSValue::String(fragment.to_string()));
+            if let Some(search) = url_parts.search {
+                result.insert("search".to_string(), JSValue::String(search));
+            }
+            if let Some(hash) = url_parts.hash {
+                result.insert("hash".to_string(), JSValue::String(hash));
             }
 
-            Ok(JSValue::Object(url_parts))
+            Ok(JSValue::Object(result))
         }
     }
+}
+
+fn __export_url_format<'ctx, H: MapStdUnstable + 'static>(
+    _state: &mut H,
+    _this: JSValueRef<'ctx>,
+    args: &[JSValueRef<'ctx>],
+) -> Result<JSValue, JSError> {
+    let _parts = ensure_arguments!("url_format" args; 0: value);
+
+    Ok(JSValue::String("tbd".to_string()))
 }
