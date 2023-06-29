@@ -232,12 +232,16 @@ fn __export_url_parse<'ctx, H: MapStdUnstable + 'static>(
         Ok(url_parts) => {
             let mut result: HashMap<String, JSValue> = HashMap::new();
 
-            result.insert("hostname".to_string(), JSValue::String(url_parts.hostname));
             result.insert("host".to_string(), JSValue::String(url_parts.host));
-            result.insert("origin".to_string(), JSValue::String(url_parts.origin));
             result.insert("protocol".to_string(), JSValue::String(url_parts.protocol));
             result.insert("pathname".to_string(), JSValue::String(url_parts.pathname));
 
+            if let Some(hostname) = url_parts.hostname {
+                result.insert("hostname".to_string(), JSValue::String(hostname));
+            }
+            if let Some(origin) = url_parts.origin {
+                result.insert("origin".to_string(), JSValue::String(origin));
+            }
             if let Some(username) = url_parts.username {
                 result.insert("username".to_string(), JSValue::String(username));
             }
@@ -264,7 +268,80 @@ fn __export_url_format<'ctx, H: MapStdUnstable + 'static>(
     _this: JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
-    let _parts = ensure_arguments!("url_format" args; 0: value);
+    let js_parts = ensure_arguments!("url_format" args; 0: value);
 
-    Ok(JSValue::String("tbd".to_string()))
+    // TODO: this must have better way, macro?
+    let parts = UrlParts {
+        protocol: js_parts
+            .get_property("protocol")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
+        host: js_parts
+            .get_property("host")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
+        hostname: Some(
+            js_parts
+                .get_property("hostname")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        ),
+        pathname: js_parts
+            .get_property("pathname")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string(),
+        origin: Some(
+            js_parts
+                .get_property("origin")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        ),
+        port: match js_parts.get_property("port") {
+            Ok(value) => match value.as_str() {
+                Ok(str) => Some(str.to_string()),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        },
+        search: match js_parts.get_property("search") {
+            Ok(value) => match value.as_str() {
+                Ok(str) => Some(str.to_string()),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        },
+        hash: match js_parts.get_property("hash") {
+            Ok(value) => match value.as_str() {
+                Ok(str) => Some(str.to_string()),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        },
+        username: match js_parts.get_property("username") {
+            Ok(value) => match value.as_str() {
+                Ok(str) => Some(str.to_string()),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        },
+        password: match js_parts.get_property("password") {
+            Ok(value) => match value.as_str() {
+                Ok(str) => Some(str.to_string()),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        },
+    };
+
+    Ok(JSValue::String(parts.to_string()))
 }

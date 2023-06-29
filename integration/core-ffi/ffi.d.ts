@@ -18,6 +18,6 @@ declare type StdFfi = {
     printDebug(...data: unknown[]): void,
     // url
     url_parse(url: string, base?: string): any,
-    url_format(url: string): string,
+    url_format(urlParts: any): string,
   }
 };

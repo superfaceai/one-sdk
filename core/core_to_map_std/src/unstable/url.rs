@@ -1,13 +1,15 @@
+use std::fmt::Display;
+
 use url::{ParseError, Url};
 
 #[derive(Debug)]
 pub struct UrlParts {
     pub protocol: String,
     pub host: String,
-    pub hostname: String,
-    pub port: Option<String>,
     pub pathname: String,
-    pub origin: String,
+    pub hostname: Option<String>,
+    pub port: Option<String>,
+    pub origin: Option<String>,
     pub search: Option<String>,
     pub hash: Option<String>,
     pub username: Option<String>,
@@ -25,11 +27,11 @@ impl UrlParts {
         }
 
         let protocol = parsed_url.scheme().to_string();
-        let hostname = parsed_url.host().unwrap().to_string();
+        let hostname = Some(parsed_url.host().unwrap().to_string());
         let mut host = parsed_url.host().unwrap().to_string();
         let mut port: Option<String> = None;
         let pathname = parsed_url.path().to_string();
-        let origin = parsed_url.origin().ascii_serialization();
+        let origin = Some(parsed_url.origin().ascii_serialization());
         let username = match parsed_url.username() {
             "" => None,
             _ => Some(parsed_url.username().to_string()),
@@ -56,9 +58,30 @@ impl UrlParts {
             search,
         })
     }
+}
 
-    pub fn format(&self) -> String {
-        "".to_string()
+impl Display for UrlParts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // need parse template https://github.com/servo/rust-url/issues/586
+        let mut url = Url::parse(format!("{}:/", self.protocol).as_str()).unwrap();
+
+        let _result = url.set_host(Some(self.host.as_str()));
+        let _result = url.set_port(
+            self.port
+                .as_ref()
+                .map(|p| u16::from_str_radix(p.as_str(), 10).expect("Valid integer")),
+        );
+        url.set_path(&self.pathname);
+        url.set_fragment(self.hash.as_ref().map(|f| f.as_str()));
+        url.set_query(self.search.as_ref().map(|s| s.as_str()));
+        if let Some(username) = self.username.as_ref() {
+            let _result = url.set_username(username.as_str());
+        }
+        let _result = url.set_password(self.password.as_ref().map(|p| p.as_str()));
+
+        write!(f, "{}", url.to_string())?;
+
+        Ok(())
     }
 }
 
@@ -75,7 +98,64 @@ mod test {
         .unwrap();
 
         assert_eq!(parts.protocol, "schema".to_string());
-        assert_eq!(parts.hostname, "domain.tld".to_string());
+        assert_eq!(parts.hostname, Some("domain.tld".to_string()));
         assert_eq!(parts.host, "domain.tld:666".to_string());
+    }
+
+    #[test]
+    fn test_to_string() {
+        let parts = UrlParts {
+            protocol: "schema".to_string(),
+            host: "domain.tld".to_string(),
+            hostname: None,
+            origin: None,
+            port: Some("666".to_string()),
+            username: Some("user".to_string()),
+            password: Some("pass".to_string()),
+            pathname: "/path1/path2".to_string(),
+            search: Some("foo=1&bar=baz&bar=woo".to_string()),
+            hash: Some("hash".to_string()),
+        };
+
+        assert_eq!(
+            parts.to_string(),
+            "schema://user:pass@domain.tld:666/path1/path2?foo=1&bar=baz&bar=woo#hash".to_string()
+        )
+    }
+
+    #[test]
+    fn test_to_string_domain_custom_schema() {
+        let parts = UrlParts {
+            protocol: "foo".to_string(),
+            host: "domain.tld".to_string(),
+            pathname: "".to_string(),
+            hostname: None,
+            origin: None,
+            port: None,
+            username: None,
+            password: None,
+            search: None,
+            hash: None,
+        };
+
+        assert_eq!(parts.to_string(), "foo://domain.tld".to_string())
+    }
+
+    #[test]
+    fn test_to_string_file_path() {
+        let parts = UrlParts {
+            protocol: "file".to_string(),
+            host: "".to_string(),
+            pathname: "/path/to/file.txt".to_string(),
+            hostname: None,
+            origin: None,
+            port: None,
+            username: None,
+            password: None,
+            search: None,
+            hash: None,
+        };
+
+        assert_eq!(parts.to_string(), "file:///path/to/file.txt".to_string())
     }
 }
