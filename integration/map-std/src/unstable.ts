@@ -234,32 +234,103 @@ export class Headers implements Iterable<[string, string]> {
 
 // https://url.spec.whatwg.org/#url-class
 export class URL {
-  public host: string;
-  public hostname: string;
-  public origin: string;
-  public password: string;
-  public pathname: string;
-  public port: string;
-  public protocol: string;
-  public search: string;
-  public username: string;
+  private parts: any;
 
   constructor(url: USVString, base?: USVString) {
-    const parts = __ffi.unstable.url_parse(url, base);
-
-    this.host = parts.host;
-    this.hostname = parts.hostname;
-    this.origin = parts.origin;
-    this.password = parts.password;
-    this.pathname = parts.pathname;
-    this.port = parts.port;
-    this.protocol = parts.protocol;
-    this.search = parts.search;
-    this.username = parts.username;
+    this.parts = __ffi.unstable.url_parse(url, base);
+    __ffi.unstable.printDebug("PARTS", JSON.stringify(this.parts));
   }
 
   get href(): string {
-    return 'tbd';
+    return this.toJSON();
+  }
+  get origin(): string {
+    return this.parts.origin ?? "";
+  }
+
+  get protocol(): string {
+    return this.parts.protocol.endsWith(':') ? this.parts.protocol : this.parts.protocol + ':';
+  }
+  set protocol(value: string) {
+    this.parts.protocol = value;
+  }
+
+  get username(): string {
+    return this.parts.usernamel
+  }
+  set username(value: string) {
+    this.parts.username = this.username;
+  }
+
+  get password(): string {
+    return this.parts.password;
+  }
+  set password(value: string) {
+    this.parts.password = value;
+  }
+
+  get host(): string {
+    return this.parts.host;
+  }
+  set host(value: string) {
+    this.parts.host = value;
+  }
+
+  get hostname(): string {
+    return this.parts.hostname;
+  }
+  set hostname(value: string) {
+    this.hostname = value;
+  }
+
+  get port(): string {
+    return this.parts.port;
+  }
+  set port(value: string) {
+    this.parts.port = value;
+  }
+
+  get pathname(): string {
+    return this.parts.pathname;
+  }
+  set pathname(value: string) {
+    this.parts.pathname = value;
+  }
+
+  get search(): string {
+    return this.parts.search;
+  }
+  set search(value: string) {
+    this.parts.search = value;
+  }
+
+  get searchParams(): URLSearchParams {
+    return new URLSearchParams();
+  }
+
+  get hash(): string {
+    return this.parts.hash;
+  }
+  set hash(value: string) {
+    this.parts.hash = value;
+  }
+
+  public toString(): string {
+    return __ffi.unstable.url_format({
+      host: this.host,
+      hostname: this.hostname,
+      origin: this.origin,
+      password: this.password,
+      pathname: this.pathname,
+      port: this.port,
+      protocol: this.protocol,
+      search: this.search,
+      username: this.username,
+    });
+  }
+
+  public toJSON(): any {
+    return this.toString();
   }
 }
 

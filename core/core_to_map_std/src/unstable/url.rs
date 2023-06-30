@@ -26,9 +26,9 @@ impl UrlParts {
             parsed_url = Url::parse(url)?
         }
 
-        let protocol = parsed_url.scheme().to_string();
-        let hostname = Some(parsed_url.host().unwrap().to_string());
-        let mut host = parsed_url.host().unwrap().to_string();
+        let protocol = format!("{}:", parsed_url.scheme().to_string());
+        let hostname = parsed_url.host().map(|h| h.to_string());
+        let mut host = parsed_url.host().map_or("".to_string(), |h| h.to_string());
         let mut port: Option<String> = None;
         let pathname = parsed_url.path().to_string();
         let origin = Some(parsed_url.origin().ascii_serialization());
@@ -62,15 +62,19 @@ impl UrlParts {
 
 impl Display for UrlParts {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // need parse template https://github.com/servo/rust-url/issues/586
-        let mut url = Url::parse(format!("{}:/", self.protocol).as_str()).unwrap();
+        let mut url: Url;
+        if self.host.is_empty() {
+            url = Url::parse(&self.protocol).unwrap();
+        //} else if  {
+        } else {
+            url = Url::parse(format!("{}//{}", self.protocol, self.host).as_str()).unwrap();
+        }
 
         let _result = url.set_host(Some(self.host.as_str()));
-        let _result = url.set_port(
-            self.port
-                .as_ref()
-                .map(|p| u16::from_str_radix(p.as_str(), 10).expect("Valid integer")),
-        );
+        let _result =
+            url.set_port(self.port.as_ref().map(|p| {
+                u16::from_str_radix(p.as_str(), 10).expect("Port should be valid integer")
+            }));
         url.set_path(&self.pathname);
         url.set_fragment(self.hash.as_ref().map(|f| f.as_str()));
         url.set_query(self.search.as_ref().map(|s| s.as_str()));
@@ -97,7 +101,7 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(parts.protocol, "schema".to_string());
+        assert_eq!(parts.protocol, "schema:".to_string());
         assert_eq!(parts.hostname, Some("domain.tld".to_string()));
         assert_eq!(parts.host, "domain.tld:666".to_string());
     }
@@ -105,7 +109,7 @@ mod test {
     #[test]
     fn test_to_string() {
         let parts = UrlParts {
-            protocol: "schema".to_string(),
+            protocol: "scheme:".to_string(),
             host: "domain.tld".to_string(),
             hostname: None,
             origin: None,
@@ -119,14 +123,14 @@ mod test {
 
         assert_eq!(
             parts.to_string(),
-            "schema://user:pass@domain.tld:666/path1/path2?foo=1&bar=baz&bar=woo#hash".to_string()
+            "scheme://user:pass@domain.tld:666/path1/path2?foo=1&bar=baz&bar=woo#hash".to_string()
         )
     }
 
     #[test]
     fn test_to_string_domain_custom_schema() {
         let parts = UrlParts {
-            protocol: "foo".to_string(),
+            protocol: "foo:".to_string(),
             host: "domain.tld".to_string(),
             pathname: "".to_string(),
             hostname: None,
@@ -144,7 +148,7 @@ mod test {
     #[test]
     fn test_to_string_file_path() {
         let parts = UrlParts {
-            protocol: "file".to_string(),
+            protocol: "file:".to_string(),
             host: "".to_string(),
             pathname: "/path/to/file.txt".to_string(),
             hostname: None,
