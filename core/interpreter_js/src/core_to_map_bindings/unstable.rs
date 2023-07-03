@@ -271,117 +271,47 @@ fn __export_url_format<'ctx, H: MapStdUnstable + 'static>(
 ) -> Result<JSValue, JSError> {
     let js_parts = ensure_arguments!("url_format" args; 0: value);
 
-    // TODO: this must have better way, macro?
+    macro_rules! get_property_as_string {
+        (required $name:literal; $parts:expr) => {
+            match $parts.get_property($name) {
+                Ok(value) => {
+                    if value.is_null_or_undefined() {
+                        panic!("Property {} can't be cast to string", $name)
+                    } else {
+                        value.as_str().unwrap().to_string()
+                    }
+                }
+                Err(e) => {
+                    panic!("{}", e)
+                }
+            }
+        };
+
+        (optional $name:literal; $parts:expr) => {
+            match $parts.get_property($name) {
+                Ok(value) => {
+                    if value.is_null_or_undefined() {
+                        None
+                    } else {
+                        Some(value.as_str().unwrap().to_string())
+                    }
+                }
+                Err(_) => None,
+            }
+        };
+    }
+
     let parts = UrlParts {
-        protocol: js_parts
-            .get_property("protocol")
-            .unwrap()
-            .as_str()
-            .unwrap()
-            .to_string(),
-        host: js_parts
-            .get_property("host")
-            .unwrap()
-            .as_str()
-            .unwrap()
-            .to_string(),
-        pathname: js_parts
-            .get_property("pathname")
-            .unwrap()
-            .as_str()
-            .unwrap()
-            .to_string(),
-        hostname: match js_parts.get_property("hostname") {
-            Ok(value) => {
-                if value.is_null_or_undefined() {
-                    None
-                } else {
-                    match value.as_str() {
-                        Ok(str) => Some(str.to_string()),
-                        Err(_) => None,
-                    }
-                }
-            }
-            Err(_) => None,
-        },
-        origin: match js_parts.get_property("origin") {
-            Ok(value) => {
-                if value.is_null_or_undefined() {
-                    None
-                } else {
-                    match value.as_str() {
-                        Ok(str) => Some(str.to_string()),
-                        Err(_) => None,
-                    }
-                }
-            }
-            Err(_) => None,
-        },
-        port: match js_parts.get_property("port") {
-            Ok(value) => {
-                if value.is_null_or_undefined() {
-                    None
-                } else {
-                    match value.as_str() {
-                        Ok(str) => Some(str.to_string()),
-                        Err(_) => None,
-                    }
-                }
-            }
-            Err(_) => None,
-        },
-        search: match js_parts.get_property("search") {
-            Ok(value) => {
-                if value.is_null_or_undefined() {
-                    None
-                } else {
-                    match value.as_str() {
-                        Ok(str) => Some(str.to_string()),
-                        Err(_) => None,
-                    }
-                }
-            }
-            Err(_) => None,
-        },
-        hash: match js_parts.get_property("hash") {
-            Ok(value) => {
-                if value.is_null_or_undefined() {
-                    None
-                } else {
-                    match value.as_str() {
-                        Ok(str) => Some(str.to_string()),
-                        Err(_) => None,
-                    }
-                }
-            }
-            Err(_) => None,
-        },
-        username: match js_parts.get_property("username") {
-            Ok(value) => {
-                if value.is_null_or_undefined() {
-                    None
-                } else {
-                    match value.as_str() {
-                        Ok(str) => Some(str.to_string()),
-                        Err(_) => None,
-                    }
-                }
-            }
-            Err(_) => None,
-        },
-        password: match js_parts.get_property("password") {
-            Ok(value) => {
-                if value.is_null_or_undefined() {
-                    None
-                } else {
-                    match value.as_str() {
-                        Ok(str) => Some(str.to_string()),
-                        Err(_) => None,
-                    }
-                }
-            }
-            Err(_) => None,
-        },
+        protocol: get_property_as_string!(required "protocol"; js_parts),
+        host: get_property_as_string!(required "host"; js_parts),
+        pathname: get_property_as_string!(required "pathname"; js_parts),
+        hostname: get_property_as_string!(optional "hostname"; js_parts),
+        origin: get_property_as_string!(optional "origin"; js_parts),
+        port: get_property_as_string!(optional "port"; js_parts),
+        search: get_property_as_string!(optional "search"; js_parts),
+        hash: get_property_as_string!(optional "hash"; js_parts),
+        username: get_property_as_string!(optional "username"; js_parts),
+        password: get_property_as_string!(optional "password"; js_parts),
     };
 
     Ok(JSValue::String(parts.to_string()))
