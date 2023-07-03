@@ -739,13 +739,3 @@ function headersToJson(headers: Headers): [string, string][] {
 
   return result;
 }
-
-function urlSearchParamstoJson(params: URLSearchParams): [string, string][] {
-  const result: [string, string][] = [];
-
-  for (const param of params.raw()) {
-    result.push(param)
-  }
-
-  return result;
-}
