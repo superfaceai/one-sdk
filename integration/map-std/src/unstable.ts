@@ -327,7 +327,7 @@ export class URL {
       pathname: this.pathname,
       port: this.port,
       protocol: this.protocol,
-      search: this.search,
+      search: this._searchParams.toString(),
       username: this.username,
     });
   }
