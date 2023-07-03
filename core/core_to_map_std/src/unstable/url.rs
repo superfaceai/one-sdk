@@ -11,6 +11,7 @@ pub struct UrlParts {
     pub port: Option<String>,
     pub origin: Option<String>,
     pub search: Option<String>,
+    pub search_pairs: Option<Vec<(String, String)>>,
     pub hash: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
@@ -45,6 +46,13 @@ impl UrlParts {
             host = format!("{}:{}", host, p);
         }
 
+        let search_pairs = Some(
+            parsed_url
+                .query_pairs()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        );
+
         Ok(UrlParts {
             hostname,
             host,
@@ -56,6 +64,7 @@ impl UrlParts {
             password,
             hash,
             search,
+            search_pairs,
         })
     }
 }
@@ -77,7 +86,15 @@ impl Display for UrlParts {
             }));
         url.set_path(&self.pathname);
         url.set_fragment(self.hash.as_ref().map(|f| f.as_str()));
-        url.set_query(self.search.as_ref().map(|s| s.as_str()));
+
+        if let Some(search_pairs) = &self.search_pairs {
+            for (name, value) in search_pairs.iter() {
+                url.query_pairs_mut().append_pair(name, value);
+            }
+        } else {
+            url.set_query(self.search.as_ref().map(|s| s.as_str()));
+        }
+
         if let Some(username) = self.username.as_ref() {
             let _result = url.set_username(username.as_str());
         }
@@ -104,6 +121,14 @@ mod test {
         assert_eq!(parts.protocol, "schema:".to_string());
         assert_eq!(parts.hostname, Some("domain.tld".to_string()));
         assert_eq!(parts.host, "domain.tld:666".to_string());
+        assert_eq!(
+            parts.search_pairs,
+            Some(vec![
+                ("foo".to_string(), "1".to_string()),
+                ("bar".to_string(), "baz".to_string()),
+                ("bar".to_string(), "woo".to_string()),
+            ])
+        );
     }
 
     #[test]
@@ -118,6 +143,11 @@ mod test {
             password: Some("pass".to_string()),
             pathname: "/path1/path2".to_string(),
             search: Some("foo=1&bar=baz&bar=woo".to_string()),
+            search_pairs: Some(vec![
+                ("foo".to_string(), "1".to_string()),
+                ("bar".to_string(), "baz".to_string()),
+                ("bar".to_string(), "woo".to_string()),
+            ]),
             hash: Some("hash".to_string()),
         };
 
@@ -139,6 +169,7 @@ mod test {
             username: None,
             password: None,
             search: None,
+            search_pairs: None,
             hash: None,
         };
 
@@ -157,9 +188,35 @@ mod test {
             username: None,
             password: None,
             search: None,
+            search_pairs: None,
             hash: None,
         };
 
         assert_eq!(parts.to_string(), "file:///path/to/file.txt".to_string())
+    }
+
+    #[test]
+    fn test_search_pairs() {
+        let parts = UrlParts {
+            protocol: "http:".to_string(),
+            host: "domain.tld".to_string(),
+            pathname: "".to_string(),
+            hostname: None,
+            origin: None,
+            port: None,
+            username: None,
+            password: None,
+            search: None,
+            search_pairs: Some(vec![
+                ("foo".to_string(), "bar".to_string()),
+                ("foo".to_string(), "baz".to_string()),
+            ]),
+            hash: None,
+        };
+
+        assert_eq!(
+            parts.to_string(),
+            "http://domain.tld/?foo=bar&foo=baz".to_string()
+        )
     }
 }

@@ -343,6 +343,7 @@ fn __export_url_format<'ctx, H: MapStdUnstable + 'static>(
             }
             Err(_) => None,
         },
+        search_pairs: None, // TODO
         hash: match js_parts.get_property("hash") {
             Ok(value) => {
                 if value.is_null_or_undefined() {
