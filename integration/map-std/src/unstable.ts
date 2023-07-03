@@ -398,13 +398,13 @@ export class URLSearchParams {
   }
 
   // https://url.spec.whatwg.org/#dom-urlsearchparams-set
-  public set(name: USVString, value: USVString): undefined {
+  public set(name: USVString, value: USVString): void {
     this.delete(name);
     this.list.push([name, value]);
   }
 
   // https://url.spec.whatwg.org/#dom-urlsearchparams-sort
-  public sort(): undefined {
+  public sort(): void {
     this.list = this.list.sort((a, b) => a[0].localeCompare(b[0]));
   }
 
