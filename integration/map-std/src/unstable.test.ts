@@ -1,4 +1,4 @@
-import { Headers } from "./unstable";
+import { Headers, URLSearchParams } from "./unstable";
 
 describe('unstable', () => {
   test('sanity check', () => {
@@ -107,12 +107,23 @@ describe('unstable', () => {
     });
   });
 
-  describe('URL', () => {
-
-  });
-
   describe('URLSearchParams', () => {
+    describe('init', () => {
+      it('creates instance from string', () => {
+        const u = new URLSearchParams('a=b&b=c');
+        expect(u.toString()).toBe('a=b&b=c');
+      });
 
+      it('creates instance from list of tuples', () => {
+        const u = new URLSearchParams([['a', 'b'], ['b', 'c']]);
+        expect(u.toString()).toBe('a=b&b=c');
+      });
+
+      it('creates instance from Record', () => {
+        const u = new URLSearchParams({ a: 'b', b: 'c' });
+        expect(u.toString()).toBe('a=b&b=c');
+      });
+    });
   });
 
   describe('fetch', () => {

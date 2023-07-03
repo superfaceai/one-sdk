@@ -240,8 +240,6 @@ export class URL {
   constructor(url: USVString, base?: USVString) {
     this.parts = __ffi.unstable.url_parse(url, base);
     this._searchParams = new URLSearchParams(this.parts.search);
-
-    __ffi.unstable.printDebug("PARTS", JSON.stringify(this.parts));
   }
 
   get href(): string {
@@ -436,7 +434,7 @@ export class URLSearchParams {
         this.list.push([name, value]);
       }
     } else if (typeof init === 'string') {
-      for (const pair in init.split('&')) {
+      for (const pair of init.split('&')) {
         const [name, value] = pair.split('=');
         this.list.push([name, value]);
       }
