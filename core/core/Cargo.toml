@@ -24,6 +24,9 @@ interpreter_js = { path = "../interpreter_js" }
 
 base64 = { workspace = true }
 
+sha2 = { version = "0.10" }
+hex = { version = "0.4" }
+
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

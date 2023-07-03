@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{value::SecurityValuesMap, ErrorCode, HostValue};
-use crate::abi::{MessageExchange, JsonMessageError};
+use crate::abi::{JsonMessageError, MessageExchange};
 
 define_exchange_core_to_host! {
     struct PerformInputRequest {
@@ -77,7 +77,7 @@ pub enum TakePerformInputError {
     #[error("Invalid input format: {0}")]
     InvalidFormat(JsonMessageError),
     #[error("Unknown perform input error: {0}")]
-    Unknown(String)
+    Unknown(String),
 }
 
 pub struct PerformInput {
@@ -90,7 +90,9 @@ pub struct PerformInput {
     pub map_security: SecurityValuesMap,
 }
 impl PerformInput {
-    pub fn take_in<E: MessageExchange>(message_exchange: E) -> Result<PerformInput, TakePerformInputError> {
+    pub fn take_in<E: MessageExchange>(
+        message_exchange: E,
+    ) -> Result<PerformInput, TakePerformInputError> {
         let response = match PerformInputRequest::new().send_json_in(message_exchange) {
             Err(err) => {
                 tracing::error!("Failed to receive perform_input response: {:#}", err);
@@ -120,7 +122,10 @@ impl PerformInput {
             PerformInputResponse::Err {
                 error_code,
                 message,
-            } => Err(TakePerformInputError::Unknown(format!("{:?} {}", error_code, message)))
+            } => Err(TakePerformInputError::Unknown(format!(
+                "{:?} {}",
+                error_code, message
+            ))),
         }
     }
 }
