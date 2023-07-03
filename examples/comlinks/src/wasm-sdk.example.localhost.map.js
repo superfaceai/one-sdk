@@ -10,8 +10,7 @@ function Example({ input, parameters, services }) {
   __ffi.unstable.printDebug('Parameters:', parameters);
   __ffi.unstable.printDebug('Services:', services);
 
-  const url = `${services.default}/api/${input.id}`;
-
+  const url = new std.unstable.URL(`/api/${input.id}`, services.default);
   const init = {
     method: 'GET',
     headers: {
@@ -26,7 +25,7 @@ function Example({ input, parameters, services }) {
   };
 
   try {
-    const response = std.unstable.fetch(url, init);
+    const response = std.unstable.fetch(url.toString(), init);
     __ffi.unstable.printDebug('response:', response);
     __ffi.unstable.printDebug('status:', response.status);
 
@@ -39,13 +38,6 @@ function Example({ input, parameters, services }) {
         detail: `${JSON.stringify(response)} - ${JSON.stringify(body)}`
       });
     }
-
-    const u1 = new std.unstable.URL("schema://user:pass@domain.tld:8000/path?foo=1&bar=baz#hash");
-    __ffi.unstable.printDebug('URL1', u1.toString());
-
-    __ffi.unstable.printDebug('URL1', u1.toString());
-
-    __ffi.unstable.printDebug('URL1', u1.toString());
 
     return {
       url: body.url,
