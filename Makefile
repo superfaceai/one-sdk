@@ -52,11 +52,7 @@ PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
 
 # Hosts
 HOST_JS_ASSETS=host/js/assets
-ifeq ($(CORE_PROFILE),test)
-	HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/test-core-async.wasm
-else
-	HOST_JS_ASSETS_WASM_CORE=${HOST_JS_ASSETS}/core-async.wasm
-endif
+HOST_PY_ASSETS=host/python/assets
 
 all: clean build
 
@@ -68,7 +64,7 @@ ifeq ($(CORE_PHONY),1)
 .PHONY: ${CORE_BUILD} ${MAP_STD} ${PROFILE_VALIDATOR}
 endif
 
-deps: deps_core
+deps: deps_core deps_host_py
 build: build_core build_integration build_hosts
 test: test_core
 clean: clean_core clean_integration clean_hosts
@@ -142,16 +138,35 @@ clean_integration:
 ##########
 ## HOST ##
 ##########
-build_hosts: build_host_js
+build_hosts: build_host_js build_host_py
 clean_hosts:
 	rm -rf ${HOST_JS_ASSETS}
 	cd host/js && yarn clean
+	rm -rf ${HOST_PY_ASSETS}
 
 # copy wasm always because cached docker artifacts can have older timestamp
 build_host_js: ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${HOST_JS_ASSETS}
-	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS_WASM_CORE}
+	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS}/core-async.wasm
 	cd host/js && yarn install && yarn build	
 
-test_host_js:
+# TODO: this needs CORE_PROFILE=test - can we somehow force that when this target is run?
+test_host_js: ${CORE_ASYNCIFY_WASM}
+	mkdir -p ${HOST_JS_ASSETS}
+	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS}/test-core-async.wasm
 	cd host/js && yarn test
+
+deps_host_py:
+	cd host/python; test -d venv || python3 -m venv venv; source venv/bin/activate; \
+	python3 -m pip install -r requirements.txt
+
+build_host_py: ${CORE_WASM}
+	mkdir -p ${HOST_PY_ASSETS}
+	cp ${CORE_WASM} ${HOST_PY_ASSETS}/core.wasm
+	# TODO
+
+test_host_py: ${CORE_WASM}
+	mkdir -p ${HOST_PY_ASSETS}
+	cp ${CORE_WASM} ${HOST_PY_ASSETS}/test-core.wasm
+	cd host/python; source venv/bin/activate; \
+	python3 -m unittest discover
