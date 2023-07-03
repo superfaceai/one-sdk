@@ -85,10 +85,10 @@ export function resolveRequestUrl(url: string, options: { parameters: any, secur
 }
 
 // https://fetch.spec.whatwg.org/#headers-class
-export type HeadersInit = Record<string, string> | [string, string][];
-export class Headers implements Iterable<[string, string]> {
+export type HeadersInit = Record<USVString, USVString> | [USVString, USVString][];
+export class Headers implements Iterable<[USVString, USVString]> {
   private guard: 'immutable' | 'request' | 'request-no-cors' | 'response' | 'none';
-  private headersList: [string, string][];
+  private headersList: [USVString, USVString][];
 
   constructor(init?: HeadersInit) {
     this.guard = 'none';
@@ -99,25 +99,25 @@ export class Headers implements Iterable<[string, string]> {
     }
   }
 
-  *[Symbol.iterator](): Iterator<[string, string], any, undefined> {
+  *[Symbol.iterator](): Iterator<[USVString, USVString], any, undefined> {
     for (const [name, value] of this.toMap()) {
       yield [name, value];
     }
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-append
-  public append(name: string, value: string): void {
+  public append(name: USVString, value: USVString): void {
     this.headersList.push([name, value]);
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-delete
-  public delete(name: string): void {
+  public delete(name: USVString): void {
     const lowerCaseName = name.toLowerCase();
     this.headersList = this.headersList.filter(([name]) => name.toLowerCase() !== lowerCaseName);
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-get
-  public get(name: string): string | null {
+  public get(name: USVString): USVString | null {
     const loweCaseName = name.toLowerCase();
     const values = [];
 
@@ -138,8 +138,8 @@ export class Headers implements Iterable<[string, string]> {
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-getsetcookie
-  public getSetCookie(): string[] {
-    const cookies: string[] = [];
+  public getSetCookie(): USVString[] {
+    const cookies: USVString[] = [];
 
     for (const [headerName, headerValue] of this.headersList) {
       if (headerName.toLowerCase() === 'set-cookie') {
@@ -151,7 +151,7 @@ export class Headers implements Iterable<[string, string]> {
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-has
-  public has(name: string): boolean {
+  public has(name: USVString): boolean {
     const lowerCaseName = name.toLowerCase();
     for (const [headerName] of this.headersList) {
       if (headerName.toLowerCase() === lowerCaseName) {
@@ -163,14 +163,14 @@ export class Headers implements Iterable<[string, string]> {
   }
 
   // https://fetch.spec.whatwg.org/#dom-headers-set
-  public set(name: string, value: string): void {
+  public set(name: USVString, value: USVString): void {
     this.delete(name);
     this.headersList.push([name, value]);
   }
 
   public forEach(
-    callbackfn: (key: string, value: string, iterable: Headers) => void,
-    thisArg?: Map<string, string>
+    callbackfn: (key: USVString, value: USVString, iterable: Headers) => void,
+    thisArg?: Map<USVString, USVString>
   ): void {
     this.toMap().forEach((value, key) => { callbackfn(value, key, this) }, thisArg);
   }
@@ -193,8 +193,8 @@ export class Headers implements Iterable<[string, string]> {
     }
   }
 
-  private toMap(): Map<string, string> {
-    const map = new Map<string, string>();
+  private toMap(): Map<USVString, USVString> {
+    const map = new Map<USVString, USVString>();
 
     for (const [name, value] of this.headersList) {
       const lowerCaseName = name.toLowerCase();
@@ -209,7 +209,7 @@ export class Headers implements Iterable<[string, string]> {
     return map;
   }
 
-  private foldValues(a: string, b: string, name?: string): string {
+  private foldValues(a: USVString, b: USVString): USVString {
     return `${a}, ${b}`;
   }
 
@@ -406,7 +406,7 @@ export class URLSearchParams {
     this.list = this.list.sort((a, b) => a[0].localeCompare(b[0]));
   }
 
-  *[Symbol.iterator](): Iterator<[string, string], any, undefined> {
+  *[Symbol.iterator](): Iterator<[USVString, USVString], any, undefined> {
     for (const [name, value] of this.list) {
       yield [name, value];
     }
@@ -443,7 +443,7 @@ export class URLSearchParams {
         this.list.push([name, `${value}`]);
       }
     } else {
-      throw new TypeError("init value must be one of '[USVString, USVString][] | Record<USVString, USVString> | USVString;'");
+      throw new TypeError("init value must be one of '{ string: string } | [string, string][] | string'");
     }
   }
 }
@@ -512,7 +512,7 @@ export class Response implements Body {
   }
 
   public get redirected(): boolean {
-    return false; // TODO: do we know from response message?
+    throw new Error('Response.redeirected() is not supported'); // TODO: do we know from response message?
   }
 
   public get status(): number {
