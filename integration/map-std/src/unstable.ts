@@ -235,9 +235,12 @@ export class Headers implements Iterable<[string, string]> {
 // https://url.spec.whatwg.org/#url-class
 export class URL {
   private parts: any;
+  _searchParams: URLSearchParams;
 
   constructor(url: USVString, base?: USVString) {
     this.parts = __ffi.unstable.url_parse(url, base);
+    this._searchParams = new URLSearchParams(this.parts.search);
+
     __ffi.unstable.printDebug("PARTS", JSON.stringify(this.parts));
   }
 
@@ -301,11 +304,11 @@ export class URL {
     return this.parts.search;
   }
   set search(value: string) {
-    this.parts.search = value;
+    this.parts.search = new URLSearchParams(value);
   }
 
   get searchParams(): URLSearchParams {
-    return new URLSearchParams();
+    return this._searchParams;
   }
 
   get hash(): string {
@@ -335,8 +338,116 @@ export class URL {
 }
 
 // https://url.spec.whatwg.org/#interface-urlsearchparams
+export type URLSearchParamsInit = [USVString, USVString][] | Record<USVString, USVString> | USVString;
 export class URLSearchParams {
+  private list: [string, string][];
 
+  constructor(init?: URLSearchParamsInit) {
+    this.list = [];
+
+    if (init) {
+      this.fill(init);
+    }
+  }
+
+  // https://url.spec.whatwg.org/#dom-urlsearchparams-append
+  public append(name: USVString, value: USVString) {
+    this.list.push([name, value]);
+  }
+
+  // https://url.spec.whatwg.org/#dom-urlsearchparams-delete
+  public delete(name: USVString) {
+    const lowerCaseName = name.toLowerCase();
+    this.list = this.list.filter(([name]) => name.toLowerCase() !== lowerCaseName);
+  }
+
+  // https://url.spec.whatwg.org/#dom-urlsearchparams-get
+  public get(name: USVString): USVString | undefined {
+    for (const param in this.list) {
+      if (name === param[0]) {
+        return param[1];
+      }
+    }
+
+    return undefined;
+  }
+
+  // https://url.spec.whatwg.org/#dom-urlsearchparams-getall
+  public getAll(name: USVString): USVString[] {
+    const values = [];
+
+    for (const param in this.list) {
+      if (name === param[0]) {
+        values.push(param[1]);
+      }
+    }
+
+    return values;
+  }
+
+  // https://url.spec.whatwg.org/#dom-urlsearchparams-has
+  public has(name: USVString): boolean {
+
+    for (const param in this.list) {
+      if (name === param[0]) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // https://url.spec.whatwg.org/#dom-urlsearchparams-set
+  public set(name: USVString, value: USVString): undefined {
+    this.delete(name);
+    this.list.push([name, value]);
+  }
+
+  // https://url.spec.whatwg.org/#dom-urlsearchparams-sort
+  public sort(): undefined {
+    this.list = this.list.sort((a, b) => a[0].localeCompare(b[0]));
+  }
+
+  *[Symbol.iterator](): Iterator<[string, string], any, undefined> {
+    for (const [name, value] of this.list) {
+      yield [name, value];
+    }
+  }
+
+  public toString(): string {
+    const pairs = [];
+
+    for (const param of this.list) {
+      pairs.push(param.join('='));
+    }
+
+    return pairs.join('&');
+  }
+
+  public *raw() {
+    for (const param of this.list) {
+      yield param;
+    }
+  }
+
+  private fill(init: URLSearchParamsInit) {
+    if (Array.isArray(init)) {
+      for (const [name, value] of init) {
+        this.list.push([name, value]);
+      }
+    } else if (typeof init === 'string') {
+      for (const pair in init.split('&')) {
+        const [name, value] = pair.split('=');
+        this.list.push([name, value]);
+      }
+    } else if (typeof init === 'object' && init !== null) {
+      for (const [name, value] of Object.entries<USVString>(init)) {
+        this.list.push([name, `${value}`]);
+      }
+    } else {
+      throw new TypeError("init value must be one of '[USVString, USVString][] | Record<USVString, USVString> | USVString;'");
+    }
+  }
 }
 
 export type USVString = string;
@@ -626,6 +737,16 @@ function headersToJson(headers: Headers): [string, string][] {
 
   for (const header of headers.raw()) {
     result.push(header)
+  }
+
+  return result;
+}
+
+function urlSearchParamstoJson(params: URLSearchParams): [string, string][] {
+  const result: [string, string][] = [];
+
+  for (const param of params.raw()) {
+    result.push(param)
   }
 
   return result;
