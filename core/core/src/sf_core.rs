@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, borrow::Cow};
 
 use sf_std::unstable::{perform::PerformInput, provider::ProviderJson, HostValue};
 
@@ -53,15 +53,18 @@ struct PerformMetricsData<'a> {
     pub map_content_hash: Option<&'a str>,
 }
 impl<'a> PerformMetricsData<'a> {
-    pub fn get_profile(&self) -> &str {
+    pub fn get_profile(&self) -> Cow<'_, str> {
         match self.profile {
-            Some(profile) => profile,
-            None => self
-                .profile_url
-                .split('/')
-                .last()
-                .and_then(|b| b.strip_suffix(".profile"))
-                .unwrap(),
+            Some(profile) => Cow::Borrowed(profile),
+            None => Cow::Owned(
+                self
+                    .profile_url
+                    .split('/')
+                    .last()
+                    .and_then(|b| b.strip_suffix(".profile"))
+                    .unwrap()
+                    .replace('.', "/")
+            )
         }
     }
 
@@ -222,7 +225,7 @@ impl OneClientCore {
                 crate::observability::metrics::log_metric!(
                     Perform
                     success = $success,
-                    profile = metrics_data.get_profile(),
+                    profile = metrics_data.get_profile().as_ref(),
                     profile_url = metrics_data.profile_url,
                     profile_content_hash = metrics_data.profile_content_hash,
                     provider = metrics_data.get_provider(),
