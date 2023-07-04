@@ -62,19 +62,16 @@ impl UrlParts {
 
 impl Display for UrlParts {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut url: Url;
-        if self.host.is_empty() {
-            url = Url::parse(&self.protocol).unwrap();
-        //} else if  {
-        } else {
-            url = Url::parse(format!("{}//{}", self.protocol, self.host).as_str()).unwrap();
-        }
+        let mut url: Url =
+            Url::parse(format!("{}//{}{}", &self.protocol, &self.host, &self.pathname).as_str())
+                .unwrap();
 
         let _result = url.set_host(Some(self.host.as_str()));
         let _result =
             url.set_port(self.port.as_ref().map(|p| {
                 u16::from_str_radix(p.as_str(), 10).expect("Port should be valid integer")
             }));
+
         url.set_path(&self.pathname);
         url.set_fragment(self.hash.as_ref().map(|f| f.as_str()));
         url.set_query(self.search.as_ref().map(|s| s.as_str()));
@@ -129,26 +126,8 @@ mod test {
     }
 
     #[test]
-    fn test_to_string_domain_custom_schema() {
-        let parts = UrlParts {
-            protocol: "foo:".to_string(),
-            host: "domain.tld".to_string(),
-            pathname: "".to_string(),
-            hostname: None,
-            origin: None,
-            port: None,
-            username: None,
-            password: None,
-            search: None,
-            hash: None,
-        };
-
-        assert_eq!(parts.to_string(), "foo://domain.tld".to_string())
-    }
-
-    #[test]
-    fn test_to_string_file_path() {
-        let parts = UrlParts {
+    fn test_protocol() {
+        let mut parts = UrlParts {
             protocol: "file:".to_string(),
             host: "".to_string(),
             pathname: "/path/to/file.txt".to_string(),
@@ -160,7 +139,20 @@ mod test {
             search: None,
             hash: None,
         };
+        assert_eq!(parts.to_string(), "file:///path/to/file.txt".to_string());
 
-        assert_eq!(parts.to_string(), "file:///path/to/file.txt".to_string())
+        parts.protocol = "foo:".to_string();
+        assert_eq!(parts.to_string(), "foo:///path/to/file.txt".to_string());
+
+        parts.protocol = "https:".to_string();
+        parts.host = "domain.tld".to_string();
+        parts.pathname = "/api/".to_string();
+        assert_eq!(parts.to_string(), "https://domain.tld/api/".to_string());
+
+        parts.protocol = "http:".to_string();
+        parts.host = "127.0.0.1".to_string();
+        parts.port = Some("8000".to_string());
+        parts.pathname = "/path".to_string();
+        assert_eq!(parts.to_string(), "http://127.0.0.1:8000/path".to_string());
     }
 }
