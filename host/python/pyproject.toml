@@ -1,0 +1,12 @@
+[project]
+name = "one-sdk"
+version = "0.0.1-dev.0"
+authors = [
+  { name = "Superface Team", email = "hello@superface.ai" }
+]
+description = "OneSDK is a universal API client which provides an unparalleled developer experience for every HTTP API"
+keywords = ["superface", "api", "client", "sdk", "one-sdk", "ai", "integrations"]
+
+[project.urls]
+"Homepage" = "https://github.com/superfaceai/one-sdk/tree/main/host/python"
+"Bug Tracker" = "https://github.com/superfaceai/one-sdk/issues"
