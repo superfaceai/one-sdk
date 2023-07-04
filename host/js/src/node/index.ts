@@ -128,7 +128,7 @@ class NodeNetwork implements Network {
 class NodePlatform implements HostPlatform {
   private readonly token: string | undefined;
   private readonly insightsUrl: string;
-  
+
   constructor(
     token: string | undefined,
     superfaceApiUrl: string | undefined
@@ -227,7 +227,7 @@ class InternalClient {
       await this.app.loadCore(
         await fs.readFile(this.corePath)
       );
-      await this.app.init(new WASI({ env: process.env }));
+      await this.app.init(new WASI({ env: process.env, version: 'preview1' } as any)); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
 
       this.initProcessHooks();
 

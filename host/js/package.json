@@ -4,6 +4,9 @@
   "main": "node/index.js",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@cloudflare/workers-wasi": "^0.0.5"
   },

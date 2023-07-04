@@ -418,7 +418,7 @@ export class App implements AppContext {
         if (err instanceof WebAssembly.RuntimeError) {
           throw new UnexpectedError('WebAssemblyRuntimeError', `${err.message}`,);
         }
-    
+
         throw new UnexpectedError('UnexpectedError', `${err}`);
       }
     }
