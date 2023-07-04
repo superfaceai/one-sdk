@@ -1,18 +1,6 @@
 from typing import Any, Mapping, Optional, Self
-from dataclasses import dataclass
 
-CORE_PATH = ""
-
-class InternalClient:
-	def __init__(
-		self,
-		assets_path: str,
-		token: Optional[str],
-		superface_api_url: str
-	):
-		self.assets_path = assets_path
-		self.token = token
-		self.superface_api_url = superface_api_url
+from one_sdk.internal import InternalClient
 
 class UseCase:
 	def __init__(self, internal: InternalClient, profile: "Profile", name: str):
@@ -58,7 +46,11 @@ class OneClient:
 		token: Optional[str] = None,
 		superface_api_url: str = "https://superface.ai"
 	):
-		self._internal = InternalClient(assets_path = assets_path, token = token, superface_api_url = superface_api_url)
+		self._internal = InternalClient(
+			assets_path = assets_path,
+			token = token,
+			superface_api_url = superface_api_url
+		)
 	
 	def init(self):
 		self._internal.init()

@@ -228,6 +228,7 @@ pub enum HttpCallError {
 }
 impl From<HostHttpCallError> for HttpCallError {
     fn from(value: HostHttpCallError) -> Self {
+        // assert here because we can't get this error from HttpCall, it will be deferred until HttpCallHead
         debug_assert!(!matches!(
             value,
             HostHttpCallError::HostNotFound(_) | HostHttpCallError::ConnectionRefused(_)
@@ -256,6 +257,7 @@ pub enum HttpCallHeadError {
 }
 impl From<HostHttpCallError> for HttpCallHeadError {
     fn from(value: HostHttpCallError) -> Self {
+        // assert here because we can't get this error from HttpCallHead, it must have been already produced by HttpCall
         debug_assert!(!matches!(value, HostHttpCallError::InvalidUrl(_)));
         match value {
             HostHttpCallError::ConnectionRefused(m) => Self::ConnectionRefused(m),

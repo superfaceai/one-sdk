@@ -25,7 +25,7 @@ pub trait MessageExchange {
         &self,
         message: &M,
     ) -> Result<R, JsonMessageError> {
-        let _span = tracing::trace_span!("host/message_exchange").entered();
+        let _span = tracing::trace_span!("host/MessageExchange/invoke_json").entered();
 
         let json_message =
             serde_json::to_string(message).map_err(JsonMessageError::SerializeFailed)?;
@@ -203,30 +203,48 @@ impl StreamExchangeFfiFn {
 }
 impl StreamExchange for StreamExchangeFfiFn {
     fn read(&self, handle: Handle, buf: &mut [u8]) -> io::Result<Size> {
+        let _span = tracing::trace_span!("host/StreamExchange/read").entered();
+        
         let out_ptr = buf.as_mut_ptr().into();
         let out_len = buf.len() as Size;
+        tracing::trace!(handle, ?out_ptr, out_len);
 
         // SAFETY: caller of constructor promises it is safe
         let result: AbiResult = unsafe { (self.read_fn)(handle, out_ptr, out_len).into() };
+        
+        let result = result.into_io_result().map(|read| read);
+        tracing::trace!(result = ?result);
 
-        result.into_io_result().map(|read| read)
+        result
     }
 
     fn write(&self, handle: Handle, buf: &[u8]) -> io::Result<Size> {
+        let _span = tracing::trace_span!("host/StreamExchange/write").entered();
+
         let in_ptr = buf.as_ptr().into();
         let in_len = buf.len() as Size;
+        tracing::trace!(handle, ?in_ptr, in_len);
 
         // SAFETY: caller of constructor promises it is safe
         let result: AbiResult = unsafe { (self.write_fn)(handle, in_ptr, in_len).into() };
 
-        result.into_io_result().map(|written| written)
+        let result = result.into_io_result().map(|written| written);
+        tracing::trace!(result = ?result);
+
+        result
     }
 
     fn close(&self, handle: Handle) -> io::Result<()> {
+        let _span = tracing::trace_span!("host/StreamExchange/close").entered();
+
+        tracing::trace!(handle);
         // SAFETY: caller of constructor promises it is safe
         let result: AbiResult = unsafe { (self.close_fn)(handle).into() };
 
-        result.into_io_result().map(|_| ())
+        let result = result.into_io_result().map(|_| ());
+        tracing::trace!(result = ?result);
+
+        result
     }
 }
 

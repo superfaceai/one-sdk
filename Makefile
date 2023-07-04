@@ -163,10 +163,10 @@ deps_host_py:
 build_host_py: ${CORE_WASM}
 	mkdir -p ${HOST_PY_ASSETS}
 	cp ${CORE_WASM} ${HOST_PY_ASSETS}/core.wasm
-	# TODO
+# TODO: build?
 
 test_host_py: ${CORE_WASM}
 	mkdir -p ${HOST_PY_ASSETS}
 	cp ${CORE_WASM} ${HOST_PY_ASSETS}/test-core.wasm
 	cd host/python; source venv/bin/activate; \
-	python3 -m unittest discover
+	PYTHONPATH=src python3 -m unittest discover tests/
