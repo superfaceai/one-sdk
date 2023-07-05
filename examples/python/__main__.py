@@ -20,5 +20,6 @@ try:
     print(f"RESULT: {r}")
 except Exception as e:
     print(f"ERROR: {e}")
-
-client.send_metrics_to_superface()
+    raise
+finally:
+    client.send_metrics_to_superface()

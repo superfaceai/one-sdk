@@ -1,11 +1,10 @@
 from typing import BinaryIO, Mapping, Optional, cast
 
-from collections import defaultdict
 from datetime import datetime
-import urllib.parse
-import http.client
+from collections import defaultdict
 
 import urllib3
+from urllib3.exceptions import MaxRetryError, NewConnectionError
 
 from one_sdk.handle_map import HandleMap
 from one_sdk.error import ErrorCode, HostError, WasiErrno, WasiError
@@ -94,45 +93,45 @@ class PythonFilesystem:
 			raise WasiError(WasiErrno.EINVAL) from e
 
 class HttpResponse(BinaryIO):
-	def __init__(self, connection, response):
-		self._connection = connection
+	def __init__(self, response):
 		self._response = response
 
 	def status(self) -> int:
 		return self._response.status
 	
+	# TODO: will be list[tuple[str, str]]
 	def headers(self) -> Mapping[str, list[str]]:
 		headers = defaultdict(list)
-		for (key, value) in self._response.getheaders():
-			headers[key.lower()].append(value)
-		
+		for (key, value) in self._response.headers.items():
+			headers[key].append(value)
+
 		return headers
 	
 	def body(self) -> BinaryIO:
 		return self
 
 	# take a shortcut and implement BinaryIO directly on this class
-	def read(self, count: Optional[int] = -1) -> bytes:		
+	def read(self, count: Optional[int] = None) -> bytes:		
 		return self._response.read(count)
 	
 	def close(self):
+		# TODO: if we don't need anything else here we can just return `self._response` in `self.body()`
 		self._response.close()
-		self._connection.close()
 class DeferredHttpResponse:
-	def __init__(self, connection, exception = None):
-		self._connection = connection
+	def __init__(self, response, exception = None):
+		self._response = response
 		self._exception = exception
 	
 	def resolve(self) -> HttpResponse:
 		if self._exception is not None:
 			raise self._exception
 		
-		return HttpResponse(self._connection, self._connection.getresponse())
+		return HttpResponse(self._response)
 
 class PythonNetwork:
-	# def __init__(self):
-	# 	self._manager = urllib3.PoolManager(num_pools = 3)
-	# 	self._retries = urllib3.Retry(connect = 2, read = 2, redirect = 3)
+	def __init__(self):
+		self._manager = urllib3.PoolManager(num_pools = 3)
+		self._retries = urllib3.Retry(connect = 2, read = 2, redirect = 3)
 
 	def fetch(
 		self,
@@ -141,41 +140,39 @@ class PythonNetwork:
 		headers: Mapping[str, list[str]],
 		body: Optional[bytes]
 	) -> DeferredHttpResponse:
-		# pool = self._manager.connection_from_url(url)
+		# TODO: catch InvalidUrl
 
-		# response = pool.urlopen(
-		# 	method,
-		# 	url,
-		# 	headers = None,
-		# 	retries = self._retries,
-		# 	redirect = True,
-		# 	preload_content = False,
-		# 	decode_content = True,
-		# 	release_conn = False,
-		# )
-
-		parsed_url = urllib.parse.urlparse(url) # TODO: catch InvalidUrl
-		connection_class = http.client.HTTPSConnection
-		if parsed_url.scheme == "http":
-			connection_class = http.client.HTTPConnection
-		connection = connection_class(parsed_url.netloc)
-		connection.set_debuglevel(1)
-
-		connection.putrequest(method, url)
+		pool = self._manager.connection_from_url(url)
+		headers_dict = urllib3.HTTPHeaderDict()
 		for (key, values) in headers.items():
-			connection.putheader(key, *values)
+			for value in values:
+				headers_dict.add(key, value)
 		
-		header_names = frozenset(k.lower() for k in headers.keys())
-		if body is not None and "content-length" not in header_names:
-			connection.putheader("content-length", str(len(body)))
-		
+		response = None
 		exception = None
 		try:
-			connection.endheaders(body)
-		except ConnectionRefusedError as err:
-			exception = HostError(ErrorCode.NetworkConnectionRefused, err.strerror)
+			response = pool.urlopen(
+				method,
+				url,
+				body,
+				headers = headers_dict,
+				retries = self._retries,
+				redirect = True,
+				preload_content = False,
+				decode_content = True,
+				release_conn = False
+			)
+		except MaxRetryError as err:
+			if isinstance(err.reason, NewConnectionError):
+				reason_str = str(err.reason) # yes, this is insane, the original exception just gets lost
+				if "[Errno 61] Connection refused" in reason_str:
+					exception = HostError(ErrorCode.NetworkConnectionRefused, "[Errno 61] Connection refused")
+				else:
+					exception = HostError(ErrorCode.NetworkError, f"{err}")
+			else:
+				exception = HostError(ErrorCode.NetworkError, f"{err}")
 		
-		return DeferredHttpResponse(connection, exception)
+		return DeferredHttpResponse(response, exception)
 
 class PythonPersistence:
 	def __init__(self, token: Optional[str] = None, superface_api_url: Optional[str] = None):
@@ -198,7 +195,7 @@ class PythonPersistence:
 			f"{self._insights_url}/batch",
 			"POST",
 			headers,
-			b"[abcd]"
+			("[" + ",".join(events) + "]").encode("utf-8")
 		).resolve()
 		response.close()
 	
