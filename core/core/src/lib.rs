@@ -28,6 +28,7 @@ extern "C" {
 
 #[no_mangle]
 #[export_name = "oneclient_core_setup"]
+#[cfg_attr(feature = "core_mock", allow(unreachable_code))]
 /// Initializes persistent core state.
 ///
 /// This function must not be called twice without calling teardown in between.
@@ -69,6 +70,7 @@ pub extern "C" fn __export_oneclient_core_setup() {
 
 #[no_mangle]
 #[export_name = "oneclient_core_teardown"]
+#[cfg_attr(feature = "core_mock", allow(unreachable_code))]
 /// Tears down persistent core state.
 ///
 /// This function must be called exactly once after calling core setup.
@@ -93,6 +95,7 @@ pub extern "C" fn __export_oneclient_core_teardown() {
 
 #[no_mangle]
 #[export_name = "oneclient_core_perform"]
+#[cfg_attr(feature = "core_mock", allow(unreachable_code))]
 /// Executes perform.
 ///
 /// Must be called after [__export_oneclient_core_setup] and before [__export_oneclient_core_teardown].

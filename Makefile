@@ -10,17 +10,15 @@ CORE_PROFILE=debug
 
 ifeq ($(CORE_MODE),default)
 	CORE_PHONY=1
-endif
-ifeq ($(CORE_MODE),docker)
+else ifeq ($(CORE_MODE),docker)
 	CORE_PHONY=1
 	CORE_DOCKER=1
+else ifneq ($(CORE_MODE),lax)
+$(error "CORE_MODE must be one of [default, docker, lax]")
 endif
 
 ifeq ($(CORE_PROFILE),release)
 	CORE_FLAGS=--release
-endif
-ifeq ($(CORE_PROFILE),test)
-	CORE_FLAGS=--features "core_mock"
 endif
 
 # WASI SDK
@@ -33,23 +31,18 @@ WASI_SDK_FOLDER=core/wasi-sdk-${WASI_SDK_VERSION}.0
 WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-${WASI_SDK_OS}.tar.gz"
 
 # Core
-CORE_DIST_FOLDER=core/dist
-CORE_BUILD=core/target/wasm32-wasi/${CORE_PROFILE}/oneclient_core.wasm
-CORE_WASM=${CORE_DIST_FOLDER}/core.wasm
-CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/core-async.wasm
+CORE_DIST=core/dist
+CORE_WASM=${CORE_DIST}/core.wasm
+CORE_ASYNCIFY_WASM=${CORE_DIST}/core-async.wasm
+# Test core
+TEST_CORE_WASM=${CORE_DIST}/test-core.wasm
+TEST_CORE_ASYNCIFY_WASM=${CORE_DIST}/test-core-async.wasm
+# Integration
 CORE_JS_ASSETS=core/core/assets/js
 CORE_JS_ASSETS_MAP_STD=${CORE_JS_ASSETS}/map_std.js
 CORE_JS_ASSETS_PROFILE_VALIDATOR=${CORE_JS_ASSETS}/profile_validator.js
-ifeq ($(CORE_PROFILE),test)
-	CORE_BUILD=core/target/wasm32-wasi/debug/oneclient_core.wasm
-	CORE_WASM=${CORE_DIST_FOLDER}/test-core.wasm
-	CORE_ASYNCIFY_WASM=${CORE_DIST_FOLDER}/test-core-async.wasm
-endif
-
-# Integration
 MAP_STD=integration/map-std/dist/map_std.js
 PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
-
 # Hosts
 HOST_JS_ASSETS=host/js/assets
 HOST_PY_ASSETS=host/python/assets
@@ -61,7 +54,7 @@ all: clean build
 # sadly neither yarn nor make can just diff the map-std code and figure out if it needs a rebuild
 # but maybe later we could hash (docker actually does it out of the box) or possibly use git?
 ifeq ($(CORE_PHONY),1)
-.PHONY: ${CORE_BUILD} ${MAP_STD} ${PROFILE_VALIDATOR}
+.PHONY: ${CORE_DIST} ${MAP_STD} ${PROFILE_VALIDATOR}
 endif
 
 deps: deps_core deps_host_py
@@ -73,25 +66,36 @@ clean: clean_core clean_integration clean_hosts
 ## CORE ##
 ##########
 ifeq ($(CORE_DOCKER),1)
-build_core_docker: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_DIST_FOLDER}
-	docker build ./core -o ${CORE_DIST_FOLDER}
-${CORE_WASM}: build_core_docker
-${CORE_ASYNCIFY_WASM}: build_core_docker
+${CORE_DIST}: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
+	mkdir -p ${CORE_DIST}
+	docker build ./core -o ${CORE_DIST}
+${CORE_WASM}: ${CORE_DIST}
+${CORE_ASYNCIFY_WASM}: ${CORE_DIST}
 else
 deps_core: ${WASI_SDK_FOLDER}
 	rustup target add wasm32-wasi
 	curl https://wasmtime.dev/install.sh -sSf | bash
 
-${CORE_BUILD}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
-	cd core && cargo build --package oneclient_core --target wasm32-wasi ${CORE_FLAGS}
+${CORE_DIST}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
+	mkdir -p ${CORE_DIST}
+	touch ${CORE_DIST}
 
-${CORE_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
+${CORE_WASM}: ${CORE_DIST}
+	cd core; cargo build --package oneclient_core --target wasm32-wasi ${CORE_FLAGS}
 	@echo 'Optimizing wasm...'
-	wasm-opt -Oz ${CORE_BUILD} --output ${CORE_WASM}
+	wasm-opt -Oz core/target/wasm32-wasi/${CORE_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
 
-${CORE_ASYNCIFY_WASM}: ${CORE_BUILD} ${CORE_DIST_FOLDER}
+${TEST_CORE_WASM}: ${CORE_DIST}
+	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock"
+	cp core/target/wasm32-wasi/debug/oneclient_core.wasm ${TEST_CORE_WASM}
+# TODO: do we want to run opt on test core?
+
+${CORE_ASYNCIFY_WASM}: ${CORE_DIST}
 	@echo 'Running asyncify...'
-	wasm-opt --strip-debug --strip-producers --strip-target-features -Oz --asyncify ${CORE_BUILD} --output ${CORE_ASYNCIFY_WASM}
+	wasm-opt --strip-debug --strip-producers --strip-target-features -Oz --asyncify ${CORE_WASM} --output ${CORE_ASYNCIFY_WASM}
+	
+${TEST_CORE_ASYNCIFY_WASM}: ${CORE_DIST}
+	wasm-opt --asyncify ${TEST_CORE_WASM} --output ${TEST_CORE_ASYNCIFY_WASM}
 
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
@@ -110,11 +114,8 @@ ${CORE_JS_ASSETS_PROFILE_VALIDATOR}: ${PROFILE_VALIDATOR}
 	mkdir -p ${CORE_JS_ASSETS}
 	cp ${PROFILE_VALIDATOR} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
 
-${CORE_DIST_FOLDER}:
-	mkdir -p ${CORE_DIST_FOLDER}
-
 clean_core:
-	rm -rf ${CORE_DIST_FOLDER} core/target
+	rm -rf ${CORE_DIST} core/target
 
 #################
 ## INTEGRATION ##
@@ -150,10 +151,8 @@ build_host_js: ${CORE_ASYNCIFY_WASM}
 	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS}/core-async.wasm
 	cd host/js && yarn install && yarn build	
 
-# TODO: this needs CORE_PROFILE=test - can we somehow force that when this target is run?
-test_host_js: ${CORE_ASYNCIFY_WASM}
-	mkdir -p ${HOST_JS_ASSETS}
-	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS}/test-core-async.wasm
+test_host_js: build_host_js ${TEST_CORE_ASYNCIFY_WASM}
+	cp ${TEST_CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS}/test-core-async.wasm
 	cd host/js && yarn test
 
 deps_host_py:
@@ -165,8 +164,7 @@ build_host_py: ${CORE_WASM}
 	cp ${CORE_WASM} ${HOST_PY_ASSETS}/core.wasm
 # TODO: build?
 
-test_host_py: ${CORE_WASM}
-	mkdir -p ${HOST_PY_ASSETS}
-	cp ${CORE_WASM} ${HOST_PY_ASSETS}/test-core.wasm
+test_host_py: build_host_py ${TEST_CORE_WASM}
+	cp ${TEST_CORE_WASM} ${HOST_PY_ASSETS}/test-core.wasm
 	cd host/python; source venv/bin/activate; \
 	PYTHONPATH=src python3 -m unittest discover tests/

@@ -1,4 +1,4 @@
-from typing import IO, Any, Callable, Mapping, Optional, TypeAlias, cast
+from typing import Any, BinaryIO, Callable, Mapping, Optional, TypeAlias, cast
 
 import os
 import os.path
@@ -83,7 +83,7 @@ class WasiApp:
 		wasi.inherit_stderr()
 		self._store.set_wasi(wasi)
 		
-		self.streams: HandleMap[IO[bytes]] = HandleMap()
+		self.streams: HandleMap[BinaryIO] = HandleMap()
 		self._requests: HandleMap[HttpRequest] = HandleMap()
 
 		# loaded when core is loaded
@@ -152,7 +152,8 @@ class WasiApp:
 			path = message["path"]
 			open_mode = WasiApp._handle_message_open_mode(message)
 			try:
-				file = open(path, open_mode)
+				# we always open the file in binary mode
+				file = cast(BinaryIO, open(path, open_mode))
 			except:
 				return { "kind": "err", "errno": WasiErrno.EINVAL } # TODO: figure out what exceptions this can throw and map them to Wasi errnos
 			

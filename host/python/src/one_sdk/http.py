@@ -1,12 +1,12 @@
 from collections import defaultdict
 
-from typing import IO, Mapping, Optional, Self, Tuple
+from typing import BinaryIO, Mapping, Optional, Self, Tuple
 import urllib.parse
 import http.client
 
 from one_sdk.error import ErrorCode, HostError, UnexpectedError
 
-class HttpRequest(IO[bytes]):
+class HttpRequest(BinaryIO):
 	def __init__(
 		self,
 		url: str,
@@ -30,7 +30,7 @@ class HttpRequest(IO[bytes]):
 		except ConnectionRefusedError as err:
 			self._deferred_exception = HostError(ErrorCode.NetworkConnectionRefused, err.strerror)
 	
-	def get_response(self) -> Tuple[int, Mapping[str, list[str]], Self]:
+	def get_response(self) -> Tuple[int, Mapping[str, list[str]], BinaryIO]:
 		if self._deferred_exception is not None:
 			raise self._deferred_exception
 
@@ -43,6 +43,7 @@ class HttpRequest(IO[bytes]):
 		
 		return (self._response.status, headers, self)
 
+	# take a shortcut and implement BinaryIO directly on this class
 	def read(self, count: Optional[int] = -1) -> bytes:
 		if self._response is None:
 			raise UnexpectedError("UnexpectedError", "Invalid HttpRequest state")

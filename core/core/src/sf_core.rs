@@ -32,7 +32,7 @@ type IoStream = sf_std::unstable::IoStream<StreamExchangeFfi>;
 ///
 /// If the perform ends successfully or with a maped error these fields will be available. If it ends with an exception some of these fields might not be available.
 #[derive(Debug, Default)]
-// #[allow(dead_code)] // TODO: until we use these fields
+#[allow(dead_code)] // TODO: until we use these fields
 struct PerformMetricsData<'a> {
     /// Profile id in format `<scope>.<name>`
     pub profile: Option<&'a str>,
@@ -88,7 +88,7 @@ enum ProfileCacheEntryError {
 }
 #[derive(Debug)]
 struct ProfileCacheEntry {
-    pub profile: String, // TODO: parsed
+    pub profile: String, // TODO: parsed so we can extract the version
     pub content_hash: String,
 }
 impl ProfileCacheEntry {

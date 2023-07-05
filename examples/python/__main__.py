@@ -1,13 +1,10 @@
-from host.python.src.superfaceai.one_sdk import OneClient
-# from superfaceai.one_sdk import OneClient
+from host.python.src.one_sdk import OneClient
+# from one_sdk import OneClient
 
 client = OneClient(
-    env = {
-        "ONESDK_DEV_LOG": "trace",
-        "ONESDK_CONFIG_CACHE_DURATION": "10"
-    },
     assets_path = "../examples/comlinks/src",
-    superface_api_url = "https://superface.dev"
+    superface_api_url = "https://superface.dev",
+    token = "sfs_x"
 )
 
 profile = client.get_profile("wasm-sdk/example")
@@ -20,6 +17,5 @@ try:
         security = { "basic_auth": { "username": "username", "password": "password" } }
     )
     print(f"RESULT: {r}")
-except e:
+except Exception as e:
     print(f"ERROR: {e}")
-
