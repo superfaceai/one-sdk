@@ -5,6 +5,7 @@ import os.path
 
 from one_sdk.app import WasiApp, SecurityValuesMap
 from one_sdk.error import UnexpectedError
+from one_sdk.platforrm import PythonFilesystem, PythonNetwork, PythonPersistence
 
 CORE_PATH = os.path.abspath(os.path.join(__file__, "../../../assets/core.wasm"))
 if "CORE_PATH" in os.environ:
@@ -18,11 +19,13 @@ class InternalClient:
 		superface_api_url: str
 	):
 		self._assets_path = assets_path
-		self._token = token
-		self._superface_api_url = superface_api_url
 		self._core_path = CORE_PATH
 		self._ready = False
-		self._app = WasiApp()
+		self._app = WasiApp(
+			PythonFilesystem(),
+			PythonNetwork(),
+			PythonPersistence(token, superface_api_url)
+		)
 
 	def resolve_profile_url(self, profile: str) -> str:
 		resolved_profile = profile.replace('/', '.')
@@ -90,6 +93,9 @@ class InternalClient:
 				self.destroy()
 				self.init()
 			raise
+	
+	def send_metrics(self):
+		self._app.send_metrics()
 
 class UseCase:
 	def __init__(self, internal: InternalClient, profile: "Profile", name: str):
@@ -149,3 +155,6 @@ class OneClient:
 	
 	def get_profile(self, name: str) -> Profile:
 		return Profile._load_local(self._internal, name)
+	
+	def send_metrics_to_superface(self):
+		self._internal.send_metrics()

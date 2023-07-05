@@ -1,15 +1,17 @@
 from typing import Any, BinaryIO, Callable, Mapping, Optional, TypeAlias, cast
 
 import struct
+from types import SimpleNamespace
 from dataclasses import dataclass
+import functools
 
 from wasmtime import Engine, Instance, Memory, Store, Module, Linker, WasiConfig
 import wasmtime
 
 from one_sdk.handle_map import HandleMap
 from one_sdk.sf_host import Ptr, Size, link as sf_host_link
-from one_sdk.error import HostError, ErrorCode, PerformError, UnexpectedError, UninitializedError, WasiErrno
-from one_sdk.http import HttpRequest
+from one_sdk.error import HostError, ErrorCode, PerformError, UnexpectedError, UninitializedError, WasiError, WasiErrno
+from one_sdk.platforrm import PythonFilesystem, PythonNetwork, PythonPersistence, DeferredHttpResponse, HttpResponse
 
 SecurityValuesMap: TypeAlias = Mapping[str, Mapping[str, str]]
 
@@ -62,7 +64,12 @@ class WasiApp:
 		error: Optional[PerformError] = None
 		exception: Optional[UnexpectedError] = None
 
-	def __init__(self):
+	def __init__(
+		self,
+		filesystem: PythonFilesystem,
+		network: PythonNetwork,
+		persistence: PythonPersistence
+	):
 		self._engine = Engine()
 		self._linker = Linker(self._engine)
 		self._store = Store(self._engine)
@@ -77,8 +84,13 @@ class WasiApp:
 		wasi.inherit_stderr()
 		self._store.set_wasi(wasi)
 		
-		self.streams: HandleMap[BinaryIO] = HandleMap()
-		self._requests: HandleMap[HttpRequest] = HandleMap()
+		self._streams: HandleMap[BinaryIO] = HandleMap()
+		self._requests: HandleMap[DeferredHttpResponse] = HandleMap()
+
+		# dependencies
+		self._filesystem = filesystem
+		self._network = network
+		self._persistence = persistence
 
 		# loaded when core is loaded
 		self._module: Optional[Module] = None
@@ -97,26 +109,6 @@ class WasiApp:
 			raise UninitializedError()
 
 		return self._memory_from_core(self._core)
-
-	@staticmethod
-	def _handle_message_open_mode(m) -> str:
-		mode = "b"
-
-		if m["create_new"] == True:
-			mode += "x"
-		elif m["create"] == True:
-			pass # no idea?
-
-		if m["truncate"] == True:
-			mode += "w"
-		elif m["append"] == True:
-			mode += "a"
-		elif m["write"] == True:
-			mode += "+"
-		elif m["read"] == True:
-			mode += "r"
-
-		return mode
 
 	def handle_message(self, message: Any) -> Any:
 		if self._perform_state is None:
@@ -143,19 +135,34 @@ class WasiApp:
 			self._perform_state.exception = UnexpectedError(message["exception"]["error_core"], message["exception"]["message"])
 			return { "kind": "ok" }
 		elif message["kind"] == "file-open":
-			path = message["path"]
-			open_mode = WasiApp._handle_message_open_mode(message)
 			try:
-				# we always open the file in binary mode
-				file = cast(BinaryIO, open(path, open_mode))
-			except:
-				return { "kind": "err", "errno": WasiErrno.EINVAL } # TODO: figure out what exceptions this can throw and map them to Wasi errnos
+				file_handle = self._filesystem.open(
+					message["path"],
+					create_new = message["create_new"],
+					create = message["create"],
+					truncate = message["truncate"],
+					append = message["append"],
+					write = message["write"],
+					read = message["read"]
+				)
+			except WasiError as e:
+				return { "kind": "err", "errno": e.errno }
 			
-			handle = self.streams.insert(file)
+			handle = self._streams.insert(
+				# anonymous class/object with read, write and close methods
+				cast(
+					BinaryIO,
+					SimpleNamespace(
+						read = functools.partial(self._filesystem.read, file_handle),
+						write = functools.partial(self._filesystem.write, file_handle),
+						close = functools.partial(self._filesystem.close, file_handle)
+					)
+				)
+			)
 			return { "kind": "ok", "stream": handle }
 		elif message["kind"] == "http-call":
 			try:
-				request = HttpRequest(
+				request = self._network.fetch(
 					message["url"],
 					message["method"],
 					message["headers"],
@@ -170,20 +177,41 @@ class WasiApp:
 			request = self._requests.remove(message["handle"])
 			if request is None:
 				return { "kind": "err", "error_code": ErrorCode.NetworkError, "message": "Invalid http call handle" }
-			
+
 			try:
-				status, headers, body_stream = request.get_response()
+				response = request.resolve()
 			except HostError as err:
 				return { "kind": "err", "error_code": err.code, "message": err.message }
 
 			return {
 				"kind": "ok",
-				"status": status,
-				"headers": headers,
-				"body_stream": self.streams.insert(body_stream)
+				"status": response.status(),
+				"headers": response.headers(),
+				"body_stream": self._streams.insert(response.body())
 			}
 		else:
 			return { "kind": "err", "error": f"Unknown message {message['kind']}" }
+	
+	def stream_read(self, handle: int, count: int) -> bytes:
+		stream = self._streams.get(handle)
+		if stream is None:
+			raise WasiError(WasiErrno.EBADF)
+		
+		return stream.read(count)
+
+	def stream_write(self, handle: int, data: bytes) -> int:
+		stream = self._streams.get(handle)
+		if stream is None:
+			raise WasiError(WasiErrno.EBADF)
+		
+		return stream.write(data)
+	
+	def stream_close(self, handle: int):
+		stream = self._streams.remove(handle)
+		if stream is None:
+			raise WasiError(WasiErrno.EBADF)
+		
+		stream.close()
 	
 	def load_core(self, wasm: bytes):
 		self._module = Module(self._engine, wasm)
@@ -257,6 +285,10 @@ class WasiApp:
 			try:
 				return fn(self._store, *args)
 			except Exception as e:
+				err_name = "UnexpectedError"
+				if isinstance(e, wasmtime.Trap):
+					err_name = "WebAssemblyRuntimeError"
+
 				if self._core is not None:
 					core = self._core
 					self._core = None
@@ -265,13 +297,9 @@ class WasiApp:
 						self._create_developer_dump(core)
 						self._send_metrics_on_panic(core)
 					except Exception as dump_e:
-						raise UnexpectedError("UnexpectedError", f"Error during dumping") from dump_e
-					
-				error_name = "UnexpectedError"
-				if isinstance(e, wasmtime.Trap):
-					error_name = "WebAssemblyRuntimeError"
+						raise UnexpectedError(err_name, f"Error during dumping") from dump_e
 				
-				raise UnexpectedError(error_name, "Error while executing WebAssembly") from e
+				raise UnexpectedError(err_name, "Error while executing WebAssembly") from e
 		
 		return wrapper
 	
@@ -304,16 +332,19 @@ class WasiApp:
 		events = self._get_tracing_events_by_arena(self._core, arena_pointer)
 		self._core.clear_metrics_fn()
 		
-		print("send_metrics", len(events))
+		if len(events) > 0:
+			self._persistence.persist_metrics(events)
 
 	def _send_metrics_on_panic(self, core: "WasiApp._AppCore"):
 		arena_pointer = core.get_metrics_fn()
 		events = self._get_tracing_events_by_arena(core, arena_pointer)
 		
-		print("_send_metrics_on_panic", len(events))
+		if len(events) > 0:
+			self._persistence.persist_metrics(events)
 
 	def _create_developer_dump(self, core: "WasiApp._AppCore"):
 		arena_pointer = core.get_devleoper_dump_fn()
 		events = self._get_tracing_events_by_arena(core, arena_pointer)
 		
-		print("_create_developer_dump", len(events))
+		if len(events) > 0:
+			self._persistence.persist_developer_dump(events)

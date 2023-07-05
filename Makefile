@@ -95,7 +95,7 @@ ${CORE_ASYNCIFY_WASM}: ${CORE_DIST}
 	wasm-opt --strip-debug --strip-producers --strip-target-features -Oz --asyncify ${CORE_WASM} --output ${CORE_ASYNCIFY_WASM}
 	
 ${TEST_CORE_ASYNCIFY_WASM}: ${CORE_DIST}
-	wasm-opt --asyncify ${TEST_CORE_WASM} --output ${TEST_CORE_ASYNCIFY_WASM}
+	wasm-opt -Oz --asyncify ${TEST_CORE_WASM} --output ${TEST_CORE_ASYNCIFY_WASM}
 
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core

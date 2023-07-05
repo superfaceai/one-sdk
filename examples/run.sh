@@ -9,7 +9,7 @@ MAKE_FLAGS=${2:-MODE=debug}
 case $1 in
 	node)
 		if [ "$MAKE_FLAGS" != nomake ]; then
-			cd ..
+			cd "$base/.."
 			make build_host_js $MAKE_FLAGS
 		fi
 		cd "$base"
@@ -18,7 +18,7 @@ case $1 in
 
 	cloudflare)
 		if [ "$MAKE_FLAGS" != nomake ]; then
-			cd ..
+			cd "$base/.."
 			make build_host_js $MAKE_FLAGS
 		fi
 		cd "$base/cloudflare_worker"
@@ -27,9 +27,12 @@ case $1 in
 	;;
 
 	python)
-		echo "TODO: Python host is currenly not up to date with the rest of the codebase"
-		# FIXME
-		python3 ./python "$CORE" "$MAP" $USECASE
+		if [ "$MAKE_FLAGS" != nomake ]; then
+			cd "$base/.."
+			make build_host_py $MAKE_FLAGS
+		fi
+		cd "$base"
+		PYTHONPATH=../host/python/src python3 ./python
 	;;
 
 	*)

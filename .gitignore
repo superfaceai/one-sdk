@@ -1,2 +1,3 @@
 workdir/
 .DS_Store
+.envrc

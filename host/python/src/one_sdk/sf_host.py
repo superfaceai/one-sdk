@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Tuple, TypeAlias
 if TYPE_CHECKING:
-	from one_sdk.internal import WasiApp
+	from one_sdk.app import WasiApp
 
 import sys
 import json
@@ -9,7 +9,7 @@ import functools
 from wasmtime import Linker, FuncType, ValType
 
 from one_sdk.handle_map import HandleMap
-from one_sdk.error import WasiErrno
+from one_sdk.error import WasiError, WasiErrno
 
 Ptr: TypeAlias = int
 Size: TypeAlias = int
@@ -68,41 +68,27 @@ def link(linker: Linker, app: "WasiApp"):
 		return _abi_ok(count)
 
 	def __export_stream_read(handle: int, out_ptr: Ptr, out_len: Size) -> AbiResult:
-		stream = app.streams.get(handle)
-		if stream is None:
-			return _abi_err(WasiErrno.EBADF)
-		
 		try:
-			read_count = app.memory.write_bytes(out_ptr, out_len, stream.read(out_len))
-		except ValueError:
-			# ValueError means the stream was closed, for which posix usually returns BADF
-			return _abi_err(WasiErrno.EBADF)
-		except:
-			return _abi_err(WasiErrno.EINVAL)
-
+			read_count = app.memory.write_bytes(out_ptr, out_len, app.stream_read(handle, out_len))
+		except WasiError as e:
+			return _abi_err(e.errno)
+		
 		return _abi_ok(read_count)
 	
 	def __export_stream_write(handle: int, in_ptr: Ptr, in_len: Size) -> AbiResult:
-		stream = app.streams.get(handle)
-		if stream is None:
-			return _abi_err(WasiErrno.EBADF)
-
 		try:
-			write_count = stream.write(app.memory.read_bytes(in_ptr, in_len))
-		except ValueError:
-			# ValueError means the stream was closed, for which posix usually returns BADF
-			return _abi_err(WasiErrno.EBADF)
-		except:
-			return _abi_err(WasiErrno.EINVAL)
+			write_count = app.stream_write(handle, app.memory.read_bytes(in_ptr, in_len))
+		except WasiError as e:
+			return _abi_err(e.errno)
 		
 		return _abi_ok(write_count)
 
 	def __export_stream_close(handle: int) -> AbiResult:
-		stream = app.streams.remove(handle)
-		if stream is None:
-			return _abi_err(WasiErrno.EBADF)
+		try:
+			app.stream_close(handle)
+		except WasiError as e:
+			return _abi_err(e.errno)
 		
-		stream.close()
 		return _abi_ok(WasiErrno.SUCCESS)
 	
 	linker.define_func(

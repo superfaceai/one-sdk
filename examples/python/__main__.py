@@ -1,10 +1,11 @@
-from host.python.src.one_sdk import OneClient
-# from one_sdk import OneClient
+import os
+
+from one_sdk import OneClient
 
 client = OneClient(
     assets_path = "../examples/comlinks/src",
     superface_api_url = "https://superface.dev",
-    token = "sfs_x"
+    token = os.getenv("ONESDK_TOKEN")
 )
 
 profile = client.get_profile("wasm-sdk/example")
@@ -19,3 +20,5 @@ try:
     print(f"RESULT: {r}")
 except Exception as e:
     print(f"ERROR: {e}")
+
+client.send_metrics_to_superface()
