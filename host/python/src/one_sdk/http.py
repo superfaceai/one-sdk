@@ -17,9 +17,11 @@ class HttpRequest(BinaryIO):
 		self._response = None
 		self._deferred_exception = None
 
-		self._connection = http.client.HTTPSConnection(
-			urllib.parse.urlparse(url).netloc
-		) # TODO: catch InvalidUrl
+		parsed_url = urllib.parse.urlparse(url) # TODO: catch InvalidUrl
+		connection_class = http.client.HTTPSConnection
+		if parsed_url.scheme == "http":
+			connection_class = http.client.HTTPConnection
+		self._connection = connection_class(parsed_url.netloc)
 
 		self._connection.putrequest(method, url)
 		for (key, values) in headers.items():

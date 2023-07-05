@@ -1,7 +1,5 @@
 from typing import Any, BinaryIO, Callable, Mapping, Optional, TypeAlias, cast
 
-import os
-import os.path
 import struct
 from dataclasses import dataclass
 
@@ -14,10 +12,6 @@ from one_sdk.error import HostError, ErrorCode, PerformError, UnexpectedError, U
 from one_sdk.http import HttpRequest
 
 SecurityValuesMap: TypeAlias = Mapping[str, Mapping[str, str]]
-
-CORE_PATH = os.path.abspath(os.path.join(__file__, "../../../assets/core.wasm"))
-if "CORE_PATH" in os.environ:
-	CORE_PATH = os.environ["CORE_PATH"]
 
 class WasiMemory:
 	"""Pointer to Wasi Memory - do not store this between calls to WASM as it might get invalidated"""
@@ -323,83 +317,3 @@ class WasiApp:
 		events = self._get_tracing_events_by_arena(core, arena_pointer)
 		
 		print("_create_developer_dump", len(events))
-
-class InternalClient:
-	def __init__(
-		self,
-		assets_path: str,
-		token: Optional[str],
-		superface_api_url: str
-	):
-		self._assets_path = assets_path
-		self._token = token
-		self._superface_api_url = superface_api_url
-		self._ready = False
-		self._app = WasiApp()
-	
-	def resolve_profile_url(self, profile: str) -> str:
-		resolved_profile = profile.replace('/', '.')
-		path = os.path.abspath(os.path.join(self._assets_path, f"{resolved_profile}.profile"))
-
-		return f"file://{path}"
-
-	def resolve_map_url(self, profile: str, provider: str) -> str:
-		resolved_profile = profile.replace('/', '.')
-		path = os.path.abspath(os.path.join(self._assets_path, f"{resolved_profile}.{provider}.map.js"))
-
-		return f"file://{path}"
-	
-	def resolve_provider_url(self, provider: str) -> str:
-		path = os.path.abspath(os.path.join(self._assets_path, f"{provider}.provider.json"))
-
-		return f"file://{path}"
-	
-	def init(self):
-		if self._ready:
-			return
-		
-		with open(CORE_PATH, "rb") as file:
-			self._app.load_core(file.read())
-		self._app.init()
-		self._ready = True
-	
-	def destroy(self):
-		if not self._ready:
-			return
-		
-		self._app.destroy()
-		self._ready = False
-	
-	def perform(
-		self,
-		profile: str,
-		provider: str,
-		usecase: str,
-		input: Any,
-		parameters: Mapping[str, str] = {},
-		security: Optional[SecurityValuesMap] = None
-	) -> Any:
-		if security is None:
-			security = dict()
-
-		self.init()
-
-		profile_url = self.resolve_profile_url(profile)
-		provider_url = self.resolve_provider_url(provider)
-		map_url = self.resolve_map_url(profile, provider)
-		
-		try:
-			return self._app.perform(
-				profile_url = profile_url,
-				provider_url = provider_url,
-				map_url = map_url,
-				usecase = usecase,
-				input = input,
-				parameters = parameters,
-				security = security
-			)
-		except UnexpectedError as e:
-			if e.name == "WebAssemblyRuntimeError":
-				self.destroy()
-				self.init()
-			raise
