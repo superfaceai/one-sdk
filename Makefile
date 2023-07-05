@@ -104,7 +104,7 @@ test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE
 	cd core && cargo test -- -- --nocapture
 endif
 
-build_core: ${CORE_WASM} ${CORE_ASYNCIFY_WASM}
+build_core: ${CORE_WASM} ${TEST_CORE_WASM} ${CORE_ASYNCIFY_WASM} ${TEST_CORE_ASYNCIFY_WASM}
 
 ${CORE_JS_ASSETS_MAP_STD}: ${MAP_STD}
 	mkdir -p ${CORE_JS_ASSETS}
