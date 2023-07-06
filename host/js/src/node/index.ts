@@ -15,7 +15,7 @@ import {
   UnexpectedError,
   WasiErrno,
   WasiError,
-  HostPlatform
+  Persistence
 } from '../common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 
@@ -125,7 +125,7 @@ class NodeNetwork implements Network {
   }
 }
 
-class NodePlatform implements HostPlatform {
+class NodePersistence implements Persistence {
   private readonly token: string | undefined;
   private readonly insightsUrl: string;
 
@@ -164,7 +164,7 @@ class NodePlatform implements HostPlatform {
     const fileName = `onesdk_devlog_dump_${timestamp}.txt`;
 
     // TOOD: where to create the dump?
-    await fs.writeFile(fileName, events.join('\n'));
+    await fs.writeFile(fileName, events.join(''));
   }
 }
 
@@ -214,7 +214,7 @@ class InternalClient {
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers(),
-      platform: new NodePlatform(options.token, options.superfaceApiUrl)
+      persistence: new NodePersistence(options.token, options.superfaceApiUrl)
     }, { metricsTimeout: 1000 });
   }
 

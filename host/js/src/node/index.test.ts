@@ -6,7 +6,10 @@ import { OneClient } from './index.js';
 import { UnexpectedError } from '../common/error.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const assetsPath = resolvePath(__dirname, '../../../../examples/comlinks/src');
+const clientOptions = {
+  assetsPath: resolvePath(__dirname, '../../../../examples/comlinks/src'),
+  superfaceApiUrl: 'https://superface.dev'
+};
 
 describe('OneClient', () => {
   describe('Basic use', () => {
@@ -32,7 +35,7 @@ describe('OneClient', () => {
     });
 
     test('basic use', async () => {
-      const client = new OneClient({ assetsPath });
+      const client = new OneClient(clientOptions);
 
       const profile = await client.getProfile('wasm-sdk/example');
       const result = await profile
@@ -50,7 +53,7 @@ describe('OneClient', () => {
     });
 
     test('concurrent requests', async () => {
-      const client = new OneClient({ assetsPath });
+      const client = new OneClient(clientOptions);
 
       const profile = await client.getProfile('wasm-sdk/example');
       const options = {
@@ -70,12 +73,12 @@ describe('OneClient', () => {
     });
 
     test('destroy without setup', async () => {
-      const client = new OneClient({ assetsPath });
+      const client = new OneClient(clientOptions);
       await expect(client.destroy()).resolves.not.toThrow();
     });
 
     test('panicked core', async () => {
-      const client = new OneClient({ assetsPath });
+      const client = new OneClient(clientOptions);
       (client as any).internal.corePath = resolvePath(__dirname, '../../assets/test-core-async.wasm');
 
       const profile = await client.getProfile('wasm-sdk/example');

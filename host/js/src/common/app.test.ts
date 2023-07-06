@@ -6,7 +6,7 @@ import { WASI } from 'wasi';
 
 import { App } from './app.js';
 import { UnexpectedError } from './error.js';
-import { FileSystem, HostPlatform, Network, TextCoder, Timers, WasiContext } from './interfaces.js';
+import { FileSystem, Persistence, Network, TextCoder, Timers, WasiContext } from './interfaces.js';
 
 
 class TestNetwork implements Network {
@@ -51,7 +51,7 @@ class TestTimers implements Timers {
   }
 }
 
-class TestPlatform implements HostPlatform {
+class TestPersistence implements Persistence {
   async persistMetrics(events: string[]): Promise<void> {}
   async persistDeveloperDump(events: string[]): Promise<void> {}
 }
@@ -66,7 +66,7 @@ describe('App', () => {
       fileSystem: new TestFileSystem(),
       textCoder: new TestCoder(),
       timers: new TestTimers(),
-      platform: new TestPlatform(),
+      persistence: new TestPersistence(),
     }, { metricsTimeout: 1000 });
 
     await app.loadCore(

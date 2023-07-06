@@ -1,6 +1,7 @@
 import type { TextCoder, AppContext } from './interfaces';
 import { HandleMap } from './handle_map.js';
 import { Asyncify, AsyncifyState } from './asyncify.js';
+import { WasiErrno } from './error.js';
 
 type AbiResult = number;
 type Ptr<T> = number;
@@ -12,11 +13,11 @@ function strace<A extends unknown[], R>(name: string, fn: Fn<A, R>, asyncify: As
     const result: any = fn(...args);
 
     // TODO: control this from variable
-    // if (asyncify.getState() === AsyncifyState.Normal) {
-    //   console.debug(`host: [strace] ${name}(${args}) = ${result}`);
-    // } else {
-    //   console.debug(`host: [strace] ${name}(${args}) = <async suspended (${result})>`);
-    // }
+    if (asyncify.getState() === AsyncifyState.Normal) {
+      console.debug(`host: [strace] ${name}(${args}) = ${result}`);
+    } else {
+      console.debug(`host: [strace] ${name}(${args}) = <async suspended (${result})>`);
+    }
 
     return result;
   }
@@ -78,13 +79,13 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
     app.memoryView.setInt32(ret_handle, messageHandle, true);
     return responseBytes.byteLength;
   }
-  function __export_message_exchange_retrieve(handle: number, out_ptr: number, out_len: number): AbiResult {
+  function __export_message_exchange_retrieve(handle: number, out_ptr: Ptr<8>, out_len: Size): AbiResult {
     const responseBytes = messageStore.remove(handle);
     if (responseBytes === undefined) {
-      return abi_err(1); // TODO: errors
+      return abi_err(WasiErrno.EBADF);
     }
     if (out_len < responseBytes.byteLength) {
-      return abi_err(2); // TODO: errors
+      return abi_err(WasiErrno.ERANGE);
     }
 
     const out = app.memoryBytes.subarray(out_ptr, out_ptr + out_len);
@@ -93,29 +94,29 @@ export function link(app: AppContext, textCoder: TextCoder, asyncify: Asyncify):
     return abi_ok(responseBytes.byteLength);
   }
 
-  async function __export_stream_read(handle: number, out_ptr: number, out_len: number): Promise<AbiResult> {
+  async function __export_stream_read(handle: number, out_ptr: Ptr<8>, out_len: Size): Promise<AbiResult> {
     const out = app.memoryBytes.subarray(out_ptr, out_ptr + out_len);
 
-    return app.readStream(handle, out).then(c => abi_ok(c), e => abi_err(e.errno ?? 1)); // TODO: errors
+    return app.readStream(handle, out).then(c => abi_ok(c), e => abi_err(e.errno));
   }
-  async function __export_stream_write(handle: number, in_ptr: number, in_len: number): Promise<AbiResult> {
+  async function __export_stream_write(handle: number, in_ptr: Ptr<8>, in_len: Size): Promise<AbiResult> {
     const data = app.memoryBytes.subarray(in_ptr, in_ptr + in_len);
 
-    return app.writeStream(handle, data).then(c => abi_ok(c), e => abi_err(e.errno ?? 1)); // TODO: errors
+    return app.writeStream(handle, data).then(c => abi_ok(c), e => abi_err(e.errno));
   }
   async function __export_stream_close(handle: number): Promise<AbiResult> {
-    await app.closeStream(handle).then(_ => abi_ok(0), e => abi_err(e.errno ?? 1)); // TODO: errors
+    await app.closeStream(handle).then(_ => abi_ok(0), e => abi_err(e.errno));
 
     return abi_ok(0);
   }
 
   return {
-    sf_host_unstable: strace_module('sf_host_unstable', {
+    sf_host_unstable: {
       message_exchange: asyncify.wrapImport(__export_message_exchange, 0),
       message_exchange_retrieve: __export_message_exchange_retrieve,
       stream_read: asyncify.wrapImport(__export_stream_read, 0),
       stream_write: asyncify.wrapImport(__export_stream_write, 0),
       stream_close: asyncify.wrapImport(__export_stream_close, 0)
-    }, asyncify)
+    }
   }
 }
