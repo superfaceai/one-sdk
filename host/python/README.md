@@ -67,7 +67,48 @@ The final structure should look like this:
 
 ## Use
 
-TODO
+Create `__main__.py` file with following content and update:
+
+```py
+import os
+
+from one_sdk import OneClient
+
+client = OneClient()
+
+profile = client.get_profile("<profileName>")
+use_case = profile.get_usecase("<usecaseName>")
+try:
+    r = use_case.perform(
+        {
+            # Input parameters as defined in profile:
+            '<key>': '<value>'
+        },
+        provider = "<providerName>",
+        # Provider specific integration parameters:
+        parameters = {
+            '<integrationParameterName>': '<integrationParameterValue>'
+        },
+        security = { 
+            # Provider specific security values:
+            '<securityValueId>': {
+                # Security values as described in provider or on profile page
+            }
+        }
+    )
+    print(f"RESULT: {r}")
+except Exception as e:
+    print(f"ERROR: {e}")
+    raise
+finally:
+    client.send_metrics_to_superface()
+```
+
+Then run the script with:
+
+```shell
+node --experimental-wasi-unstable-preview1 index.mjs
+```
 
 ## License
 

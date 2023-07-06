@@ -69,7 +69,7 @@ The final structure should look like this:
 
 ## Use in Node.js
 
-Create `index.mjs` file with following content and update 
+Create `index.mjs` file with following content and update:
 
 ```js
 import { OneClient } from '@superfaceai/one-sdk';
