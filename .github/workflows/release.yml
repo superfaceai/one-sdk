@@ -164,6 +164,11 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: "3.x"
+    # Donwload core wasm
+    - uses: actions/download-artifact@v3
+      with:
+        name: core-wasm
+        path: host/python/assets
     - name: Install Python tools
       run: python -m pip install build toml-cli
     # Copy LICENSE
