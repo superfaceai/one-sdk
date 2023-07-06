@@ -157,7 +157,7 @@ test_host_js: build_host_js ${TEST_CORE_ASYNCIFY_WASM}
 
 deps_host_py:
 	cd host/python; test -d venv || python3 -m venv venv; source venv/bin/activate; \
-	python3 -m pip install -r requirements.txt
+	python3 -m pip install .
 
 build_host_py: ${CORE_WASM}
 	mkdir -p ${HOST_PY_ASSETS}
