@@ -4,7 +4,6 @@ from datetime import datetime
 from collections import defaultdict
 
 import urllib3
-from urllib3.connection import NameResolutionError
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 
 from one_sdk.handle_map import HandleMap
