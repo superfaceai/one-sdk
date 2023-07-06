@@ -88,7 +88,6 @@ ${CORE_WASM}: ${CORE_DIST}
 ${TEST_CORE_WASM}: ${CORE_DIST}
 	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock"
 	cp core/target/wasm32-wasi/debug/oneclient_core.wasm ${TEST_CORE_WASM}
-# TODO: do we want to run opt on test core?
 
 ${CORE_ASYNCIFY_WASM}: ${CORE_DIST}
 	@echo 'Running asyncify...'
