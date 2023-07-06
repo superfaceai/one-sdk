@@ -4,6 +4,7 @@ from datetime import datetime
 from collections import defaultdict
 
 import urllib3
+from urllib3.connection import NameResolutionError
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 
 from one_sdk.handle_map import HandleMap
@@ -141,8 +142,6 @@ class PythonNetwork:
 		body: Optional[bytes]
 	) -> DeferredHttpResponse:
 		# TODO: catch InvalidUrl
-
-		pool = self._manager.connection_from_url(url)
 		headers_dict = urllib3.HTTPHeaderDict()
 		for (key, values) in headers.items():
 			for value in values:
@@ -151,24 +150,27 @@ class PythonNetwork:
 		response = None
 		exception = None
 		try:
-			response = pool.urlopen(
+			response = self._manager.urlopen(
 				method,
 				url,
-				body,
+				True,
+				body = body,
 				headers = headers_dict,
-				retries = self._retries,
-				redirect = True,
+				retries = None,
 				preload_content = False,
 				decode_content = True,
-				release_conn = False
+				release_conn = False,
+				assert_same_host = False
 			)
 		except MaxRetryError as err:
 			if isinstance(err.reason, NewConnectionError):
 				reason_str = str(err.reason) # yes, this is insane, the original exception just gets lost
 				if "[Errno 61] Connection refused" in reason_str:
 					exception = HostError(ErrorCode.NetworkConnectionRefused, "[Errno 61] Connection refused")
+				elif "[Errno 8] nodename nor servname provided, or not known" in reason_str:
+					exception = HostError(ErrorCode.NetworkHostNotFound, "[Errno 8] nodename nor servname provided, or not known")
 				else:
-					exception = HostError(ErrorCode.NetworkError, f"{err}")
+					exception = HostError(ErrorCode.NetworkError, f"{err}")				
 			else:
 				exception = HostError(ErrorCode.NetworkError, f"{err}")
 		
