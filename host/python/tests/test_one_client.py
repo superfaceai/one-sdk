@@ -38,7 +38,7 @@ class TestOneClient(unittest.TestCase):
 
 	def test_panicked_core(self):
 		client = OneClient(assets_path = ASSETS_PATH, superface_api_url = "superface.localhost")
-		client._internal._core_path = os.path.abspath(os.path.join(__file__, "../../assets/test-core.wasm"))
+		client._internal._core_path = os.path.abspath(os.path.join(__file__, "../../src/one_sdk/assets/test-core.wasm"))
 
 		profile = client.get_profile("wasm-sdk/example")
 		self.assertRaises(

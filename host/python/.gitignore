@@ -1,6 +1,6 @@
 __pycache__
+/src/one_sdk/assets
 /venv
-/assets
 /build
 /dist
 /src/*.egg-info

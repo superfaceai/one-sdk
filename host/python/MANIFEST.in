@@ -1,1 +1,1 @@
-include assets/core.wasm
+include src/one_sdk/assets/core.wasm

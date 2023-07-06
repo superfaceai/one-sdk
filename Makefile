@@ -46,7 +46,7 @@ MAP_STD=integration/map-std/dist/map_std.js
 PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
 # Hosts
 HOST_JS_ASSETS=host/js/assets
-HOST_PY_ASSETS=host/python/assets
+HOST_PY_ASSETS=host/python/src/one_sdk/assets
 
 all: clean build
 
