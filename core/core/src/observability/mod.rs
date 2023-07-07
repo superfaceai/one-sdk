@@ -160,6 +160,8 @@ unsafe fn set_return_arena_from(buffer: &impl TracingEventBuffer) -> Ptr<[FatPoi
 /// The second one will point from the beginning buffer up to its tail. The second pointer may be null or have zero length.
 /// Each metric is a UTF-8 encoded JSON string and is terminated by a null byte.
 pub extern "C" fn __export_oneclient_core_get_metrics() -> Ptr<[FatPointer; 2]> {
+    tracing::debug!("Getting metrics buffer");
+
     unsafe {
         match METRICS_BUFFER {
             Some(ref b) => set_return_arena_from(b.lock().deref()),
@@ -174,6 +176,8 @@ pub extern "C" fn __export_oneclient_core_get_metrics() -> Ptr<[FatPointer; 2]> 
 ///
 /// This should be called after [__export_oneclient_core_get_metrics] is called and the metrics are processed.
 pub extern "C" fn __export_oneclient_core_clear_metrics() {
+    tracing::trace!("Clearing metrics buffer");
+
     unsafe {
         if let Some(ref buffer) = METRICS_BUFFER {
             buffer.lock().clear();
