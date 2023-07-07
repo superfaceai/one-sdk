@@ -29,7 +29,7 @@ on:
         options:
         - js
         - python
-        # - all # TODO: how to handle changelog, pushing to main branch
+        - all
 
 jobs:
   core:
@@ -82,6 +82,7 @@ jobs:
         with:
           name: core-wasm
           path: core/dist/core.wasm
+      # TODO: Changelog, commit taggin ands GitHub release 
 
   host-js:
     needs: [core]
@@ -124,29 +125,44 @@ jobs:
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
       run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ steps.release-level.outputs.RELEASE_VERSION }} --tag ${{ steps.release-level.outputs.RELEASE_TAG }}
+    # Changelog
+    - name: Update changelog
+      uses: superfaceai/release-changelog-action@v1
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+      with:
+        path-to-changelog: host/js/CHANGELOG.md
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        operation: release
     # Commit release changes
     - name: Git configuration
       run: |
         git config --global user.email "bot@superface.ai"
         git config --global user.name "GitHub Actions release workflow"
-    - name: Commit package.kson, VERSION and create git tag
+    - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
       working-directory: host/js
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         printf "${{ steps.release-version.outputs.RELEASE_VERSION }}" >VERSION
-        git add package.json VERSION
+        git add package.json VERSION CHANGELOG.md
         git commit -m "chore: release host/js ${{ steps.release-version.outputs.RELEASE_VERSION }}"
         git tag "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
-        git log
-        git tag
-        # git push origin --tags
+        git push origin --tags
     # Create GitHub Release
+    - name: Get release version changelog
+      id: get-changelog
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+      uses: superfaceai/release-changelog-action@v1
+      with:
+        path-to-changelog: CHANGELOG.md
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        operation: read
     - name: Update GitHub release documentation
       uses: softprops/action-gh-release@v1
       if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
       with:
         tag_name: "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        body: ${{ steps.get-changelog.outputs.changelog }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -197,28 +213,43 @@ jobs:
         user: __token__
         password: ${{ secrets.PYPI_TEST_API_TOKEN }}
         verbose: true
+    # Changelog
+    - name: Update changelog
+      uses: superfaceai/release-changelog-action@v1
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+      with:
+        path-to-changelog: host/python/CHANGELOG.md
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        operation: release
     # Commit release changes
     - name: Git configuration
       run: |
         git config --global user.email "bot@superface.ai"
         git config --global user.name "GitHub Actions release workflow"
-    - name: Commit pyproject.toml, VERSION and create git tag
+    - name: Commit pyproject.toml, VERSION, CHANGELOG.md and create git tag
       working-directory: host/python
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         printf "${{ steps.release-version.outputs.RELEASE_VERSION }}" >VERSION
-        git add pyproject.toml VERSION
+        git add pyproject.toml VERSION CHANGELOG.md
         git commit -m "chore: release host/python ${{ steps.release-version.outputs.RELEASE_VERSION }}"
         git tag "python-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
-        git log
-        git tag
-        # git push origin --tags
-    # Create GitHub release
+        git push origin --tags
+    # Create GitHub Release
+    - name: Get release version changelog
+      id: get-changelog
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+      uses: superfaceai/release-changelog-action@v1
+      with:
+        path-to-changelog: CHANGELOG.md
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        operation: read
     - name: Update GitHub release documentation
       uses: softprops/action-gh-release@v1
       if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
       with:
-        tag_name: "v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        tag_name: "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        body: ${{ steps.get-changelog.outputs.changelog }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
