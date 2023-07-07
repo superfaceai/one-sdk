@@ -146,6 +146,7 @@ jobs:
         git add package.json VERSION CHANGELOG.md
         git commit -m "chore: release host/js ${{ steps.release-version.outputs.RELEASE_VERSION }}"
         git tag "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        git push origin
         git push origin --tags
     # Create GitHub Release
     - name: Get release version changelog
@@ -231,6 +232,7 @@ jobs:
         git add pyproject.toml VERSION CHANGELOG.md
         git commit -m "chore: release host/python ${{ steps.release-version.outputs.RELEASE_VERSION }}"
         git tag "python-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        git push origin
         git push origin --tags
     # Create GitHub Release
     - name: Get release version changelog
