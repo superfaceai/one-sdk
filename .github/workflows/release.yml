@@ -209,10 +209,8 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         packages-dir: host/python/dist
-        repository-url: https://test.pypi.org/legacy/
         user: __token__
-        password: ${{ secrets.PYPI_TEST_API_TOKEN }}
-        verbose: true
+        password: ${{ secrets.PYPI_API_TOKEN }}
     # Changelog
     - name: Update changelog
       uses: superfaceai/release-changelog-action@v1
