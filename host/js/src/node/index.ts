@@ -193,8 +193,6 @@ export type ClientPerformOptions = {
 
 class InternalClient {
   public readonly assetsPath: string = resolvePath(process.cwd(), ASSETS_FOLDER);
-  private readonly token: string | undefined;
-  private readonly insightsUrl: string = 'https://superface.ai/insights/sdk_event'
 
   private corePath: string;
   private app: App;

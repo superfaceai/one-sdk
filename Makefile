@@ -157,7 +157,7 @@ test_host_js: build_host_js ${TEST_CORE_ASYNCIFY_WASM}
 
 deps_host_py:
 	cd host/python; test -d venv || python3 -m venv venv; source venv/bin/activate; \
-	python3 -m pip install .
+	python3 -m pip install -e .
 
 build_host_py: ${CORE_WASM}
 	mkdir -p ${HOST_PY_ASSETS}
@@ -167,4 +167,4 @@ build_host_py: ${CORE_WASM}
 test_host_py: build_host_py ${TEST_CORE_WASM}
 	cp ${TEST_CORE_WASM} ${HOST_PY_ASSETS}/test-core.wasm
 	cd host/python; source venv/bin/activate; \
-	PYTHONPATH=src python3 -m unittest discover tests/
+	python3 -m unittest discover tests/
