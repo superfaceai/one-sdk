@@ -2,7 +2,7 @@ import { Asyncify } from './asyncify.js';
 import { HandleMap } from './handle_map.js';
 
 import { PerformError, UnexpectedError, UninitializedError, WasiErrno, WasiError } from './error.js';
-import { AppContext, FileSystem, Network, TextCoder, Timers, WasiContext, HostPlatform } from './interfaces.js';
+import { AppContext, FileSystem, Network, TextCoder, Timers, WasiContext, Persistence } from './interfaces.js';
 import { SecurityValuesMap } from './security.js';
 import * as sf_host from './sf_host.js';
 
@@ -138,7 +138,7 @@ export class App implements AppContext {
   private readonly network: Network;
   private readonly fileSystem: FileSystem;
   private readonly timers: Timers;
-  private readonly hostPlatform: HostPlatform;
+  private readonly persistence: Persistence;
 
   private readonly streams: HandleMap<Stream>;
   private readonly requests: HandleMap<Promise<Response>>;
@@ -165,14 +165,14 @@ export class App implements AppContext {
   };
 
   constructor(
-    dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers, platform: HostPlatform },
+    dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers, persistence: Persistence },
     options: { metricsTimeout?: number }
   ) {
     this.textCoder = dependencies.textCoder;
     this.network = dependencies.network;
     this.fileSystem = dependencies.fileSystem;
     this.timers = dependencies.timers;
-    this.hostPlatform = dependencies.platform;
+    this.persistence = dependencies.persistence;
     this.streams = new HandleMap();
     this.requests = new HandleMap();
     this.metricsState = {
@@ -234,6 +234,7 @@ export class App implements AppContext {
     if (this.core !== undefined) {
       await this.sendMetrics();
       return this.core.withLock(core => core.teardownFn());
+      // TODO: should there be a this.core = undefined here?
     }
   }
 
@@ -256,28 +257,17 @@ export class App implements AppContext {
         this.performState = { profileUrl, providerUrl, mapUrl, usecase, input, parameters, security };
         await core.performFn();
 
-        if (this.performState.result !== undefined) {
-          const result = this.performState.result;
-          this.performState = undefined;
-
-          return result;
+        const state = this.performState;
+        this.performState = undefined;
+        if (state.exception !== undefined) {
+          throw state.exception;
         }
 
-        if (this.performState.error !== undefined) {
-          const err = this.performState.error;
-          this.performState = undefined;
-
-          throw err;
+        if (state.error !== undefined) {
+          throw state.error;
         }
 
-        if (this.performState.exception !== undefined) {
-          const exception = this.performState.exception;
-          this.performState = undefined;
-
-          throw exception;
-        }
-
-        throw new UnexpectedError('UnexpectedError', 'Unexpected perform state');
+        return state.result;
       }
     );
   }
@@ -310,7 +300,7 @@ export class App implements AppContext {
 
       case 'file-open': {
         try {
-          const handle = await this.fileSystem.open(message.path, {
+          const file_handle = await this.fileSystem.open(message.path, {
             createNew: message.create_new,
             create: message.create,
             truncate: message.truncate,
@@ -318,12 +308,12 @@ export class App implements AppContext {
             write: message.write,
             read: message.read
           });
-          const res = this.streams.insert({
-            read: this.fileSystem.read.bind(this.fileSystem, handle),
-            write: this.fileSystem.write.bind(this.fileSystem, handle),
-            close: this.fileSystem.close.bind(this.fileSystem, handle)
+          const handle = this.streams.insert({
+            read: this.fileSystem.read.bind(this.fileSystem, file_handle),
+            write: this.fileSystem.write.bind(this.fileSystem, file_handle),
+            close: this.fileSystem.close.bind(this.fileSystem, file_handle)
           });
-          return { kind: 'ok', stream: res };
+          return { kind: 'ok', stream: handle };
         } catch (error: any) {
           return { kind: 'err', errno: error.errno };
         }
@@ -340,7 +330,7 @@ export class App implements AppContext {
         }
 
         try {
-          const request = this.network.fetch(message.url, requestInit);
+          const request: Promise<Response> = this.network.fetch(message.url, requestInit);
           return { kind: 'ok', handle: this.requests.insert(request) };
         } catch (error: any) {
           return { kind: 'err', error_code: error.name, message: error.message };
@@ -401,6 +391,13 @@ export class App implements AppContext {
       try {
         return await fn(...args);
       } catch (err: unknown) {
+        let errName = 'UnexpectedError';
+        let errMessage = `${err}`;
+        if (err instanceof WebAssembly.RuntimeError) {
+          errName = 'WebAssemblyRuntimeError';
+          errMessage = err.message;
+        }
+
         // in case we got here while already attempting to dump during an error, this condition prevents recursion
         if (this.core !== undefined) {
           const core = this.core.unsafeValue;
@@ -411,15 +408,11 @@ export class App implements AppContext {
             await this.createDeveloperDump(core);
             await this.sendMetricsOnPanic(core);
           } catch (dumpErr: unknown) {
-            throw new UnexpectedError('UnexpectedError', `${dumpErr} during dumping because of ${err}`);
+            throw new UnexpectedError(errName, `${dumpErr} during dumping because of ${errMessage}`);
           }
         }
 
-        if (err instanceof WebAssembly.RuntimeError) {
-          throw new UnexpectedError('WebAssemblyRuntimeError', `${err.message}`,);
-        }
-
-        throw new UnexpectedError('UnexpectedError', `${err}`);
+        throw new UnexpectedError(errName, errMessage);
       }
     }
   }
@@ -483,7 +476,9 @@ export class App implements AppContext {
       return events;
     });
 
-    return this.hostPlatform.persistMetrics(events);
+    if (events.length > 0) {
+      return this.persistence.persistMetrics(events);
+    }
   }
 
   /** The intended use is after the core has panicked. */
@@ -491,13 +486,17 @@ export class App implements AppContext {
     const arenaPointer = await core.getMetricsFn();
     const events = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
 
-    return this.hostPlatform.persistMetrics(events);
+    if (events.length > 0) {
+      return this.persistence.persistMetrics(events);
+    }
   }
   /** The intended use is after the core has panicked. */
   private async createDeveloperDump(core: AppCore) {
     const arenaPointer = await core.getDeveloperDumpFn();
     const events = this.getTracingEventsByArena(core.instance.exports.memory as WebAssembly.Memory, arenaPointer);
 
-    return this.hostPlatform.persistDeveloperDump(events);
+    if (events.length > 0) {
+      return this.persistence.persistDeveloperDump(events);
+    }
   }
 }

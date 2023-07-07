@@ -7,7 +7,7 @@ export { PerformError, UnexpectedError } from '../common/error.js';
 
 // @ts-ignore
 import coreModule from '../assets/core-async.wasm';
-import { ErrorCode, HostError, WasiErrno, WasiError, HostPlatform } from '../common/index.js';
+import { ErrorCode, HostError, WasiErrno, WasiError, Persistence } from '../common/index.js';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -207,7 +207,7 @@ class CfwWasiCompat implements WasiContext {
     return 0; // SUCCESS
   }
 }
-class CfwPlatform implements HostPlatform {
+class CfwPersistence implements Persistence {
   private readonly token: string | undefined;
   private readonly insightsUrl: string;
   
@@ -275,7 +275,7 @@ class InternalClient {
       textCoder: new CfwTextCoder(),
       timers: new CfwTimers(),
       network: new CfwNetwork(),
-      platform: new CfwPlatform(options.token, options.superfaceApiUrl)
+      persistence: new CfwPersistence(options.token, options.superfaceApiUrl)
     }, { metricsTimeout: 0 });
   }
 
