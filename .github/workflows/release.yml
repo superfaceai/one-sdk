@@ -124,7 +124,7 @@ jobs:
       working-directory: host/js
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
-      run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ steps.release-level.outputs.RELEASE_VERSION }} --tag ${{ steps.release-level.outputs.RELEASE_TAG }}
+      run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ steps.release-version.outputs.RELEASE_VERSION }} --tag ${{ steps.release-level.outputs.RELEASE_TAG }}
     # Changelog
     - name: Update changelog
       uses: superfaceai/release-changelog-action@v1
