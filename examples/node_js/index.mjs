@@ -24,7 +24,7 @@ async function main() {
   const client = new OneClient({
     assetsPath: '../examples/comlinks/src',
     superfaceApiUrl: 'https://superface.dev',
-    token: process.env["ONESDK_TOKEN"]
+    token: process.env.ONESDK_TOKEN
   });
   const profile = await client.getProfile('wasm-sdk/example');
   const result = await profile
