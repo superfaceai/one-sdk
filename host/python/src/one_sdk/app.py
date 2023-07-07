@@ -11,7 +11,7 @@ import wasmtime
 from one_sdk.handle_map import HandleMap
 from one_sdk.sf_host import Ptr, Size, link as sf_host_link
 from one_sdk.error import HostError, ErrorCode, PerformError, UnexpectedError, UninitializedError, WasiError, WasiErrno
-from one_sdk.platforrm import PythonFilesystem, PythonNetwork, PythonPersistence, DeferredHttpResponse, HttpResponse
+from one_sdk.platform import PythonFilesystem, PythonNetwork, PythonPersistence, DeferredHttpResponse, HttpResponse
 
 SecurityValuesMap: TypeAlias = Mapping[str, Mapping[str, str]]
 

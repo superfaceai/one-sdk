@@ -13,7 +13,7 @@ dependencies = [
   "charset-normalizer ~= 3.1.0",
   "idna ~= 3.4",
   "urllib3 ~= 2.0.3",
-  "wasmtime ~= 9.0.0"
+  "wasmtime ~= 10.0.0"
 ]
 
 [project.urls]
