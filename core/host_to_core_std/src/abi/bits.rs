@@ -32,6 +32,11 @@ impl<T> From<*mut T> for Ptr<T> {
         Self(value as usize, std::marker::PhantomData)
     }
 }
+impl<T> std::fmt::Debug for Ptr<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<{}>0x{:X}", std::any::type_name::<T>(), self.0)
+    }
+}
 
 /// ABI `size_t`-sized type.
 ///

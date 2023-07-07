@@ -60,11 +60,6 @@ jobs:
       - name: Run tests
         working-directory: core
         run: cargo test
-      # Core build for Host's tests
-      - name: Run make to build core
-        env:
-          CARGO_INCREMENTAL: "0" # disable incremental to reduce load on the cache
-        run: make build_core CORE_PROFILE=test OS=${{ runner.os }}
       - name: Upload artifact test-core-async.wasm
         uses: actions/upload-artifact@v3
         with:
