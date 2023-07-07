@@ -19,6 +19,7 @@ endif
 
 ifeq ($(CORE_PROFILE),release)
 	CORE_FLAGS=--release
+	WASM_OPT_FLAGS=--strip-debug --strip-producers
 endif
 
 # WASI SDK
@@ -83,18 +84,18 @@ ${CORE_DIST}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROF
 ${CORE_WASM}: ${CORE_DIST}
 	cd core; cargo build --package oneclient_core --target wasm32-wasi ${CORE_FLAGS}
 	@echo 'Optimizing wasm...'
-	wasm-opt -Oz core/target/wasm32-wasi/${CORE_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
+	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CORE_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
 
 ${TEST_CORE_WASM}: ${CORE_DIST}
 	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock"
 	cp core/target/wasm32-wasi/debug/oneclient_core.wasm ${TEST_CORE_WASM}
 
-${CORE_ASYNCIFY_WASM}: ${CORE_DIST}
+${CORE_ASYNCIFY_WASM}: ${CORE_WASM}
 	@echo 'Running asyncify...'
-	wasm-opt --strip-debug --strip-producers --strip-target-features -Oz --asyncify ${CORE_WASM} --output ${CORE_ASYNCIFY_WASM}
+	wasm-opt -Oz ${WASM_OPT_FLAGS} --asyncify ${CORE_WASM} --output ${CORE_ASYNCIFY_WASM}
 	
-${TEST_CORE_ASYNCIFY_WASM}: ${CORE_DIST}
-	wasm-opt -Oz --asyncify ${TEST_CORE_WASM} --output ${TEST_CORE_ASYNCIFY_WASM}
+${TEST_CORE_ASYNCIFY_WASM}: ${TEST_CORE_WASM}
+	wasm-opt -Os --asyncify ${TEST_CORE_WASM} --output ${TEST_CORE_ASYNCIFY_WASM}
 
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
