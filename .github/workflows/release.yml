@@ -22,6 +22,14 @@ on:
         - beta
         - rc
         - stable
+      host:
+        description: "Which host package to release"
+        required: true
+        type: choice
+        options:
+        - js
+        - python
+        - all
 
 jobs:
   core:
@@ -74,22 +82,12 @@ jobs:
         with:
           name: core-wasm
           path: core/dist/core.wasm
-      # resolve release version
-      - name: Resolve release level
-        id: release-level
-        run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
-      - name: Resolve release version
-        id: release-version
-        run: scripts/release-version.sh ./VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
-    outputs:
-      RELEASE_LEVEL: ${{ steps.release-level.outputs.RELEASE_LEVEL }}
-      RELEASE_PREID: ${{ steps.release-level.outputs.RELEASE_PREID }}
-      RELEASE_TAG: ${{ steps.release-level.outputs.RELEASE_TAG }}
-      RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+      # TODO: Changelog, commit taggin ands GitHub release 
 
   host-js:
     needs: [core]
     runs-on: ubuntu-latest
+    if: inputs.host == 'js' || inputs.host == 'all'
     steps:
     # checkout
     - uses: actions/checkout@v3
@@ -114,67 +112,140 @@ jobs:
       run: |
         yarn install --frozen-lockfile
         yarn build
+    # resolve release version
+    - name: Resolve release level
+      id: release-level
+      run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
+    - name: Resolve release version
+      id: release-version
+      run: scripts/release-version.sh ./host/js/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
     # publish and push git
     - name: Publish
       working-directory: host/js
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
-      run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.core.outputs.RELEASE_VERSION }} --tag ${{ needs.core.outputs.RELEASE_TAG }}
-    - name: Commit package.json changes
-      working-directory: host/js
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        git add package.json
-        git commit -m "chore: release host/js ${{ needs.core.outputs.RELEASE_VERSION }}"
-        git push origin
-
-  # TODO: additional hosts
-
-  github-release:
-    needs: [core, host-js]
-    runs-on: ubuntu-latest
-    steps:
-    # checkout
-    - uses: actions/checkout@v3
+      run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ steps.release-level.outputs.RELEASE_VERSION }} --tag ${{ steps.release-level.outputs.RELEASE_TAG }}
+    # Changelog
+    - name: Update changelog
+      uses: superfaceai/release-changelog-action@v1
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
       with:
-        # we set the ref here so that it does NOT get the commit hash from the context, which causes it to miss the commits pushed in host builds
-        ref: ${{ github.ref }}
+        path-to-changelog: host/js/CHANGELOG.md
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        operation: release
+    # Commit release changes
     - name: Git configuration
       run: |
         git config --global user.email "bot@superface.ai"
         git config --global user.name "GitHub Actions release workflow"
-    # changelog
-    - name: Update changelog (if stable)
-      uses: superfaceai/release-changelog-action@v1
-      if: needs.core.outputs.RELEASE_TAG == 'latest'
-      with:
-        path-to-changelog: CHANGELOG.md
-        version: ${{ needs.core.outputs.RELEASE_VERSION }}
-        operation: release
-    - name: Commit CHANGELOG.md, VERSION and create git tag
+    - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
+      working-directory: host/js
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        printf "${{ needs.core.outputs.RELEASE_VERSION }}" >VERSION
-        git add CHANGELOG.md VERSION
-        git commit -m "chore: release one-sdk ${{ needs.core.outputs.RELEASE_VERSION }}"
-        git tag "v${{ needs.core.outputs.RELEASE_VERSION }}"
-        git push origin && git push --tags
-    # update GitHub release with changelog
+        git add package.json VERSION CHANGELOG.md
+        git commit -m "chore: release host/js ${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        git tag "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        git push origin --tags
+    # Create GitHub Release
     - name: Get release version changelog
       id: get-changelog
-      if: needs.core.outputs.RELEASE_TAG == 'latest'
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
       uses: superfaceai/release-changelog-action@v1
       with:
         path-to-changelog: CHANGELOG.md
-        version: ${{ needs.core.outputs.RELEASE_VERSION }}
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
         operation: read
     - name: Update GitHub release documentation
       uses: softprops/action-gh-release@v1
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
       with:
-        tag_name: "v${{ needs.core.outputs.RELEASE_VERSION }}"
+        tag_name: "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
         body: ${{ steps.get-changelog.outputs.changelog }}
-        prerelease: ${{ needs.core.outputs.RELEASE_TAG != 'latest' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  host-python:
+    needs: [core]
+    runs-on: ubuntu-latest
+    if: inputs.host == 'python' || inputs.host == 'all'
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+    # Checkout
+    - uses: actions/checkout@v3
+    # Setup
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.x"
+    # Donwload core wasm
+    - uses: actions/download-artifact@v3
+      with:
+        name: core-wasm
+        path: host/python/assets
+    - name: Install Python tools
+      run: python -m pip install build toml-cli
+    # Copy LICENSE
+    - name: Copy LICENSE
+      run: cp LICENSE host/python/LICENSE
+    # Resolve release version
+    - name: Resolve release level
+      id: release-level
+      run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
+    - name: Resolve release version
+      id: release-version
+      run: scripts/release-version.sh ./host/python/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+    # Update version
+    - name: Update version
+      working-directory: host/python
+      run: toml set --toml-path pyproject.toml project.version  ${{ steps.release-version.outputs.RELEASE_VERSION }}
+    # Build
+    - name: Build host/python
+      working-directory: host/python
+      run: python -m build
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: host/python/dist
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+    # Changelog
+    - name: Update changelog
+      uses: superfaceai/release-changelog-action@v1
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+      with:
+        path-to-changelog: host/python/CHANGELOG.md
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        operation: release
+    # Commit release changes
+    - name: Git configuration
+      run: |
+        git config --global user.email "bot@superface.ai"
+        git config --global user.name "GitHub Actions release workflow"
+    - name: Commit pyproject.toml, VERSION, CHANGELOG.md and create git tag
+      working-directory: host/python
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git add pyproject.toml VERSION CHANGELOG.md
+        git commit -m "chore: release host/python ${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        git tag "python-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        git push origin --tags
+    # Create GitHub Release
+    - name: Get release version changelog
+      id: get-changelog
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+      uses: superfaceai/release-changelog-action@v1
+      with:
+        path-to-changelog: CHANGELOG.md
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        operation: read
+    - name: Update GitHub release documentation
+      uses: softprops/action-gh-release@v1
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+      with:
+        tag_name: "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        body: ${{ steps.get-changelog.outputs.changelog }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

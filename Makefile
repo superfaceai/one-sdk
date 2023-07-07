@@ -46,7 +46,7 @@ MAP_STD=integration/map-std/dist/map_std.js
 PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
 # Hosts
 HOST_JS_ASSETS=host/js/assets
-HOST_PY_ASSETS=host/python/assets
+HOST_PY_ASSETS=host/python/src/one_sdk/assets
 
 all: clean build
 
@@ -157,7 +157,7 @@ test_host_js: build_host_js ${TEST_CORE_ASYNCIFY_WASM}
 
 deps_host_py:
 	cd host/python; test -d venv || python3 -m venv venv; source venv/bin/activate; \
-	python3 -m pip install -r requirements.txt
+	python3 -m pip install .
 
 build_host_py: ${CORE_WASM}
 	mkdir -p ${HOST_PY_ASSETS}

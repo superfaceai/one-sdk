@@ -7,7 +7,7 @@ from one_sdk.app import WasiApp, SecurityValuesMap
 from one_sdk.error import UnexpectedError
 from one_sdk.platforrm import PythonFilesystem, PythonNetwork, PythonPersistence
 
-CORE_PATH = os.path.abspath(os.path.join(__file__, "../../../assets/core.wasm"))
+CORE_PATH = os.path.abspath(os.path.join(__file__, "../assets/core.wasm"))
 if "CORE_PATH" in os.environ:
 	CORE_PATH = os.environ["CORE_PATH"]
 
