@@ -170,8 +170,6 @@ jobs:
     needs: [core]
     runs-on: ubuntu-latest
     if: inputs.host == 'python' || inputs.host == 'all'
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     # Checkout
     - uses: actions/checkout@v3
