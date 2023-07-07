@@ -180,11 +180,11 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: "3.x"
-    # Donwload core wasm
+    # Download core wasm
     - uses: actions/download-artifact@v3
       with:
         name: core-wasm
-        path: host/python/assets
+        path: host/python/src/one_sdk/assets
     - name: Install Python tools
       run: python -m pip install build toml-cli
     # Copy LICENSE
@@ -247,7 +247,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
       with:
-        tag_name: "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        tag_name: "python-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
         body: ${{ steps.get-changelog.outputs.changelog }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
