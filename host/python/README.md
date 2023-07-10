@@ -109,7 +109,7 @@ finally:
 Then run the script with:
 
 ```shell
-node --experimental-wasi-unstable-preview1 index.mjs
+python __main__.py
 ```
 
 ## License
