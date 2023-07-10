@@ -76,14 +76,15 @@ impl<S: MapStdFull + 'static> JsInterpreter<S> {
         Ok(())
     }
 
-    pub fn run(&mut self, code: &str, usecase: &str) -> Result<(), JsInterpreterError> {
+    pub fn run(&mut self, name: &str, code: &str, usecase: &str) -> Result<(), JsInterpreterError> {
         if code.len() == 0 {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
+        
+        self.eval_code(name, &code)?;
 
-        let bundle = format!("{}\n\n_start('{}');", code, usecase);
-
-        self.eval_code("map.js", &bundle)?;
+        let entry = format!("_start('{}');", usecase);
+        self.eval_code("", &entry)?;
 
         Ok(())
     }
