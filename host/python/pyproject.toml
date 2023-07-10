@@ -7,6 +7,7 @@ authors = [
 description = "OneSDK is a universal API client which provides an unparalleled developer experience for every HTTP API"
 keywords = ["superface", "api", "client", "sdk", "one-sdk", "ai", "integrations"]
 readme = "README.md"
+requires-python = ">=3.8"
 dependencies = [
   "Brotli ~= 1.0.9",
   "certifi ~= 2023.5.7",
