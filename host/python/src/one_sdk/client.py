@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Optional, Self
+from typing import Any, Mapping, Optional
 
 import os
 import os.path
@@ -126,7 +126,7 @@ class Profile:
 		self.url = url
 
 	@classmethod
-	def _load_local(cls, internal: InternalClient, name: str) -> Self:
+	def _load_local(cls, internal: InternalClient, name: str) -> "Profile": # TODO: Self return type - needs 3.11
 		profile_url = internal.resolve_profile_url(name)
 		return cls(internal, name, profile_url)
 
