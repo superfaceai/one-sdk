@@ -126,7 +126,7 @@ class Profile:
 		self.url = url
 
 	@classmethod
-	def _load_local(cls, internal: InternalClient, name: str) -> 'Profile': # TODO: Self return type - needs 3.11
+	def _load_local(cls, internal: InternalClient, name: str) -> "Profile": # TODO: Self return type - needs 3.11
 		profile_url = internal.resolve_profile_url(name)
 		return cls(internal, name, profile_url)
 
