@@ -46,6 +46,8 @@ class PythonFilesystem:
 		try:
 			# we always open the file in binary mode
 			file = cast(BinaryIO, open(path, mode))
+		except FileNotFoundError as e:
+			raise WasiError(WasiErrno.ENOENT) from e
 		except Exception as e:
 			# TODO: figure out what exceptions this can throw and map them to Wasi errnos
 			raise WasiError(WasiErrno.EINVAL) from e

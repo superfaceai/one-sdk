@@ -5,7 +5,7 @@ use sf_std::unstable::perform::{PerformException, TakePerformInputError};
 use super::cache::DocumentCacheError;
 
 pub struct PerformExceptionError {
-    pub error_core: String,
+    pub error_code: String,
     pub message: String,
 }
 impl<PostProcessError: std::error::Error> From<DocumentCacheError<PostProcessError>>
@@ -13,7 +13,7 @@ impl<PostProcessError: std::error::Error> From<DocumentCacheError<PostProcessErr
 {
     fn from(value: DocumentCacheError<PostProcessError>) -> Self {
         PerformExceptionError {
-            error_core: "DocumentCacheError".to_string(),
+            error_code: "DocumentCacheError".to_string(),
             message: value.to_string(),
         }
     }
@@ -21,7 +21,7 @@ impl<PostProcessError: std::error::Error> From<DocumentCacheError<PostProcessErr
 impl From<PrepareSecurityMapError> for PerformExceptionError {
     fn from(value: PrepareSecurityMapError) -> Self {
         PerformExceptionError {
-            error_core: "PrepareSecurityMapError".to_string(),
+            error_code: "PrepareSecurityMapError".to_string(),
             message: value.to_string(),
         }
     }
@@ -29,7 +29,7 @@ impl From<PrepareSecurityMapError> for PerformExceptionError {
 impl From<JsInterpreterError> for PerformExceptionError {
     fn from(value: JsInterpreterError) -> Self {
         PerformExceptionError {
-            error_core: "JsInterpreterError".to_string(),
+            error_code: "JsInterpreterError".to_string(),
             message: value.to_string(),
         }
     }
@@ -37,7 +37,7 @@ impl From<JsInterpreterError> for PerformExceptionError {
 impl From<TakePerformInputError> for PerformExceptionError {
     fn from(value: TakePerformInputError) -> Self {
         PerformExceptionError {
-            error_core: "TakePerformInputError".to_string(),
+            error_code: "TakePerformInputError".to_string(),
             message: value.to_string(),
         }
     }
@@ -45,7 +45,7 @@ impl From<TakePerformInputError> for PerformExceptionError {
 impl From<PerformExceptionError> for PerformException {
     fn from(value: PerformExceptionError) -> Self {
         PerformException {
-            error_code: value.error_core,
+            error_code: value.error_code,
             message: value.message,
         }
     }

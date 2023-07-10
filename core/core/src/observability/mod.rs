@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{ops::Deref, borrow::Cow};
 
 use sf_std::abi::{Ptr, Size};
 use tracing::metadata::LevelFilter;
@@ -31,17 +31,18 @@ pub unsafe fn init(ring_event_buffer_size: usize) {
 
     // add panic hook so we can log panics as metrics
     std::panic::set_hook(Box::new(|info| {
-        let message = if let Some(message) = info.payload().downcast_ref::<&str>() {
-            message
+        let message: Cow<'_, str> = if let Some(message) = info.payload().downcast_ref::<&str>() {
+            (*message).into()
         } else if let Some(message) = info.payload().downcast_ref::<String>() {
-            message.as_str()
+            message.as_str().into()
         } else {
-            "core panicked"
+            format!("{}", info).into()
         };
 
         metrics::log_metric!(
             Panic
-            message = message
+            message = message.as_ref(),
+            location = info.location().map(|l| (l.file(), l.line(), l.column()))
         );
     }));
 }

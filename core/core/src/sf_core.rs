@@ -72,7 +72,7 @@ impl<'a> PerformMetricsData<'a> {
         match self.provider {
             Some(provider) => provider,
             None => self
-                .profile_url
+                .provider_url
                 .split('/')
                 .last()
                 .and_then(|b| b.strip_suffix(".provider.json"))
@@ -270,7 +270,7 @@ impl OneClientCore {
             HostValue::None => MapValueObject::new(),
             _ => {
                 try_metrics!(Err(PerformExceptionError {
-                    error_core: "PerformInputParametersFormatError".to_string(),
+                    error_code: "PerformInputParametersFormatError".to_string(),
                     message: "Parameters must be an Object or None".to_string(),
                 }))
             }
@@ -331,7 +331,7 @@ impl OneClientCore {
                 let replacement =
                     try_metrics!(
                         Fs::read_to_string(&path).map_err(|err| PerformExceptionError {
-                            error_core: "ReplacementStdlibError".to_string(),
+                            error_code: "ReplacementStdlibError".to_string(),
                             message: format!("Failed to load replacement map_std: {}", err),
                         })
                     );
