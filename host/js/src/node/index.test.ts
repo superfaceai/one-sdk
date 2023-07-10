@@ -85,5 +85,15 @@ describe('OneClient', () => {
       await expect(profile.getUseCase('CORE_PERFORM_PANIC').perform({}, { provider: 'localhost' })).rejects.toThrow(UnexpectedError);
       await expect(profile.getUseCase('CORE_PERFORM_TRUE').perform({}, { provider: 'localhost' })).resolves.toBe(true);
     });
+
+    test('profile file does not exist', async () => {
+      const client = new OneClient(clientOptions);
+
+      const profile = await client.getProfile('wasm-sdk/does-not-exist');
+      const usecase = profile.getUseCase('Example');
+      await expect(
+        () => usecase.perform({}, { provider: 'localhost' })
+      ).rejects.toThrow(UnexpectedError)
+    });
   });
 });

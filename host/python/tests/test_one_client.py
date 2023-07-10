@@ -41,13 +41,28 @@ class TestOneClient(unittest.TestCase):
 		client._internal._core_path = os.path.abspath(os.path.join(__file__, "../../src/one_sdk/assets/test-core.wasm"))
 
 		profile = client.get_profile("wasm-sdk/example")
-		self.assertRaises(
-			UnexpectedError,
-			lambda: profile.get_usecase("CORE_PERFORM_PANIC").perform({}, provider = "localhost")
-		)
+		use_case = profile.get_usecase("CORE_PERFORM_PANIC")
+		with self.assertRaises(UnexpectedError):
+			use_case.perform({}, provider = "localhost")
 		self.assertTrue(
 			profile.get_usecase("CORE_PERFORM_TRUE").perform({}, provider = "localhost")
 		)
+	
+	def test_profile_file_does_not_exist(self):
+		client = OneClient(assets_path = ASSETS_PATH, superface_api_url = "superface.localhost")
+		profile = client.get_profile("wasm-sdk/does-not-exist")
+		use_case = profile.get_usecase("Example")
+		with self.assertRaises(UnexpectedError) as cm:
+			use_case.perform({}, provider = "localhost")
+		self.assertTrue("No such file or directory" in cm.exception.message)
+
+	def test_provider_file_does_not_exist(self):
+		client = OneClient(assets_path = ASSETS_PATH, superface_api_url = "superface.localhost")
+		profile = client.get_profile("wasm-sdk/example")
+		use_case = profile.get_usecase("Example")
+		with self.assertRaises(UnexpectedError) as cm:
+			use_case.perform({}, provider = "does-not-exist")
+		self.assertTrue("No such file or directory" in cm.exception.message)
 
 if __name__ == '__main__':
 	unittest.main()

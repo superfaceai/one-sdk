@@ -133,7 +133,7 @@ class WasiApp:
 			self._perform_state.error = PerformError(message["error"])
 			return { "kind": "ok" }
 		elif message["kind"] == "perform-output-exception":
-			self._perform_state.exception = UnexpectedError(message["exception"]["error_core"], message["exception"]["message"])
+			self._perform_state.exception = UnexpectedError(message["exception"]["error_code"], message["exception"]["message"])
 			return { "kind": "ok" }
 		elif message["kind"] == "file-open":
 			try:
