@@ -33,7 +33,7 @@ case $1 in
 		fi
 		cd "$base"
 		source ../host/python/venv/bin/activate
-		PYTHONPATH=../host/python/src python3 ./python
+		python3 ./python
 	;;
 
 	*)

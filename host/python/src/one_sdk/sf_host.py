@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Tuple, TypeAlias
+from typing import TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
 	from one_sdk.app import WasiApp
 
@@ -11,9 +11,10 @@ from wasmtime import Linker, FuncType, ValType
 from one_sdk.handle_map import HandleMap
 from one_sdk.error import WasiError, WasiErrno
 
-Ptr: TypeAlias = int
-Size: TypeAlias = int
-AbiResult: TypeAlias = int
+# TODO: TypeAlias - needs 3.10
+Ptr = int
+Size = int
+AbiResult = int
 
 def _strace_inner(fn, name, *args):
 	result = fn(*args)

@@ -1,4 +1,4 @@
-from typing import BinaryIO, Mapping, Optional, cast
+from typing import BinaryIO, List, Mapping, Optional, cast
 
 from datetime import datetime
 from collections import defaultdict
@@ -100,7 +100,7 @@ class HttpResponse(BinaryIO):
 		return self._response.status
 	
 	# TODO: will be list[tuple[str, str]]
-	def headers(self) -> Mapping[str, list[str]]:
+	def headers(self) -> Mapping[str, List[str]]:
 		headers = defaultdict(list)
 		for (key, value) in self._response.headers.items():
 			headers[key].append(value)
@@ -137,7 +137,7 @@ class PythonNetwork:
 		self,
 		url: str,
 		method: str,
-		headers: Mapping[str, list[str]],
+		headers: Mapping[str, List[str]],
 		body: Optional[bytes]
 	) -> DeferredHttpResponse:
 		# TODO: catch InvalidUrl
@@ -185,7 +185,7 @@ class PythonPersistence:
 		
 		self._network = PythonNetwork()
 
-	def persist_metrics(self, events: list[str]):
+	def persist_metrics(self, events: List[str]):
 		headers = {
 			"content-type": ["application/json"]
 		}
@@ -200,7 +200,7 @@ class PythonPersistence:
 		).resolve()
 		response.close()
 	
-	def persist_developer_dump(self, events: list[str]):
+	def persist_developer_dump(self, events: List[str]):
 		timestamp = datetime.now().isoformat().replace(":", "-").replace(".", "-")
 		file_name = f"onesdk_devlog_dump_{timestamp}.txt"
 

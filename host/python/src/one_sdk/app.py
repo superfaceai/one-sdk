@@ -1,4 +1,4 @@
-from typing import Any, BinaryIO, Callable, Mapping, Optional, TypeAlias, cast
+from typing import Any, BinaryIO, Callable, List, Mapping, Optional, cast
 
 import struct
 from types import SimpleNamespace
@@ -13,7 +13,8 @@ from one_sdk.sf_host import Ptr, Size, link as sf_host_link
 from one_sdk.error import HostError, ErrorCode, PerformError, UnexpectedError, UninitializedError, WasiError, WasiErrno
 from one_sdk.platform import PythonFilesystem, PythonNetwork, PythonPersistence, DeferredHttpResponse, HttpResponse
 
-SecurityValuesMap: TypeAlias = Mapping[str, Mapping[str, str]]
+# TODO: TypeAlias - needs 3.10
+SecurityValuesMap = Mapping[str, Mapping[str, str]]
 
 class WasiMemory:
 	"""Pointer to Wasi Memory - do not store this between calls to WASM as it might get invalidated"""
@@ -303,7 +304,7 @@ class WasiApp:
 		
 		return wrapper
 	
-	def _get_tracing_events_by_arena(self, core: "WasiApp._AppCore", arena_ptr: Ptr) -> list[str]:
+	def _get_tracing_events_by_arena(self, core: "WasiApp._AppCore", arena_ptr: Ptr) -> List[str]:
 		memory = self._memory_from_core(core)
 		buffer1_ptr = memory.read_i32(arena_ptr)
 		buffer1_size = memory.read_i32(arena_ptr + 4)

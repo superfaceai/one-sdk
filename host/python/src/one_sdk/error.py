@@ -1,6 +1,6 @@
 from typing import Any
 
-from enum import StrEnum, IntEnum
+from enum import IntEnum, Enum
 
 class BaseError(Exception):
 	def __init__(self, name: str, message: str):
@@ -107,7 +107,8 @@ class WasiError(Exception):
 		self.message = f"WASI error: {errno.name}"
 		self.errno = errno
 
-class ErrorCode(StrEnum):
+# TODO: StrEnum base class - needs 3.11
+class ErrorCode(str, Enum):
 	NetworkError = "network:error"
 	NetworkConnectionRefused = "network:ECONNREFUSED"
 	NetworkHostNotFound = "network:ENOTFOUND"
