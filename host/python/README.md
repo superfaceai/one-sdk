@@ -1,5 +1,6 @@
 [Website](https://superface.ai) | [Get Started](https://superface.ai/docs/getting-started) | [Documentation](https://superface.ai/docs) | [Discord](https://sfc.is/discord) | [Twitter](https://twitter.com/superfaceai) | [Support](https://superface.ai/support)
-
+<br />
+<br />
 <img src="https://github.com/superfaceai/one-sdk/raw/main/docs/LogoGreen.png" alt="Superface" width="100" height="100">
 
 # Superface OneSDK
@@ -9,6 +10,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/superfaceai/one-sdk/ci_cd.yml)](https://github.com/superfaceai/one-sdk/actions/workflows/ci_cd.yml)
 [![license](https://img.shields.io/npm/l/@superfaceai/one-sdk)](LICENSE)
 [![Discord](https://img.shields.io/discord/819563244418105354?logo=discord&logoColor=fff)](https://sfc.is/discord)
+[![npm](https://img.shields.io/pypi/v/one-sdk)](https://pypi.org/project/one-sdk/)
 
 `OneClient` is a universal API client which provides an unparalleled developer experience for every HTTP API. It enhances resiliency to API changes, and comes with built-in integration monitoring and provider failover.
 
@@ -107,7 +109,7 @@ finally:
 Then run the script with:
 
 ```shell
-node --experimental-wasi-unstable-preview1 index.mjs
+python __main__.py
 ```
 
 ## License

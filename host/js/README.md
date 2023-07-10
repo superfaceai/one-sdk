@@ -1,5 +1,6 @@
 [Website](https://superface.ai) | [Get Started](https://superface.ai/docs/getting-started) | [Documentation](https://superface.ai/docs) | [Discord](https://sfc.is/discord) | [Twitter](https://twitter.com/superfaceai) | [Support](https://superface.ai/support)
-
+<br />
+<br />
 <img src="https://github.com/superfaceai/one-sdk/raw/main/docs/LogoGreen.png" alt="Superface" width="100" height="100">
 
 # Superface OneSDK
@@ -9,8 +10,8 @@
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/superfaceai/one-sdk/ci_cd.yml)](https://github.com/superfaceai/one-sdk/actions/workflows/ci_cd.yml)
 [![license](https://img.shields.io/npm/l/@superfaceai/one-sdk)](LICENSE)
 [![Discord](https://img.shields.io/discord/819563244418105354?logo=discord&logoColor=fff)](https://sfc.is/discord)
-[![npm](https://img.shields.io/npm/v/@superfaceai/one-sdk/alpha.svg)](https://www.npmjs.com/package/@superfaceai/one-sdk/v/alpha)
-![TypeScript](https://img.shields.io/static/v1?message=TypeScript&&logoColor=ffffff&color=007acc&labelColor=5c5c5c&label=built%20with)
+[![npm](https://img.shields.io/npm/v/@superfaceai/one-sdk/beta.svg)](https://www.npmjs.com/package/@superfaceai/one-sdk/v/beta)
+
 
 `OneClient` is a universal API client which provides an unparalleled developer experience for every HTTP API. It enhances resiliency to API changes, and comes with built-in integration monitoring and provider failover.
 
@@ -28,7 +29,7 @@ For more details about Superface, visit [How it Works](https://superface.ai/how-
 To install OneSDK into the project, run:
 
 ```shell
-npm install @superfaceai/one-sdk@alpha
+npm install @superfaceai/one-sdk@beta
 ```
 
 ## Setup
@@ -180,7 +181,7 @@ Check full demo with [Shopify](https://github.com/superfaceai/demo-cloudflare-sh
 
 ## Todos & limitations
 
-The next-gen OneSDK is still in alpha stage and several features are not yet implemented. We welcome any and all feedback. The current limitations include:
+The next-gen OneSDK is still in beta stage and several features are not yet implemented. We welcome any and all feedback. The current limitations include:
 
 - OneSDK Client can't be instantiated in the global scope
   - We discovered Cloudflare is not allowing synchronisation between requests. We need to make sure, that two different requests are not accessing OneSDK Core at the same time. [The problem](https://zuplo.com/blog/the-script-will-never-generate-a-response-on-cloudflare-workers).
