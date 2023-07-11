@@ -74,7 +74,7 @@ Create `__main__.py` file with following content and update:
 ```py
 import os
 
-from one_sdk import OneClient
+from one_sdk import OneClient, PerformError, UnexpectedError
 
 client = OneClient()
 
@@ -100,8 +100,12 @@ try:
     )
     print(f"RESULT: {r}")
 except Exception as e:
-    print(f"ERROR: {e}")
-    raise
+    if isinstance(e, PerformError):
+        print(f"ERROR RESULT: {e.error_result}")
+    elif isinstance(e, UnexpectedError):
+        print(f"ERROR:", e, file=sys.stderr)
+    else:
+        raise e
 finally:
     client.send_metrics_to_superface()
 ```

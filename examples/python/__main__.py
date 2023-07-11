@@ -1,10 +1,10 @@
 import os
 import json
 import threading
+import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from one_sdk import OneClient
-
+from one_sdk import OneClient, PerformError, UnexpectedError
 
 class MyServer(BaseHTTPRequestHandler):
   def do_GET(self):
@@ -19,7 +19,6 @@ class MyServer(BaseHTTPRequestHandler):
             "headers": dict(self.headers)
         }
     ), "utf8"))
-
 
 webServer = HTTPServer(("127.0.0.1", 8000), MyServer)
 threading.Thread(target = webServer.serve_forever).start()
@@ -41,8 +40,12 @@ try:
     )
     print(f"RESULT: {r}")
 except Exception as e:
-    print(f"ERROR: {e}")
-    raise
+    if isinstance(e, PerformError):
+        print(f"ERROR RESULT: {e.error_result}")
+    elif isinstance(e, UnexpectedError):
+        print(f"ERROR:", e, file=sys.stderr)
+    else:
+        raise e
 finally:
     client.send_metrics_to_superface()
     webServer.shutdown()
