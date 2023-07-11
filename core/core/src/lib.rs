@@ -113,7 +113,11 @@ pub extern "C" fn __export_oneclient_core_perform() {
     match state.perform() {
         Ok(Ok(result)) => set_perform_output_result_in(result, MessageExchangeFfi),
         Ok(Err(error)) => set_perform_output_error_in(error, MessageExchangeFfi),
-        Err(exception) => set_perform_output_exception_in(exception.into(), MessageExchangeFfi),
+        Err(exception) => {
+            tracing::error!(target: "@user", "Perform failed unexpectedly: {}", exception);
+
+            set_perform_output_exception_in(exception.into(), MessageExchangeFfi)
+        }
     }
 }
 

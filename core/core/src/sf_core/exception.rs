@@ -50,3 +50,8 @@ impl From<PerformExceptionError> for PerformException {
         }
     }
 }
+impl std::fmt::Display for PerformExceptionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}]: {}", self.error_code, self.message)
+    }
+}
