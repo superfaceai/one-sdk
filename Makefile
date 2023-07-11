@@ -159,10 +159,10 @@ deps_host_py:
 	cd host/python; test -d venv || python3 -m venv venv; source venv/bin/activate; \
 	python3 -m pip install -e .
 
-build_host_py: ${CORE_WASM}
+build_host_py: deps_host_py ${CORE_WASM}
 	mkdir -p ${HOST_PY_ASSETS}
 	cp ${CORE_WASM} ${HOST_PY_ASSETS}/core.wasm
-# TODO: build?
+	# TODO: build?
 
 test_host_py: build_host_py ${TEST_CORE_WASM}
 	cp ${TEST_CORE_WASM} ${HOST_PY_ASSETS}/test-core.wasm

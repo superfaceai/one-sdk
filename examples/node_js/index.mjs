@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import { OneClient } from '../../host/js/node/index.js';
+import { OneClient, PerformError, UnexpectedError } from '../../host/js/node/index.js';
 
 async function startLocalhostServer() {
   const server = createServer((req, res) => {
@@ -27,19 +27,33 @@ async function main() {
     token: process.env.ONESDK_TOKEN
   });
   const profile = await client.getProfile('wasm-sdk/example');
-  const result = await profile
-    .getUseCase('Example')
-    .perform(
-      { id: 1 },
-      {
-        provider: 'localhost',
-        parameters: { PARAM: 'parameter_value' },
-        security: { basic_auth: { username: 'username', password: 'password' } }
-      }
-    );
 
-  console.log('RESULT:', result);
-  server.close();
+  try {
+    const result = await profile
+      .getUseCase('Example')
+      .perform(
+        {
+          id: 1,
+        },
+        {
+          provider: 'localhost',
+          parameters: { PARAM: 'parameter_value' },
+          security: { basic_auth: { username: 'username', password: 'password' } }
+        }
+      );
+
+    console.log('RESULT:', result);
+  } catch (e) {
+    if (e instanceof PerformError) {
+      console.log('ERROR RESULT:', e.errorResult);
+    } else if (e instanceof UnexpectedError) {
+      console.error('ERROR:', e);
+    } else {
+      throw e;
+    }
+  } finally {
+    server.close();
+  }
 }
 
 void main();
