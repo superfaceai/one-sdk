@@ -34,7 +34,7 @@ type IoStream = sf_std::unstable::IoStream<StreamExchangeFfi>;
 #[derive(Debug, Default)]
 #[allow(dead_code)] // TODO: until we use these fields
 struct PerformMetricsData<'a> {
-    /// Profile id in format `<scope>.<name>`
+    /// Profile id in format `<scope>/<name>`
     pub profile: Option<&'a str>,
     /// Profile url as passed into perform
     pub profile_url: &'a str,
@@ -128,12 +128,19 @@ enum MapCacheEntryError {
 struct MapCacheEntry {
     pub map: String,
     pub content_hash: String,
+    /// This is for the purposes of stacktraces in JsInterpreter
+    pub file_name: String
 }
 impl MapCacheEntry {
-    pub fn from_data(data: Vec<u8>) -> Result<Self, MapCacheEntryError> {
+    // TODO: name should be taken from the manifest
+    pub fn new(data: Vec<u8>, file_name: String) -> Result<Self, MapCacheEntryError> {
+        let content_hash = digest::content_hash(&data);
+        let map = String::from_utf8(data)?;
+        
         Ok(Self {
-            content_hash: digest::content_hash(&data),
-            map: String::from_utf8(data)?,
+            content_hash,
+            map,
+            file_name
         })
     }
 }
@@ -256,9 +263,14 @@ impl OneClientCore {
             &perform_input.provider_url,
             ProviderJsonCacheEntry::from_data
         ));
-        try_metrics!(self
-            .map_cache
-            .cache(&perform_input.map_url, MapCacheEntry::from_data));
+        try_metrics!(self.map_cache.cache(
+            &perform_input.map_url, |data| {
+                // TODO: this is temporary, should be extracted from the map manifest
+                let file_name = perform_input.map_url.split('/').last().unwrap().to_string();
+
+                MapCacheEntry::new(data, file_name)
+            }
+        ));
 
         // process map input and parameters
         let map_input = self.host_value_to_map_value(perform_input.map_input);
@@ -343,6 +355,7 @@ impl OneClientCore {
         let MapCacheEntry {
             map,
             content_hash: map_content_hash,
+            file_name: map_file_name
         } = self.map_cache.get(&perform_input.map_url).unwrap();
         metrics_data.map_content_hash = Some(map_content_hash);
         let map_result = {
@@ -354,7 +367,9 @@ impl OneClientCore {
                 }),
                 Some(map_security),
             );
-            try_metrics!(interpreter.run(map, &perform_input.usecase));
+            try_metrics!(
+                interpreter.run(map_file_name, map, &perform_input.usecase)
+            );
 
             interpreter.state_mut().take_output().unwrap()
         };
