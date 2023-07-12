@@ -1,4 +1,4 @@
-from typing import BinaryIO, List, Mapping, Optional, cast
+from typing import BinaryIO, List, Tuple, Mapping, Optional, cast
 
 from datetime import datetime
 from collections import defaultdict
@@ -101,12 +101,10 @@ class HttpResponse(BinaryIO):
 	def status(self) -> int:
 		return self._response.status
 	
-	# TODO: will be list[tuple[str, str]]
-	def headers(self) -> Mapping[str, List[str]]:
-		headers = defaultdict(list)
-		for (key, value) in self._response.headers.items():
-			headers[key].append(value)
-
+	def headers(self) -> List[Tuple[str, str]]:
+		headers = []
+		for (name, value) in self._response.headers.items():
+			headers.append((name, value))
 		return headers
 	
 	def body(self) -> BinaryIO:
@@ -119,6 +117,7 @@ class HttpResponse(BinaryIO):
 	def close(self):
 		# TODO: if we don't need anything else here we can just return `self._response` in `self.body()`
 		self._response.close()
+
 class DeferredHttpResponse:
 	def __init__(self, response, exception = None):
 		self._response = response
@@ -139,14 +138,14 @@ class PythonNetwork:
 		self,
 		url: str,
 		method: str,
-		headers: Mapping[str, List[str]],
+		headers: List[Tuple[str, str]],
 		body: Optional[bytes]
 	) -> DeferredHttpResponse:
 		# TODO: catch InvalidUrl
 		headers_dict = urllib3.HTTPHeaderDict()
-		for (key, values) in headers.items():
-			for value in values:
-				headers_dict.add(key, value)
+
+		for (key, value) in headers:
+			headers_dict.add(key, value)
 		
 		response = None
 		exception = None
@@ -188,11 +187,12 @@ class PythonPersistence:
 		self._network = PythonNetwork()
 
 	def persist_metrics(self, events: List[str]):
-		headers = {
-			"content-type": ["application/json"]
-		}
+		headers = [
+			["content-type", "application/json"]
+		]
+
 		if self._token is not None:
-			headers["authorization"] = [f"SUPERFACE-SDK-TOKEN {self._token}"]
+			headers.append(("authorization", f"SUPERFACE-SDK-TOKEN {self._token}"))
 		
 		response = self._network.fetch(
 			f"{self._insights_url}/batch",
