@@ -14,7 +14,7 @@ pub use value::SecurityValuesMap;
 mod stream;
 pub use stream::{IoStream, IoStreamHandle};
 
-/// Host JS counterpart: host/js/src/common/app.ts
+/// Host JS counterpart: host/javascript/src/common/app.ts
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorCode {
     #[serde(rename = "network:error")]

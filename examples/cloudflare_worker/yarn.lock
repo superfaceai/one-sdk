@@ -162,7 +162,7 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.16.3.tgz#94047dae921949cfb308117d993c4b941291ae10"
   integrity sha512-5/JuTd8OWW8UzEtyf19fbrtMJENza+C9JoPIkvItgTBQ1FO2ZLvjbPO6Xs54vk0s5JB5QsfieUEshRQfu7ZHow==
 
-"@superfaceai/one-sdk@file:../../host/js":
+"@superfaceai/one-sdk@file:../../host/javascsript":
   version "3.0.0-alpha.11"
   dependencies:
     "@cloudflare/workers-wasi" "^0.0.5"

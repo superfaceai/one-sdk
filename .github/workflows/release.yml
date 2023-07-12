@@ -33,6 +33,7 @@ on:
 
 jobs:
   core:
+    name: Core
     runs-on: ubuntu-latest
     steps:
       # checkout
@@ -84,7 +85,8 @@ jobs:
           path: core/dist/core.wasm
       # TODO: Changelog, commit taggin ands GitHub release 
 
-  host-js:
+  host-javascript:
+    name: JavaScript Host
     needs: [core]
     runs-on: ubuntu-latest
     if: inputs.host == 'js' || inputs.host == 'all'
@@ -101,14 +103,14 @@ jobs:
         registry-url: https://registry.npmjs.org/
         node-version: "18"
         cache: yarn
-        cache-dependency-path: host/js/yarn.lock
+        cache-dependency-path: host/javascript/yarn.lock
     - uses: actions/download-artifact@v3
       with:
         name: core-async-wasm
-        path: host/js/assets
+        path: host/javascript/assets
     # build
-    - name: Build host/js
-      working-directory: host/js
+    - name: Build host/javascript
+      working-directory: host/javascript
       run: |
         yarn install --frozen-lockfile
         yarn build
@@ -118,10 +120,10 @@ jobs:
       run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
     - name: Resolve release version
       id: release-version
-      run: scripts/release-version.sh ./host/js/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+      run: scripts/release-version.sh ./host/javascript/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
     # publish and push git
     - name: Publish
-      working-directory: host/js
+      working-directory: host/javascript
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
       run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ steps.release-version.outputs.RELEASE_VERSION }} --tag ${{ steps.release-level.outputs.RELEASE_TAG }}
@@ -130,7 +132,7 @@ jobs:
       uses: superfaceai/release-changelog-action@v1
       if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
       with:
-        path-to-changelog: host/js/CHANGELOG.md
+        path-to-changelog: host/javascript/CHANGELOG.md
         version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
         operation: release
     # Commit release changes
@@ -139,12 +141,12 @@ jobs:
         git config --global user.email "bot@superface.ai"
         git config --global user.name "GitHub Actions release workflow"
     - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
-      working-directory: host/js
+      working-directory: host/javascript
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git add package.json VERSION CHANGELOG.md
-        git commit -m "chore: release host/js ${{ steps.release-version.outputs.RELEASE_VERSION }}"
+        git commit -m "chore: release host/javascript ${{ steps.release-version.outputs.RELEASE_VERSION }}"
         git tag "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
         git push origin
         git push origin --tags
@@ -167,6 +169,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   host-python:
+    name: Python Host
     needs: [core]
     runs-on: ubuntu-latest
     if: inputs.host == 'python' || inputs.host == 'all'
