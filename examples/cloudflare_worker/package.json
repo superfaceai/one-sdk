@@ -5,7 +5,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "@superfaceai/one-sdk": "file:../../host/js"
+    "@superfaceai/one-sdk": "file:../../host/javascript"
   },
   "devDependencies": {
     "typescript": "^5.0.2",

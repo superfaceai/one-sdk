@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import { OneClient, PerformError, UnexpectedError } from '../../host/js/node/index.js';
+import { OneClient, PerformError, UnexpectedError } from '../../host/javascript/node/index.js';
 
 async function startLocalhostServer() {
   const server = createServer((req, res) => {

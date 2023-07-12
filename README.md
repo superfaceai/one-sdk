@@ -32,9 +32,9 @@ The OneSDK uses these environment variables:
 
 ## Supported languages
 
-- [🦄 JavaScript/TypeScript](https://github.com/superfaceai/one-sdk/tree/main/host/js)
-  - [Node.js](https://github.com/superfaceai/one-sdk/tree/main/host/js/src/node)
-  - [Cloudflare Workers](https://github.com/superfaceai/one-sdk/tree/main/host/js/src/cloudflare)
+- [🦄 JavaScript/TypeScript](https://github.com/superfaceai/one-sdk/tree/main/host/javascript)
+  - [Node.js](https://github.com/superfaceai/one-sdk/tree/main/host/javascript/src/node)
+  - [Cloudflare Workers](https://github.com/superfaceai/one-sdk/tree/main/host/javascript/src/cloudflare)
 - [🐍 Python](https://github.com/superfaceai/one-sdk/tree/main/host/python)
 
 ## Contributing

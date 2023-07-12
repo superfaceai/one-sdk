@@ -3,6 +3,7 @@ on: push
 
 jobs:
   core:
+    name: Core
     runs-on: ubuntu-latest
     steps:
       # checkout
@@ -72,6 +73,7 @@ jobs:
           path: core/dist/test-core.wasm
 
   integration:
+    name: Integration (Map STD)
     runs-on: ubuntu-latest
     steps:
       # checkout
@@ -101,12 +103,13 @@ jobs:
         working-directory: integration/profile-validator
         run: yarn test
 
-  host-js:
+  host-javascript:
+    name: JavaScript Host
     needs: [core]
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: host/js
+        working-directory: host/javascript
     steps:
     # checkout
     - uses: actions/checkout@v3
@@ -116,24 +119,25 @@ jobs:
         registry-url: https://registry.npmjs.org/
         node-version: "18"
         cache: yarn
-        cache-dependency-path: host/js/yarn.lock
+        cache-dependency-path: host/javascript/yarn.lock
     - uses: actions/download-artifact@v3
       with:
         name: core-async-wasm
-        path: host/js/assets
+        path: host/javascript/assets
     - uses: actions/download-artifact@v3
       with:
         name: test-core-async-wasm
-        path: host/js/assets
+        path: host/javascript/assets
     # test and build
     - name: Install Yarn dependencies
       run: yarn install --frozen-lockfile
-    - name: Build host/js
+    - name: Build host/javascript
       run: yarn build
     - name: Run tests
       run: yarn test
   
-  host-py:
+  host-python:
+    name: Python Host
     needs: [core]
     runs-on: ubuntu-latest
     defaults:

@@ -45,8 +45,8 @@ CORE_JS_ASSETS_PROFILE_VALIDATOR=${CORE_JS_ASSETS}/profile_validator.js
 MAP_STD=integration/map-std/dist/map_std.js
 PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
 # Hosts
-HOST_JS_ASSETS=host/js/assets
-HOST_PY_ASSETS=host/python/src/one_sdk/assets
+HOST_JAVASCRIPT_ASSETS=host/javascript/assets
+HOST_PYTHON_ASSETS=host/python/src/one_sdk/assets
 
 all: clean build
 
@@ -58,7 +58,7 @@ ifeq ($(CORE_PHONY),1)
 .PHONY: ${CORE_DIST} ${MAP_STD} ${PROFILE_VALIDATOR}
 endif
 
-deps: deps_core deps_host_py
+deps: deps_core deps_host_python
 build: build_core build_integration build_hosts
 test: test_core
 clean: clean_core clean_integration clean_hosts
@@ -139,32 +139,32 @@ clean_integration:
 ##########
 ## HOST ##
 ##########
-build_hosts: build_host_js build_host_py
+build_hosts: build_host_javascript build_host_python
 clean_hosts:
-	rm -rf ${HOST_JS_ASSETS}
-	cd host/js && yarn clean
-	rm -rf ${HOST_PY_ASSETS}
+	rm -rf ${HOST_JAVASCRIPT_ASSETS}
+	cd host/javascript && yarn clean
+	rm -rf ${HOST_PYTHON_ASSETS}
 
 # copy wasm always because cached docker artifacts can have older timestamp
-build_host_js: ${CORE_ASYNCIFY_WASM}
-	mkdir -p ${HOST_JS_ASSETS}
-	cp ${CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS}/core-async.wasm
-	cd host/js && yarn install && yarn build	
+build_host_javascript: ${CORE_ASYNCIFY_WASM}
+	mkdir -p ${HOST_JAVASCRIPT_ASSETS}
+	cp ${CORE_ASYNCIFY_WASM} ${HOST_JAVASCRIPT_ASSETS}/core-async.wasm
+	cd host/javascript && yarn install && yarn build	
 
-test_host_js: build_host_js ${TEST_CORE_ASYNCIFY_WASM}
-	cp ${TEST_CORE_ASYNCIFY_WASM} ${HOST_JS_ASSETS}/test-core-async.wasm
-	cd host/js && yarn test
+test_host_javascript: build_host_javascript ${TEST_CORE_ASYNCIFY_WASM}
+	cp ${TEST_CORE_ASYNCIFY_WASM} ${HOST_JAVASCRIPT_ASSETS}/test-core-async.wasm
+	cd host/javascript && yarn test
 
-deps_host_py:
+deps_host_python:
 	cd host/python; test -d venv || python3 -m venv venv; source venv/bin/activate; \
 	python3 -m pip install -e .
 
-build_host_py: deps_host_py ${CORE_WASM}
-	mkdir -p ${HOST_PY_ASSETS}
-	cp ${CORE_WASM} ${HOST_PY_ASSETS}/core.wasm
+build_host_python: deps_host_python ${CORE_WASM}
+	mkdir -p ${HOST_PYTHON_ASSETS}
+	cp ${CORE_WASM} ${HOST_PYTHON_ASSETS}/core.wasm
 	# TODO: build?
 
-test_host_py: build_host_py ${TEST_CORE_WASM}
-	cp ${TEST_CORE_WASM} ${HOST_PY_ASSETS}/test-core.wasm
+test_host_python: build_host_python ${TEST_CORE_WASM}
+	cp ${TEST_CORE_WASM} ${HOST_PYTHON_ASSETS}/test-core.wasm
 	cd host/python; source venv/bin/activate; \
 	python3 -m unittest discover tests/
