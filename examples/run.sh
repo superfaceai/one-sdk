@@ -10,7 +10,7 @@ case $1 in
 	node)
 		if [ "$MAKE_FLAGS" != nomake ]; then
 			cd "$base/.."
-			make build_host_js $MAKE_FLAGS
+			make build_host_javascript $MAKE_FLAGS
 		fi
 		cd "$base"
 		node --no-warnings --experimental-wasi-unstable-preview1 ./node_js/index.mjs
@@ -19,7 +19,7 @@ case $1 in
 	cloudflare)
 		if [ "$MAKE_FLAGS" != nomake ]; then
 			cd "$base/.."
-			make build_host_js $MAKE_FLAGS
+			make build_host_javascript $MAKE_FLAGS
 		fi
 		cd "$base/cloudflare_worker"
 		yarn install
