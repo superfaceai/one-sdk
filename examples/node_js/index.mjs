@@ -18,42 +18,38 @@ async function startLocalhostServer() {
   return server;
 }
 
-async function main() {
-  const server = await startLocalhostServer();
+const server = await startLocalhostServer();
 
-  const client = new OneClient({
-    assetsPath: '../examples/comlinks/src',
-    superfaceApiUrl: 'https://superface.dev',
-    token: process.env.ONESDK_TOKEN
-  });
-  const profile = await client.getProfile('wasm-sdk/example');
+const client = new OneClient({
+  assetsPath: '../examples/comlinks/src',
+  superfaceApiUrl: 'https://superface.dev',
+  token: process.env.ONESDK_TOKEN
+});
+const profile = await client.getProfile('wasm-sdk/example');
 
-  try {
-    const result = await profile
-      .getUseCase('Example')
-      .perform(
-        {
-          id: 1,
-        },
-        {
-          provider: 'localhost',
-          parameters: { PARAM: 'parameter_value' },
-          security: { basic_auth: { username: 'username', password: 'password' } }
-        }
-      );
+try {
+  const result = await profile
+    .getUseCase('Example')
+    .perform(
+      {
+        id: 1,
+      },
+      {
+        provider: 'localhost',
+        parameters: { PARAM: 'parameter_value' },
+        security: { basic_auth: { username: 'username', password: 'password' } }
+      }
+    );
 
-    console.log('RESULT:', result);
-  } catch (e) {
-    if (e instanceof PerformError) {
-      console.log('ERROR RESULT:', e.errorResult);
-    } else if (e instanceof UnexpectedError) {
-      console.error('ERROR:', e);
-    } else {
-      throw e;
-    }
-  } finally {
-    server.close();
+  console.log('RESULT:', result);
+} catch (e) {
+  if (e instanceof PerformError) {
+    console.log('ERROR RESULT:', e.errorResult);
+  } else if (e instanceof UnexpectedError) {
+    console.error('ERROR:', e);
+  } else {
+    throw e;
   }
+} finally {
+  server.close();
 }
-
-void main();
