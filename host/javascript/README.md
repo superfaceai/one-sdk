@@ -75,40 +75,36 @@ Create `index.mjs` file with following content and update:
 ```js
 import { OneClient, PerformError, UnexpectedError } from '@superfaceai/one-sdk/node';
 
-async function main() {
-  const client = new OneClient();
-  const profile = await client.getProfile('<profileName>');
+const client = new OneClient();
+const profile = await client.getProfile('<profileName>');
 
-  try {
-    const result = await profile.getUseCase('<usecaseName>').perform({
-        // Input parameters as defined in profile:
-        '<key>': '<value>'
+try {
+  const result = await profile.getUseCase('<usecaseName>').perform({
+      // Input parameters as defined in profile:
+      '<key>': '<value>'
+    },
+    {
+      provider: '<providerName>',
+      parameters: {
+        // Provider specific integration parameters:
+        '<integrationParameterName>': '<integrationParameterValue>'
       },
-      {
-        provider: '<providerName>',
-        parameters: {
-          // Provider specific integration parameters:
-          '<integrationParameterName>': '<integrationParameterValue>'
-        },
-        security: {
-          // Provider specific security values:
-          '<securityValueId>': {
-            // Security values as described in provider or on profile page
-          }
+      security: {
+        // Provider specific security values:
+        '<securityValueId>': {
+          // Security values as described in provider or on profile page
         }
-      });
-  } catch (e) {
-    if (e instanceof PerformError) {
-      console.log('ERROR RESULT:', e.errorResult);
-    } else if (e instanceof UnexpectedError) {
-      console.error('ERROR:', e);
-    } else {
-      throw e;
-    }
+      }
+    });
+} catch (e) {
+  if (e instanceof PerformError) {
+    console.log('ERROR RESULT:', e.errorResult);
+  } else if (e instanceof UnexpectedError) {
+    console.error('ERROR:', e);
+  } else {
+    throw e;
   }
 }
-
-main();
 ```
 
 Then run the script with:
