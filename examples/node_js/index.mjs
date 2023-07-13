@@ -4,11 +4,19 @@ import { OneClient, PerformError, UnexpectedError } from '../../host/javascript/
 async function startLocalhostServer() {
   const server = createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      url: req.url,
-      method: req.method,
-      headers: req.headers,
-    }));
+
+    // ready body
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    }).on('end', () => {
+      res.end(JSON.stringify({
+        url: req.url,
+        method: req.method,
+        headers: req.headers,
+        body,
+      }));
+    });
   });
 
   await new Promise((resolve) => {
@@ -25,11 +33,11 @@ const client = new OneClient({
   superfaceApiUrl: 'https://superface.dev',
   token: process.env.ONESDK_TOKEN
 });
-const profile = await client.getProfile('wasm-sdk/example');
+const profile = await client.getProfile('example');
 
 try {
   const result = await profile
-    .getUseCase('Example')
+    .getUseCase('Main')
     .perform(
       {
         id: 1,
