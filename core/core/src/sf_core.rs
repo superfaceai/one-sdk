@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeMap, HashMap},
 };
 
+use serde_json::json;
 use sf_std::unstable::{perform::PerformInput, provider::ProviderJson, HostValue};
 
 use interpreter_js::JsInterpreter;
@@ -12,12 +13,16 @@ use map_std::unstable::{
     MapValue, MapValueObject,
 };
 
-use crate::bindings::{MessageExchangeFfi, StreamExchangeFfi};
+use crate::{
+    bindings::{MessageExchangeFfi, StreamExchangeFfi},
+    sf_core::json_schema_validator::JsonSchemaValidator,
+};
 
 mod cache;
 mod config;
 mod digest;
 mod exception;
+mod json_schema_validator;
 mod map_std_impl;
 mod profile_validator;
 
@@ -308,6 +313,8 @@ impl OneClientCore {
         };
 
         // TODO: Velidate security values against json schema
+        let security_validator = JsonSchemaValidator::new(&json!({})).unwrap(); // Programmers error
+        let result = security_validator.validate(&perform_input.map_security);
 
         // parse provider json
         let ProviderJsonCacheEntry {

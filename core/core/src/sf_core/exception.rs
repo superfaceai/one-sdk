@@ -55,3 +55,7 @@ impl std::fmt::Display for PerformExceptionError {
         write!(f, "[{}]: {}", self.error_code, self.message)
     }
 }
+
+pub struct ValidationError {
+    // ???
+}

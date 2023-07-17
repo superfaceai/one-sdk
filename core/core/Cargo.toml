@@ -18,6 +18,8 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+jsonschema = { workspace = true }
+
 sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
 map_std = { path = "../core_to_map_std", package = "core_to_map_std" }
 interpreter_js = { path = "../interpreter_js" }
