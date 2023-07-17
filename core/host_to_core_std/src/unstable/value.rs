@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -149,13 +149,3 @@ impl<'de> Deserialize<'de> for HostValue {
         deserializer.deserialize_any(ValueVisitor)
     }
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-pub enum SecurityValue {
-    ApiKey { apikey: String },
-    Basic { username: String, password: String },
-    Bearer { token: String },
-}
-
-pub type SecurityValuesMap = HashMap<String, SecurityValue>;

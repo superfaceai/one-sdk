@@ -9,8 +9,6 @@ mod value;
 use serde::Deserialize;
 use serde::Serialize;
 pub use value::HostValue;
-pub use value::SecurityValue;
-pub use value::SecurityValuesMap;
 mod stream;
 pub use stream::{IoStream, IoStreamHandle};
 
