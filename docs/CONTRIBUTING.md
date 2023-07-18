@@ -10,9 +10,9 @@ We are glad that you are interested in Superface in the way of contributing. We 
 
 ## Need help?
 
-If you have any question about this project (for example, how to use it) or if you just need some clarification about anything, please [open an issue](https://github.com/superfaceai/one-sdk/issues/new/choose) or ask on the [Discord server](https://sfc.is/discord). Alternatively check the [Support page](https://superface.ai/support) for other ways how to reach us.
+If you have any question about this project (for example, how to use it) or if you just need some clarification about anything, please [open an issue](https://github.com/superfaceai/one-sdk/issues/new/choose) or check the [Support page](https://superface.ai/support) for other ways how to reach us.
 
-## Help the community 
+## Help the community
 
 1. [Report a Bug](#contribute-by-reporting-bugs)
 2. [Contribute to the Documentation](#contribute-to-the-documentation)
@@ -46,7 +46,8 @@ Follow these steps:
 ### Development requirements
 
 macOS:
-```
+
+```shell
 # Core dependencies
 brew install docker
 # or dependencies locally
