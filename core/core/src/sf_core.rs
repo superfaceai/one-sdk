@@ -1,9 +1,5 @@
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, HashMap},
-};
+use std::{borrow::Cow, collections::BTreeMap, str::FromStr};
 
-use serde_json::json;
 use sf_std::unstable::{perform::PerformInput, provider::ProviderJson, HostValue};
 
 use interpreter_js::JsInterpreter;
@@ -312,9 +308,23 @@ impl OneClientCore {
             }
         };
 
-        // TODO: Velidate security values against json schema
-        let security_validator = JsonSchemaValidator::new(&json!({})).unwrap(); // Programmers error
+        // Validate security values against json schema
+        let security_validator = JsonSchemaValidator::new(
+            &serde_json::Value::from_str(include_str!(
+                "../assets/schemas/security_values.schema.json"
+            ))
+            .expect("Valid JSON Schema for security values exists"),
+        )
+        .unwrap();
+
         let result = security_validator.validate(&perform_input.map_security);
+        if result.is_err() {
+            // TODO: Validation Error
+            return Err(PerformExceptionError {
+                error_code: "1".to_string(),
+                message: format!("err: {:?}", result.err()),
+            });
+        }
 
         // parse provider json
         let ProviderJsonCacheEntry {

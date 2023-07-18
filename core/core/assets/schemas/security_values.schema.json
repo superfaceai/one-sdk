@@ -1,41 +1,36 @@
-// {
-//   "my_basic": {
-//     "username": "username",
-//     "password": "password"
-//   },
-//   "my_token": {
-//     "token": "token"
-//   },
-//   "my_api_key": {
-//     "apikey": "api key"
-//   }
-// }
 {
-  "$id": "SecurityValues",
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "patternProperties": {
     "^[a-z][_\\-a-z]*$": {
       "type": "object",
       "oneOf": [
         {
-          "username": {
-            "type": "string"
-          },
-          "password": {
-            "type": "string"
-          },
-          "additionalProperties": false
-        },
-        {
-          "token": {
-            "type": "string"
+          "type": "object",
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
           },
           "additionalProperties": false
         },
         {
-          "apikey": {
-            "type": "string"
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "apikey": {
+              "type": "string"
+            }
           },
           "additionalProperties": false
         }

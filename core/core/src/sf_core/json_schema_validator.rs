@@ -1,39 +1,46 @@
-use anyhow::{anyhow, Result};
 use jsonschema::JSONSchema;
 use serde_json::Value;
 use sf_std::unstable::HostValue;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum JsonSchemaValidatorError {
+    #[error("Invalid JSON Schema {kind:?}: {path:?})")]
+    SchemaError { kind: String, path: String },
+
+    #[error("")]
+    ValidationError {
+        kind: String,
+        value: String,
+        path: String,
+    },
+}
 
 pub struct JsonSchemaValidator {
-    schema: Value,
     compiled: JSONSchema,
 }
 impl JsonSchemaValidator {
-    pub fn new(schema: &Value) -> Result<Self> {
-        let compiled = JSONSchema::compile(&schema);
-
-        if let Err(e) = compiled {
-            return Err(anyhow!("Invalid JSON Schema")); // TODO: do better
+    pub fn new(schema: &Value) -> Result<Self, JsonSchemaValidatorError> {
+        match JSONSchema::compile(&schema) {
+            Err(error) => Err(JsonSchemaValidatorError::SchemaError {
+                kind: format!("{:?}", error.kind),
+                path: error.schema_path.to_string(),
+            }),
+            Ok(compiled) => Ok(Self { compiled }),
         }
-
-        let compiled = compiled.unwrap();
-
-        Ok(Self {
-            schema: schema.to_owned(),
-            compiled,
-        })
     }
 
-    pub fn validate(&self, instance: &HostValue) -> Result<()> {
+    pub fn validate(&self, instance: &HostValue) -> Result<(), JsonSchemaValidatorError> {
         let instance = serde_json::to_value(instance).unwrap();
         let result = self.compiled.validate(&instance);
 
         if let Err(errors) = result {
             for error in errors {
-                println!("Validation error: {}", error);
-                println!("Instance path: {}", error.instance_path);
-
-                // TODO: feed and return ValidationError
-                return Err(anyhow!("Validation didn't pass, yep this is useless"));
+                return Err(JsonSchemaValidatorError::ValidationError {
+                    kind: format!("{:?}", error.kind), // TODO: string or keep original?
+                    value: format!("{:?}", error.instance), // TODO: Serde::Value to HostValue?
+                    path: error.instance_path.to_string(),
+                });
             }
         }
 
@@ -43,6 +50,8 @@ impl JsonSchemaValidator {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use super::*;
     use serde::Deserialize;
     use serde_json::json;
@@ -86,6 +95,57 @@ mod test {
                 "bar": null,
                 "baz": "true",
                 "waf": "null"
+            }))
+            .unwrap(),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_invalid_schema() {
+        let validator = JsonSchemaValidator::new(&json!({
+            "type": "unknown"
+        }));
+
+        assert!(validator.is_err());
+        assert!(matches!(
+            validator.err().unwrap(),
+            JsonSchemaValidatorError::SchemaError { .. }
+        ));
+    }
+
+    #[test]
+    fn test_security_values_validator() {
+        const SECURITY_VALUES_SCHEMA: &str =
+            include_str!("../../assets/schemas/security_values.schema.json"); // read higher
+
+        let security_validator = JsonSchemaValidator::new(
+            &serde_json::Value::from_str(&SECURITY_VALUES_SCHEMA).unwrap(),
+        )
+        .unwrap();
+
+        let result = security_validator.validate(
+            &HostValue::deserialize(&json!({
+                "my_basic": {
+                    "username": "username",
+                    "password": "password"
+                },
+                "my_token": {
+                    "token": "token"
+                },
+                "my_api_key": {
+                    "apikey": "api key"
+                }
+            }))
+            .unwrap(),
+        );
+        assert!(result.is_ok());
+
+        let result = security_validator.validate(
+            &HostValue::deserialize(&json!({
+                "security_config": {
+                    "unknown": "so invalid"
+                }
             }))
             .unwrap(),
         );

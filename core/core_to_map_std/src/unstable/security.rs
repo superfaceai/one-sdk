@@ -6,14 +6,6 @@ use sf_std::unstable::{provider::ProviderJson, HostValue};
 
 use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
 
-// pub enum SecurityValue {
-//     ApiKey { apikey: String },
-//     Basic { username: String, password: String },
-//     Bearer { token: String },
-// }
-
-// pub type SecurityValuesMap = HashMap<String, SecurityValue>;
-
 pub enum ApiKeyPlacement {
     Header,
     Body,
@@ -136,36 +128,44 @@ pub fn prepare_security_map(
                 if let HostValue::Object(obj) = config {
                     let security_value: SecurityValue;
 
-                    if obj.contains_key(&"apikey".to_string()) {
+                    if obj.contains_key("apikey") {
                         security_value = SecurityValue::ApiKey {
-                            apikey: match obj.get(&"apikey".to_string()) {
+                            apikey: match obj.get("apikey") {
                                 Some(HostValue::String(str)) => str.to_owned(),
                                 _ => {
-                                    panic!("Never") // TODO: schema validation should ensure it won't get here
+                                    unreachable!(
+                                        "Schema validation should ensure there is String value for apikey field."
+                                    );
                                 }
                             },
                         }
-                    } else if obj.contains_key(&"username".to_string()) {
+                    } else if obj.contains_key("username") {
                         security_value = SecurityValue::Basic {
-                            username: match obj.get(&"username".to_string()) {
+                            username: match obj.get("username") {
                                 Some(HostValue::String(str)) => str.to_owned(),
                                 _ => {
-                                    panic!("Never") // TODO: schema validation should ensure it won't get here
+                                    unreachable!(
+                                        "Schema validation should ensure there is String value for username field."
+                                    );
                                 }
                             },
-                            password: match obj.get(&"password".to_string()) {
+                            password: match obj.get("password") {
                                 Some(HostValue::String(str)) => str.to_owned(),
                                 _ => {
-                                    panic!("Never") // TODO: schema validation should ensure it won't get here
+                                    unreachable!(
+                                        "Schema validation should ensure there is String value for password field."
+                                    );
                                 }
                             },
                         }
-                    } else if obj.contains_key(&"token".to_string()) {
+                    } else if obj.contains_key("token") {
                         security_value = SecurityValue::Bearer {
-                            token: match obj.get(&"token".to_string()) {
+                            token: match obj.get("token") {
                                 Some(HostValue::String(str)) => str.to_owned(),
                                 _ => {
-                                    panic!("Never") // TODO: schema validation should ensure it won't get here
+                                    unreachable!(
+                                        "Schema validation should ensure there is String value for token field."
+                                    );
                                 }
                             },
                         }
@@ -174,7 +174,9 @@ pub fn prepare_security_map(
                     }
 
                     result.insert(id.to_owned(), security_value);
-                } // else can be ignored as map_security is validated with json schema and ensures it is object
+                } else {
+                    unreachable!("JSON Schema validation ensures it is Object.");
+                }
             }
 
             result
