@@ -4,7 +4,8 @@ members = [
 	"host_to_core_std",
 	"core_to_map_std",
 	"interpreter_js",
-	"json_schemas"
+	"json_schemas",
+	"comlink_language"
 ]
 
 [workspace.dependencies]
