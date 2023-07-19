@@ -1,4 +1,4 @@
-[Website](https://superface.ai) | [Get Started](https://superface.ai/docs/getting-started) | [Documentation](https://superface.ai/docs) | [Discord](https://sfc.is/discord) | [Twitter](https://twitter.com/superfaceai) | [Support](https://superface.ai/support)
+[Website](https://superface.ai) | [Get Started](https://superface.ai/docs/getting-started) | [Documentation](https://superface.ai/docs) | [GitHub Discussions](https://sfc.is/discussions) | [Twitter](https://twitter.com/superfaceai) | [Support](https://superface.ai/support)
 <br />
 <br />
 <img src="https://github.com/superfaceai/one-sdk/raw/main/docs/LogoGreen.png" alt="Superface" width="100" height="100">
@@ -9,7 +9,7 @@
 
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/superfaceai/one-sdk/ci_cd.yml)](https://github.com/superfaceai/one-sdk/actions/workflows/ci_cd.yml)
 [![license](https://img.shields.io/npm/l/@superfaceai/one-sdk)](LICENSE)
-[![Discord](https://img.shields.io/discord/819563244418105354?logo=discord&logoColor=fff)](https://sfc.is/discord)
+[![GitHub Discussions](https://img.shields.io/github/discussions/superfaceai/.github?logo=github&logoColor=fff)](https://github.com/orgs/superfaceai/discussions)
 [![npm](https://img.shields.io/pypi/v/one-sdk)](https://pypi.org/project/one-sdk/)
 
 `OneClient` is a universal API client which provides an unparalleled developer experience for every HTTP API. It enhances resiliency to API changes, and comes with built-in integration monitoring and provider failover.
@@ -21,7 +21,7 @@ For more details about Superface, visit [How it Works](https://superface.ai/how-
 - [Superface website](https://superface.ai)
 - [Get Started](https://superface.ai/docs/getting-started)
 - [Documentation](https://superface.ai/docs)
-- [Discord](https://sfc.is/discord)
+- [Support](https://superface.ai/support)
 
 ## Install
 
@@ -34,6 +34,7 @@ python3 -m pip install one-sdk
 ## Setup
 
 OneClient uses three files (also called Comlink) which together make the integration:
+
 - **Profile** - describe business capabilities apart from the implementation details, what is expected as input and what will be the result. Profile name have optional scope before `/` and required name `[scope/]<name>`
 - **Provider** - Define a provider's API services and security schemes to use in a Comlink Map
 - **Map** - describe implementation details for fulfilling a business capability from a Comlink Profile
@@ -59,6 +60,7 @@ As an example, lets send an email with [Mailchimp](https://github.com/superfacea
 4. Add the map. Map connects profile and provider, so the filename is consists of both as well `communication.send-email.mailchimp.map.js`.
 
 The final structure should look like this:
+
 ```
 .
 └── superface/
@@ -91,7 +93,7 @@ try:
         parameters = {
             '<integrationParameterName>': '<integrationParameterValue>'
         },
-        security = { 
+        security = {
             # Provider specific security values:
             '<securityValueId>': {
                 # Security values as described in provider or on profile page
