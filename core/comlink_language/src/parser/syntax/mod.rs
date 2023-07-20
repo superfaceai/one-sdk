@@ -1,6 +1,6 @@
 mod tree;
 
-pub use tree::{nodes::*, tokens::*, AstNode, AstToken, Parser, ParserError};
+pub use tree::{nodes::*, tokens::*, CstNode, AstNode, CstToken, Parser, ParserError};
 
 /// All syntax token kinds that this parser can produce.
 ///
@@ -31,14 +31,14 @@ pub enum SyntaxKind {
     Pipe,
     /// `,`
     Comma,
+    /// `.`
+    Dot,
     /// `=`
     Equals,
     /// ` `
     Whitespace,
     /// `abcd123`
     Identifier,
-    // /// `true`
-    // Boolean,
     /// `123`
     IntNumber,
     /// `123.4`
@@ -73,23 +73,36 @@ pub enum SyntaxKind {
     StringDoc,
     StringLiteral,
     // ------- nodes ------- //
+    FieldName,
     // --- literals --- //
-    Literal,
-    ArrayLiteral,
+    PrimitiveLiteral,
+    ListLiteral,
     ObjectLiteral,
     ObjectLiteralField,
     // --- types --- //
-    TypeDefinition,
-    PrimitiveTypeName,
-    ModelTypeName,
-    EnumDefinition,
-    ObjectDefinition,
-    FieldDefinition,
-    ListDefinition,
-    // ------- items ------- //
-    UseCaseDefinition,
+    PrimitiveType,
+    NamedType,
+    EnumType,
+    EnumTypeVariant,
+    ListType,
+    ObjectType,
+    ObjectTypeField,
+    UnionType,
+    // --- items --- //
     ProfileName,
     ProfileVersion,
+    UseCaseDefinition,
+    UseCaseDefinitionInput,
+    UseCaseDefinitionResult,
+    UseCaseDefinitionAsyncResult,
+    UseCaseDefinitionError,
+    UseCaseDefinitionExample,
+    UseCaseDefinitionExampleInput,
+    UseCaseDefinitionExampleResult,
+    UseCaseDefinitionExampleAsyncResult,
+    UseCaseDefinitionExampleError,
+    NamedModelDefinition,
+    NamedFieldDefinition,
     /// The entire source file
     ProfileDocument,
     /// End of file marker.
@@ -104,6 +117,33 @@ impl From<rowan::SyntaxKind> for SyntaxKind {
     fn from(value: rowan::SyntaxKind) -> Self {
         assert!(value.0 <= SyntaxKind::EndOfFile as u16);
         unsafe { std::mem::transmute::<u16, SyntaxKind>(value.0) }
+    }
+}
+
+/// Set of syntax kinds which can be queried.
+/// 
+/// Mostly used for recovery tokens.
+pub struct SyntaxKindSet {
+    // TODO: should be a bit set like they do in <https://github.com/rust-lang/rust-analyzer/blob/master/crates/parser/src/token_set.rs>
+    tokens: std::borrow::Cow<'static, [SyntaxKind]>,
+}
+impl SyntaxKindSet {
+    pub const fn empty() -> Self {
+        Self::from_static_slice(&[])
+    }
+
+    pub const fn trivia_tokens() -> Self {
+        Self::from_static_slice(&[SyntaxKind::Whitespace, SyntaxKind::LineComment])
+    }
+
+    pub(self) const fn from_static_slice(tokens: &'static [SyntaxKind]) -> Self {
+        Self {
+            tokens: std::borrow::Cow::Borrowed(tokens),
+        }
+    }
+
+    pub fn contains(&self, kind: SyntaxKind) -> bool {
+        self.tokens.as_ref().contains(&kind)
     }
 }
 

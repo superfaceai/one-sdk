@@ -96,6 +96,7 @@ impl<'a> Tokenizer<'a> {
             '!' => self.token(LexerTokenData::Bang),
             '|' => self.token(LexerTokenData::Pipe),
             ',' => self.token(LexerTokenData::Comma),
+            '.' => self.token(LexerTokenData::Dot),
             '=' => self.token(LexerTokenData::Equals),
             // whitespace (but not newline)
             a if a.is_whitespace() => {

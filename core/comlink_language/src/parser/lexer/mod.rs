@@ -14,6 +14,7 @@ pub enum LexerTokenData {
     Bang,
     Pipe,
     Comma,
+    Dot,
     Equals,
     Whitespace,
     Identifier,
@@ -36,36 +37,13 @@ pub fn tokenize<'a>(source: &'a str) -> impl Iterator<Item = LexerToken> + 'a {
     tokenizer::TokenizerIter::new(source)
 }
 
-pub struct LexedString<'a> {
-    source: &'a str,
-    tokens: Vec<LexerToken>,
-}
-impl<'a> LexedString<'a> {
-    pub fn new(source: &'a str) -> Self {
-        let tokens = tokenize(source).collect();
-
-        Self { source, tokens }
-    }
-
-    pub fn token(&self, index: usize) -> Option<&LexerToken> {
-        self.tokens.get(index)
-    }
-
-    pub fn token_text(&self, index: usize) -> Option<&'a str> {
-        match self.token(index) {
-            None => None,
-            Some(LexerToken { offset, len, .. }) => Some(&self.source[*offset..][..*len]),
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::{LexerToken, LexerTokenData};
 
     #[test]
     fn test_lexer() {
-        let source = "() []  {} \n!|,=// abc\ntrue 1a a1 1.23 'ab\n' \"ab\n\" '''ab\n''' \"\"\"ab\n\"\"\" //last comment";
+        let source = "() []  {} \n!|,.=// abc\ntrue 1a a1 1.23 'ab\n' \"ab\n\" '''ab\n''' \"\"\"ab\n\"\"\" //last comment";
 
         let tokens: Vec<_> = super::tokenize(source).collect();
         let expected = vec![
@@ -117,7 +95,7 @@ mod test {
                 len: 1,
                 offset: 9,
             },
-            // `\n!|,=`
+            // `\n!|,.=`
             LexerToken {
                 data: LexerTokenData::Newline,
                 len: 1,
@@ -139,124 +117,129 @@ mod test {
                 offset: 13,
             },
             LexerToken {
-                data: LexerTokenData::Equals,
+                data: LexerTokenData::Dot,
                 len: 1,
                 offset: 14,
+            },
+            LexerToken {
+                data: LexerTokenData::Equals,
+                len: 1,
+                offset: 15,
             },
             // `// abc\n`
             LexerToken {
                 data: LexerTokenData::LineComment,
                 len: 6,
-                offset: 15,
+                offset: 16,
             },
             LexerToken {
                 data: LexerTokenData::Newline,
                 len: 1,
-                offset: 21,
+                offset: 22,
             },
             // `abc `
             LexerToken {
                 data: LexerTokenData::Identifier,
                 len: 4,
-                offset: 22,
+                offset: 23,
             },
             LexerToken {
                 data: LexerTokenData::Whitespace,
                 len: 1,
-                offset: 26,
+                offset: 27,
             },
             // `1a `
             LexerToken {
                 data: LexerTokenData::IntNumber,
                 len: 1,
-                offset: 27,
+                offset: 28,
             },
             LexerToken {
                 data: LexerTokenData::Identifier,
                 len: 1,
-                offset: 28,
+                offset: 29,
             },
             LexerToken {
                 data: LexerTokenData::Whitespace,
                 len: 1,
-                offset: 29,
+                offset: 30,
             },
             // `a1 `
             LexerToken {
                 data: LexerTokenData::Identifier,
                 len: 2,
-                offset: 30,
+                offset: 31,
             },
             LexerToken {
                 data: LexerTokenData::Whitespace,
                 len: 1,
-                offset: 32,
+                offset: 33,
             },
             // `1.23 `
             LexerToken {
                 data: LexerTokenData::FloatNumber,
                 len: 4,
-                offset: 33,
+                offset: 34,
             },
             LexerToken {
                 data: LexerTokenData::Whitespace,
                 len: 1,
-                offset: 37,
+                offset: 38,
             },
             // `'ab\n' `
             LexerToken {
                 data: LexerTokenData::String,
                 len: 5,
-                offset: 38,
+                offset: 39,
             },
             LexerToken {
                 data: LexerTokenData::Whitespace,
                 len: 1,
-                offset: 43,
+                offset: 44,
             },
             // `"ab\n" `
             LexerToken {
                 data: LexerTokenData::String,
                 len: 5,
-                offset: 44,
+                offset: 45,
             },
             LexerToken {
                 data: LexerTokenData::Whitespace,
                 len: 1,
-                offset: 49,
+                offset: 50,
             },
             // `'''ab\n''' `
             LexerToken {
                 data: LexerTokenData::String,
                 len: 9,
-                offset: 50,
+                offset: 51,
             },
             LexerToken {
                 data: LexerTokenData::Whitespace,
                 len: 1,
-                offset: 59,
+                offset: 60,
             },
             // `"""ab\n""" `
             LexerToken {
                 data: LexerTokenData::String,
                 len: 9,
-                offset: 60,
+                offset: 61,
             },
             LexerToken {
                 data: LexerTokenData::Whitespace,
                 len: 1,
-                offset: 69,
+                offset: 70,
             },
             // `//last comment`
             LexerToken {
                 data: LexerTokenData::LineComment,
                 len: 14,
-                offset: 70,
+                offset: 71,
             },
             LexerToken {
                 data: LexerTokenData::EndOfFile,
                 len: 0,
-                offset: 84,
+                offset: 85,
             },
         ];
 

@@ -1,6 +1,6 @@
 use crate::parser::{
     lexer::{tokenize, LexerToken, LexerTokenData},
-    syntax::{SyntaxKind, SyntaxNode, SyntaxToken, SyntaxElement},
+    syntax::{SyntaxKind, SyntaxNode, SyntaxToken, SyntaxElement, SyntaxKindSet},
 };
 
 pub mod nodes;
@@ -19,9 +19,8 @@ struct ParserToken {
 }
 #[derive(Debug)]
 enum ParserEvent {
-    NodeStart {
-        kind: Option<SyntaxKind>,
-    },
+    FrameStart { position: usize },
+    NodeStart { kind: SyntaxKind },
     NodeEnd,
     /// Token is a tree leaf and comes directly from the lexed tokens.
     Token {
@@ -32,26 +31,41 @@ enum ParserEvent {
         message: String,
     },
 }
-/// Set of tokens which in case of an unexpected token are not consumend as part of the error.
-///
-/// These are usually block terminators and similar.
-pub(self) struct TokenRecoverySet {
-    tokens: std::borrow::Cow<'static, [SyntaxKind]>,
-}
-impl TokenRecoverySet {
-    pub const fn empty() -> Self {
-        Self::from_static_slice(&[])
-    }
 
-    pub const fn from_static_slice(tokens: &'static [SyntaxKind]) -> Self {
-        Self {
-            tokens: std::borrow::Cow::Borrowed(tokens),
-        }
-    }
-
-    pub fn contains(&self, kind: SyntaxKind) -> bool {
-        self.tokens.as_ref().contains(&kind)
-    }
+/// Trait for methods which are available to the rule definitions.
+pub trait TreeParser {
+    /// Start a frame.
+    ///
+    /// The frame can be later resolved into a node using [`Self::finish_frame_node`] or cancelled using [`Self::cancel_frame`].
+    fn start_frame(&mut self);
+    /// Finish the latest frame as a node and assign it `N::KIND`.
+    fn finish_frame_node<N: CstNode>(&mut self);
+    /// Cancel latest frame and restore the state of the parser as it was before the frame was started.
+    ///
+    /// This can be used to peek infinitely into the future and then restore the state.
+    fn cancel_frame(&mut self);
+    /// Record one raw token and assing it `T::KIND`.
+    fn token<T: CstToken>(&mut self);
+    /// Record an error event.
+    ///
+    /// Advances by one token unless the next token is in `recovery_set`.
+    fn error<M>(&mut self, message: M, recovery_set: SyntaxKindSet) where String: From<M>;
+    /// Returns the kind of the next token.
+    fn peek(&self) -> SyntaxKind;
+    /// Like [`Self::peek`] but transforms valid identifiers into keywords.
+    fn peek_keyword(&self) -> SyntaxKind;
+    /// Skip any number of tokens `T` and return how many were skipped.
+    ///
+    /// Tokens are always recorded into the tree.
+    fn skip<T: CstToken>(&mut self) -> usize;
+    /// Convenience function for consuming the next token if it is of `kind`, otherwise records an error.
+    ///
+    /// See [`Self::error`] for more info about `recovery_set`.
+    fn expect<T: CstToken>(&mut self, recovery_set: SyntaxKindSet);
+    /// Same as [`Self::expect`] but uses [`Self::peek_keyword`] instead of [`Self::peek`].
+    fn expect_keyword<T: CstToken>(&mut self, recovery_set: SyntaxKindSet);
+    /// Optionally consumes token `T` and returns whether it was consumed.
+    fn opt<T: CstToken>(&mut self) -> bool;
 }
 
 /// Struct representing parser state, passed into rule functions during parsing.
@@ -95,6 +109,7 @@ impl<'a> Parser<'a> {
             LexerTokenData::Bang => SyntaxKind::Bang,
             LexerTokenData::Pipe => SyntaxKind::Pipe,
             LexerTokenData::Comma => SyntaxKind::Comma,
+            LexerTokenData::Dot => SyntaxKind::Dot,
             LexerTokenData::Equals => SyntaxKind::Equals,
             LexerTokenData::Whitespace => SyntaxKind::Whitespace,
             LexerTokenData::Identifier => SyntaxKind::Identifier,
@@ -112,6 +127,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Returns the text of the next token.
+    fn peek_text(&self) -> &str {
+        let token = &self.tokens[self.position];
+
+        &self.source[token.offset..][..token.len]
+    }
+
     /// Advance current token position by up to `count` tokens.
     #[inline]
     fn advance(&mut self, count: usize) {
@@ -119,9 +141,11 @@ impl<'a> Parser<'a> {
     }
 
     fn skip_trivia(&mut self) {
+        const TRIVIA_TOKENS: SyntaxKindSet = SyntaxKindSet::trivia_tokens();
+
         loop {
             match self.peek() {
-                kind@(SyntaxKind::Whitespace | SyntaxKind::LineComment) => {
+                kind if TRIVIA_TOKENS.contains(kind) => {
                     self.events.push(ParserEvent::Token { kind });
                     self.advance(1);
                 }
@@ -140,8 +164,8 @@ impl<'a> Parser<'a> {
 
         for event in self.events {
             match event {
-                ParserEvent::NodeStart { kind: Some(kind) } => builder.start_node(kind.into()),
-                ParserEvent::NodeStart { kind: None } => unreachable!(),
+                ParserEvent::FrameStart { .. } => unreachable!(),
+                ParserEvent::NodeStart { kind } => builder.start_node(kind.into()),
                 ParserEvent::NodeEnd => builder.finish_node(),
                 ParserEvent::Token { kind } => {
                     let token = tokens.next().unwrap();
@@ -160,37 +184,38 @@ impl<'a> Parser<'a> {
         (builder.finish(), errors)
     }
 }
-// pub(self) functions which are available to rule definitions.
-impl Parser<'_> {
-    /// Start recording a node. The kind of the node is specified when [`Self::finish_node`] is called.
-    pub(self) fn start_node(&mut self) {
+impl TreeParser for Parser<'_> {
+    fn start_frame(&mut self) {
         self.active_stack.push(self.events.len());
-        self.events.push(ParserEvent::NodeStart { kind: None });
+        self.events.push(ParserEvent::FrameStart { position: self.position });
     }
 
-    /// Finish recording the latest node.
-    pub(self) fn finish_node(&mut self, final_kind: SyntaxKind) {
+    fn finish_frame_node<N: CstNode>(&mut self) {
         let start_index = self.active_stack.pop().unwrap();
-        match self.events[start_index] {
-            ParserEvent::NodeStart { ref mut kind } => {
-                *kind = Some(final_kind);
-            }
-            _ => unreachable!(),
-        }
+        debug_assert!(matches!(self.events[start_index], ParserEvent::FrameStart { .. }));
+
+        self.events[start_index] = ParserEvent::NodeStart { kind: N::KIND };
         self.events.push(ParserEvent::NodeEnd);
     }
 
-    /// Record one raw token and assing it given `kind`.
-    pub(self) fn token<T: AstToken>(&mut self) {
+    fn cancel_frame(&mut self) {
+        let start_index = self.active_stack.pop().unwrap();
+        let old_position = match self.events[start_index] {
+            ParserEvent::FrameStart { position } => position,
+            _ => unreachable!()
+        };
+
+        self.position = old_position;
+        self.events.truncate(start_index);
+    }
+
+    fn token<T: CstToken>(&mut self) {
         self.events.push(ParserEvent::Token { kind: T::KIND });
         self.advance(1);
         self.skip_trivia();
     }
 
-    /// Record an error event.
-    ///
-    /// Advances by one token unless the next token is in `recovery_set`.
-    pub(self) fn error<M>(&mut self, message: M, recovery_set: TokenRecoverySet)
+    fn error<M>(&mut self, message: M, recovery_set: SyntaxKindSet)
     where
         String: From<M>,
     {
@@ -203,21 +228,12 @@ impl Parser<'_> {
         }
     }
 
-    /// Returns the kind of the next token.
     #[inline]
-    pub(self) fn peek(&self) -> SyntaxKind {
+    fn peek(&self) -> SyntaxKind {
         self.tokens[self.position].kind
     }
 
-    /// Returns the text of the next token.
-    fn peek_text(&self) -> &str {
-        let token = &self.tokens[self.position];
-
-        &self.source[token.offset..][..token.len]
-    }
-
-    /// Like [`Self::peek`] but transforms valid identifiers into keywords.
-    pub(self) fn peek_keyword(&self) -> SyntaxKind {
+    fn peek_keyword(&self) -> SyntaxKind {
         let kind = self.peek();
         if kind != SyntaxKind::Identifier {
             return kind;
@@ -226,7 +242,7 @@ impl Parser<'_> {
         match self.peek_text() {
             "true" => SyntaxKind::KeywordTrue,
             "false" => SyntaxKind::KeywordFalse,
-            "none" => SyntaxKind::KeywordNone,
+            "None" => SyntaxKind::KeywordNone,
             "string" => SyntaxKind::KeywordString,
             "number" => SyntaxKind::KeywordNumber,
             "boolean" => SyntaxKind::KeywordBoolean,
@@ -248,7 +264,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(self) fn skip<T: AstToken>(&mut self) -> usize {
+    fn skip<T: CstToken>(&mut self) -> usize {
         let mut count = 0;
         while self.peek() == T::RAW_KIND {
             self.events.push(ParserEvent::Token { kind: T::KIND });
@@ -261,12 +277,9 @@ impl Parser<'_> {
         count
     }
 
-    /// Convenience function for consuming the next token if it is of `kind`, otherwise records an error.
-    ///
-    /// See [`Self::error`] for more info about `recovery_set`.
-    pub(self) fn expect<T: AstToken>(
+    fn expect<T: CstToken>(
         &mut self,
-        recovery_set: TokenRecoverySet,
+        recovery_set: SyntaxKindSet
     ) {
         if self.peek() != T::RAW_KIND {
             self.error(T::EXPECT_MESSAGE, recovery_set);
@@ -275,10 +288,9 @@ impl Parser<'_> {
         }
     }
 
-    /// Same as [`Self::expect`] but uses [`Self::peek_keyword`] instead of [`Self::peek`].
-    pub(self) fn expect_keyword<T: AstToken>(
+    fn expect_keyword<T: CstToken>(
         &mut self,
-        recovery_set: TokenRecoverySet
+        recovery_set: SyntaxKindSet
     ) {
         if self.peek_keyword() != T::RAW_KIND {
             self.error(T::EXPECT_MESSAGE, recovery_set);
@@ -287,7 +299,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(self) fn opt<T: AstToken>(&mut self) -> bool {
+    fn opt<T: CstToken>(&mut self) -> bool {
         if self.peek() == T::RAW_KIND {
             self.token::<T>();
             true
@@ -319,14 +331,16 @@ impl std::fmt::Debug for Parser<'_> {
     }
 }
 
-/// An ast node.
-pub trait AstNode: Sized + AsRef<SyntaxNode> {
-    const KIND: SyntaxKind;
 
+/// A concrete syntax tree node.
+/// 
+/// A CstNode is physically present in the green tree and can be directly parsed out of the source.
+pub trait CstNode: AstNode {
+    const KIND: SyntaxKind;
     /// Parse this node from the given parser.
     ///
     /// The parsed node and the error are stored in the parser.
-    fn parse(parser: &mut Parser);
+    fn parse(parser: &mut impl TreeParser);
 
     /// Parses this node directly from a string.
     ///
@@ -339,13 +353,17 @@ pub trait AstNode: Sized + AsRef<SyntaxNode> {
         let (node, errors) = parser.build_tree();
         (Self::cast(SyntaxNode::new_root(node)).unwrap(), errors)
     }
-
+}
+/// An abstract syntax tree node.
+/// 
+/// An AstdNode may not be physically presend in the green tree and might just be an abstraction over a set of CstNodes.
+pub trait AstNode: Sized + AsRef<SyntaxNode> {
     /// Attempts to cast `node` into `Self`.
     ///
     /// If node is of a different kind than `Self::KIND` then this returns `None`.
     fn cast(node: SyntaxNode) -> Option<Self>;
 }
-pub trait AstToken: Sized + AsRef<SyntaxToken> {
+pub trait CstToken: Sized + AsRef<SyntaxToken> {
     const RAW_KIND: SyntaxKind;
     const KIND: SyntaxKind;
     const EXPECT_MESSAGE: &'static str;
@@ -360,16 +378,16 @@ pub trait AstToken: Sized + AsRef<SyntaxToken> {
 mod test {
     use std::borrow::Borrow;
 
-    use crate::parser::{AstNode, syntax::ObjectDefinitionNode, testing::syntax_tree_print};
+    use crate::parser::{CstNode, syntax::ObjectTypeNode, testing::syntax_tree_print};
 
     #[test]
     fn test_me() {
         let source: &str = "{ 'field doc' \n field! string \n '''f2 doc''' f2 number, f3 boolean, f4! }";
 
-        let (node, errors) = ObjectDefinitionNode::parse_root(source);
+        let (node, errors) = ObjectTypeNode::parse_root(source);
 
         assert_eq!(
-            syntax_tree_print(&node.as_ref().green().borrow()),
+            syntax_tree_print(&node.as_ref().green().borrow(), false),
             "ObjectDefinition[73]:
   BraceLeft[1]
   Whitespace[1]

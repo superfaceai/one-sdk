@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{AstToken, SyntaxKind, SyntaxKind::*, SyntaxToken};
+use super::{CstToken, SyntaxKind, SyntaxKind::*, SyntaxToken};
 
 macro_rules! token {
     (
@@ -13,7 +13,7 @@ macro_rules! token {
                 &self.0
             }
         }
-        impl AstToken for $name {
+        impl CstToken for $name {
             const RAW_KIND: SyntaxKind = $raw_kind;
             #[allow(path_statements)]
             const KIND: SyntaxKind = { $raw_kind $(; $syntax_kind)? };
@@ -40,6 +40,7 @@ token! { "}" pub struct BraceRightToken = BraceRight; }
 token! { "!" pub struct BangToken = Bang; }
 token! { "|" pub struct PipeToken = Pipe; }
 token! { "," pub struct CommaToken = Comma; }
+token! { "." pub struct DotToken = Dot; }
 token! { "=" pub struct EqualsToken = Equals; }
 token! { "whitespace" pub struct WhitespaceToken = Whitespace; }
 token! { "identifier" pub struct IdentifierToken = Identifier; }
@@ -49,7 +50,7 @@ token! { "end of file" pub struct EndOfFileToken = EndOfFile; }
 
 token! { "true keyword" pub struct KeywordTrueToken = KeywordTrue; }
 token! { "false keyword" pub struct KeywordFalseToken = KeywordFalse; }
-token! { "none keyword" pub struct KeywordNoneToken = KeywordNone; }
+token! { "None keyword" pub struct KeywordNoneToken = KeywordNone; }
 token! { "string keyword" pub struct KeywordStringToken = KeywordString; }
 token! { "number keyword" pub struct KeywordNumberToken = KeywordNumber; }
 token! { "boolean keyword" pub struct KeywordBooleanToken = KeywordBoolean; }

@@ -1,7 +1,7 @@
 mod lexer;
 mod syntax;
 
-pub use syntax::{AstNode, AstToken, ParserError, ProfileDocumentNode};
+pub use syntax::{CstNode, AstNode, CstToken, ParserError, ProfileDocumentNode};
 
 pub fn parse_profile(source: &str) -> (ProfileDocumentNode, Vec<ParserError>) {
     ProfileDocumentNode::parse_root(source)
@@ -16,6 +16,7 @@ mod test {
     #[test]
     fn test_parse_profile() {
         let source = r#"
+        '''profile doc'''
         name = "scope/example"
         version = "1.2.3"
 
@@ -24,41 +25,44 @@ mod test {
         Foo usecase
         """
         usecase Foo safe {
-          // input {
-          //   f! string!
-          //   fn string
-          // }
-          // result number
-          // error enum {
-          //   FORBIDDEN_WORD
-          // }
+          input {
+            f! string!
+            fn string
+            x [MyModel] | Banana
+          }
+          result number
+          error enum {
+            FORBIDDEN_WORD
+            FOO = "123",
+            BAR
+          }
     
-          // "success example"
-          // example success_example {
-          //   input {
-          //     "hello has 5 letters"
-          //     f = "hello"
-          //     fn = None
-          //   }
-          //   result 5
-          //   // TODO: do we want this? async result undefined
-          // }
+          "success example"
+          example success_example {
+            input {
+              "hello has 5 letters"
+              f = "hello"
+              fn = None
+            }
+            result 5
+            // TODO: do we want this? async result undefined
+          }
     
-          // example error_example {
-          //   input {
-          //     f = "evil"
-          //   }
-          //   error "FORBIDDEN_WORD"
-          // }
+          example error_example {
+            input {
+              f = "evil"
+            }
+            error "FORBIDDEN_WORD"
+          }
     
-          // example {
-          //   result [0, 1, 2]
-          // }
+          example {
+            result [0, 1, 2]
+          }
         }
         "#;
 
         let (profile, errors) = super::parse_profile(source);
-        eprintln!("tree:\n{}", syntax_tree_print(&profile.as_ref().green().borrow()));
+        eprintln!("tree:\n{}", syntax_tree_print(&profile.as_ref().green().borrow(), true));
         eprintln!("errors: {:?}", errors);
 
         assert!(errors.is_empty());
@@ -73,13 +77,17 @@ pub mod testing {
 
     use rowan::{GreenNodeData, GreenTokenData, NodeOrToken};
 
-    use super::syntax::SyntaxKind;
+    use super::syntax::{SyntaxKind, SyntaxKindSet};
 
     fn syntax_tree_print_inner(
         out: &mut impl Write,
+        skip: &SyntaxKindSet,
         node: NodeOrToken<&GreenNodeData, &GreenTokenData>,
         depth: usize,
     ) {
+        if skip.contains(node.kind().into()) {
+            return;
+        }
         let ident = "  ".repeat(depth);
 
         match node {
@@ -93,7 +101,7 @@ pub mod testing {
                 )
                 .unwrap();
                 for child in node.children() {
-                    syntax_tree_print_inner(out, child, depth + 1);
+                    syntax_tree_print_inner(out, skip, child, depth + 1);
                 }
             }
             NodeOrToken::Token(token) => {
@@ -109,9 +117,15 @@ pub mod testing {
         }
     }
 
-    pub fn syntax_tree_print(node: &GreenNodeData) -> String {
+    pub fn syntax_tree_print(node: &GreenNodeData, skip_trivia: bool) -> String {
+        let skip = if skip_trivia {
+            SyntaxKindSet::trivia_tokens()
+        } else {
+            SyntaxKindSet::empty()
+        };
+        
         let mut string = String::new();
-        syntax_tree_print_inner(&mut string, NodeOrToken::Node(node), 0);
+        syntax_tree_print_inner(&mut string, &skip, NodeOrToken::Node(node), 0);
 
         string
     }
