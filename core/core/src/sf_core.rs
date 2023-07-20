@@ -319,11 +319,7 @@ impl OneClientCore {
 
         let result = security_validator.validate(&perform_input.map_security);
         if result.is_err() {
-            // TODO: Validation Error
-            return Err(PerformExceptionError {
-                error_code: "1".to_string(),
-                message: format!("err: {:?}", result.err()),
-            });
+            return try_metrics!(Err(PerformExceptionError::from(result.unwrap_err())));
         }
 
         // parse provider json

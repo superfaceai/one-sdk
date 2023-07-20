@@ -2,7 +2,7 @@ use interpreter_js::JsInterpreterError;
 use map_std::unstable::security::PrepareSecurityMapError;
 use sf_std::unstable::perform::{PerformException, TakePerformInputError};
 
-use super::cache::DocumentCacheError;
+use super::{cache::DocumentCacheError, json_schema_validator::JsonSchemaValidatorError};
 
 pub struct PerformExceptionError {
     pub error_code: String,
@@ -39,6 +39,14 @@ impl From<TakePerformInputError> for PerformExceptionError {
         PerformExceptionError {
             error_code: "TakePerformInputError".to_string(),
             message: value.to_string(),
+        }
+    }
+}
+impl From<JsonSchemaValidatorError> for PerformExceptionError {
+    fn from(value: JsonSchemaValidatorError) -> Self {
+        PerformExceptionError {
+            error_code: "PerformInputValidationError".to_string(),
+            message: format!("err: {:?}", value),
         }
     }
 }
