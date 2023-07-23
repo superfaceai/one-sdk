@@ -16,6 +16,7 @@ pub enum JsonSchemaValidatorError {
     },
 }
 
+#[derive(Debug)]
 pub struct JsonSchemaValidator {
     compiled: JSONSchema,
 }

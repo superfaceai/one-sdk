@@ -157,6 +157,7 @@ pub struct OneClientCore {
     profile_cache: DocumentCache<ProfileCacheEntry>,
     provider_cache: DocumentCache<ProviderJsonCacheEntry>,
     map_cache: DocumentCache<MapCacheEntry>,
+    security_validator: JsonSchemaValidator,
 }
 impl OneClientCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
@@ -171,6 +172,13 @@ impl OneClientCore {
             profile_cache: DocumentCache::new(config.cache_duration),
             provider_cache: DocumentCache::new(config.cache_duration),
             map_cache: DocumentCache::new(config.cache_duration),
+            security_validator: JsonSchemaValidator::new(
+                &serde_json::Value::from_str(include_str!(
+                    "../assets/schemas/security_values.schema.json"
+                ))
+                .expect("Valid JSON"),
+            )
+            .expect("Valid JSON Schema for security values exists"),
         })
     }
 
@@ -313,15 +321,9 @@ impl OneClientCore {
         };
 
         // Validate security values against json schema
-        let security_validator = JsonSchemaValidator::new(
-            &serde_json::Value::from_str(include_str!(
-                "../assets/schemas/security_values.schema.json"
-            ))
-            .expect("Valid JSON Schema for security values exists"),
-        )
-        .unwrap();
-
-        let result = security_validator.validate(&perform_input.map_security);
+        let result = self
+            .security_validator
+            .validate(&perform_input.map_security);
         if result.is_err() {
             return try_metrics!(Err(PerformException::from(result.unwrap_err())));
         }
