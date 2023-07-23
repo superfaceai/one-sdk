@@ -3,7 +3,8 @@ members = [
 	"core",
 	"host_to_core_std",
 	"core_to_map_std",
-	"interpreter_js"
+	"interpreter_js",
+	"schemas"
 ]
 
 [workspace.dependencies]
@@ -17,6 +18,8 @@ regex = { version = "1" }
 url = { version = "2" }
 
 tracing = { version = "0.1" }
+
+schemars = "0.8.12"
 
 [profile.release]
 opt-level = "s"
