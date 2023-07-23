@@ -2,7 +2,7 @@ use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
 use quickjs_wasm_rs::JSContextRef;
-use sf_std::unstable::exception::PerformException;
+use sf_std::unstable::exception::{PerformException, PerformExceptionErrorCode};
 use thiserror::Error;
 
 use map_std::MapStdFull;
@@ -24,7 +24,7 @@ pub enum JsInterpreterError {
 impl From<JsInterpreterError> for PerformException {
     fn from(value: JsInterpreterError) -> Self {
         PerformException {
-            error_code: "JsInterpreterError".to_string(),
+            error_code: PerformExceptionErrorCode::JsInterpreterError,
             message: value.to_string(),
         }
     }

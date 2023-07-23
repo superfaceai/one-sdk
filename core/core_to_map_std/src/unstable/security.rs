@@ -2,7 +2,11 @@ use std::{collections::HashMap, fmt::Write};
 
 use base64::Engine;
 
-use sf_std::unstable::{exception::PerformException, provider::ProviderJson, HostValue};
+use sf_std::unstable::{
+    exception::{PerformException, PerformExceptionErrorCode},
+    provider::ProviderJson,
+    HostValue,
+};
 
 use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
 
@@ -92,7 +96,7 @@ pub enum PrepareSecurityMapError {
 impl From<PrepareSecurityMapError> for PerformException {
     fn from(value: PrepareSecurityMapError) -> Self {
         PerformException {
-            error_code: "PrepareSecurityMapError".to_string(),
+            error_code: PerformExceptionErrorCode::PrepareSecurityMapError,
             message: value.to_string(),
         }
     }

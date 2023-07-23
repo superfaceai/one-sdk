@@ -1,7 +1,10 @@
 use std::{borrow::Cow, collections::BTreeMap, str::FromStr};
 
 use sf_std::unstable::{
-    exception::PerformException, perform::PerformInput, provider::ProviderJson, HostValue,
+    exception::{PerformException, PerformExceptionErrorCode},
+    perform::PerformInput,
+    provider::ProviderJson,
+    HostValue,
 };
 
 use interpreter_js::JsInterpreter;
@@ -303,8 +306,8 @@ impl OneClientCore {
             HostValue::None => MapValueObject::new(),
             _ => {
                 try_metrics!(Err(PerformException {
-                    error_code: "PerformInputParametersFormatError".to_string(),
-                    message: "Parameters must be an Object or None".to_string(),
+                    error_code: PerformExceptionErrorCode::ParametersFormatError,
+                    message: "Parameters must be an Object or None".to_owned(),
                 }))
             }
         };
@@ -363,7 +366,7 @@ impl OneClientCore {
             Some(path) => {
                 let replacement =
                     try_metrics!(Fs::read_to_string(&path).map_err(|err| PerformException {
-                        error_code: "ReplacementStdlibError".to_string(),
+                        error_code: PerformExceptionErrorCode::ReplacementStdlibError,
                         message: format!("Failed to load replacement map_std: {}", err),
                     }));
 

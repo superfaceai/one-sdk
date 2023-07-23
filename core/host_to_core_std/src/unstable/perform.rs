@@ -82,7 +82,7 @@ pub enum TakePerformInputError {
 impl From<TakePerformInputError> for PerformException {
     fn from(value: TakePerformInputError) -> Self {
         PerformException {
-            error_code: "TakePerformInputError".to_string(),
+            error_code: super::exception::PerformExceptionErrorCode::TakeInputError,
             message: value.to_string(),
         }
     }
