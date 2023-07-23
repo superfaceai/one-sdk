@@ -1,5 +1,6 @@
 //! Unstable functions provide no stability guarantees
 
+pub mod exception;
 pub mod fs;
 pub mod http;
 pub mod perform;

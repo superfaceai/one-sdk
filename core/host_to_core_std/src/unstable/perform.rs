@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{ErrorCode, HostValue};
+use super::{exception::PerformException, ErrorCode, HostValue};
 use crate::abi::{JsonMessageError, MessageExchange};
 
 define_exchange_core_to_host! {
@@ -79,6 +79,14 @@ pub enum TakePerformInputError {
     #[error("Unknown perform input error: {0}")]
     Unknown(String),
 }
+impl From<TakePerformInputError> for PerformException {
+    fn from(value: TakePerformInputError) -> Self {
+        PerformException {
+            error_code: "TakePerformInputError".to_string(),
+            message: value.to_string(),
+        }
+    }
+}
 
 pub struct PerformInput {
     pub profile_url: String,
@@ -128,12 +136,6 @@ impl PerformInput {
             ))),
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PerformException {
-    pub error_code: String, // TODO: should this be an enum?
-    pub message: String,
 }
 
 pub fn set_perform_output_result_in<E: MessageExchange>(result: HostValue, message_exchange: E) {

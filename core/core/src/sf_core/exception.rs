@@ -1,65 +1,22 @@
-use interpreter_js::JsInterpreterError;
-use map_std::unstable::security::PrepareSecurityMapError;
-use sf_std::unstable::perform::{PerformException, TakePerformInputError};
+use sf_std::unstable::exception::PerformException;
 
 use super::{cache::DocumentCacheError, json_schema_validator::JsonSchemaValidatorError};
 
-pub struct PerformExceptionError {
-    pub error_code: String,
-    pub message: String,
-}
 impl<PostProcessError: std::error::Error> From<DocumentCacheError<PostProcessError>>
-    for PerformExceptionError
+    for PerformException
 {
     fn from(value: DocumentCacheError<PostProcessError>) -> Self {
-        PerformExceptionError {
+        PerformException {
             error_code: "DocumentCacheError".to_string(),
             message: value.to_string(),
         }
     }
 }
-impl From<PrepareSecurityMapError> for PerformExceptionError {
-    fn from(value: PrepareSecurityMapError) -> Self {
-        PerformExceptionError {
-            error_code: "PrepareSecurityMapError".to_string(),
-            message: value.to_string(),
-        }
-    }
-}
-impl From<JsInterpreterError> for PerformExceptionError {
-    fn from(value: JsInterpreterError) -> Self {
-        PerformExceptionError {
-            error_code: "JsInterpreterError".to_string(),
-            message: value.to_string(),
-        }
-    }
-}
-impl From<TakePerformInputError> for PerformExceptionError {
-    fn from(value: TakePerformInputError) -> Self {
-        PerformExceptionError {
-            error_code: "TakePerformInputError".to_string(),
-            message: value.to_string(),
-        }
-    }
-}
-impl From<JsonSchemaValidatorError> for PerformExceptionError {
+impl From<JsonSchemaValidatorError> for PerformException {
     fn from(value: JsonSchemaValidatorError) -> Self {
-        PerformExceptionError {
+        PerformException {
             error_code: "PerformInputValidationError".to_string(),
             message: format!("err: {:?}", value),
         }
-    }
-}
-impl From<PerformExceptionError> for PerformException {
-    fn from(value: PerformExceptionError) -> Self {
-        PerformException {
-            error_code: value.error_code,
-            message: value.message,
-        }
-    }
-}
-impl std::fmt::Display for PerformExceptionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}]: {}", self.error_code, self.message)
     }
 }

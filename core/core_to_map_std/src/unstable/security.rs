@@ -2,7 +2,7 @@ use std::{collections::HashMap, fmt::Write};
 
 use base64::Engine;
 
-use sf_std::unstable::{provider::ProviderJson, HostValue};
+use sf_std::unstable::{exception::PerformException, provider::ProviderJson, HostValue};
 
 use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
 
@@ -89,6 +89,15 @@ pub enum PrepareSecurityMapError {
     #[error("Security is misconfigured:\n{}", MapInterpreterSecurityMisconfiguredError::format_errors(.0.as_slice()))]
     SecurityMisconfigured(Vec<MapInterpreterSecurityMisconfiguredError>),
 }
+impl From<PrepareSecurityMapError> for PerformException {
+    fn from(value: PrepareSecurityMapError) -> Self {
+        PerformException {
+            error_code: "PrepareSecurityMapError".to_string(),
+            message: value.to_string(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct MapInterpreterSecurityMisconfiguredError {
     pub id: String,

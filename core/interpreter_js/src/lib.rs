@@ -2,6 +2,7 @@ use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use anyhow::Context as AnyhowContext;
 use quickjs_wasm_rs::JSContextRef;
+use sf_std::unstable::exception::PerformException;
 use thiserror::Error;
 
 use map_std::MapStdFull;
@@ -19,6 +20,14 @@ pub enum JsInterpreterError {
     CompilationFailed(anyhow::Error),
     #[error("Eval code cannot be an empty string")]
     EvalCodeEmpty,
+}
+impl From<JsInterpreterError> for PerformException {
+    fn from(value: JsInterpreterError) -> Self {
+        PerformException {
+            error_code: "JsInterpreterError".to_string(),
+            message: value.to_string(),
+        }
+    }
 }
 
 pub struct JsInterpreter<S: MapStdFull + 'static> {
@@ -80,7 +89,7 @@ impl<S: MapStdFull + 'static> JsInterpreter<S> {
         if code.len() == 0 {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
-        
+
         self.eval_code(name, &code)?;
 
         let entry = format!("_start('{}');", usecase);

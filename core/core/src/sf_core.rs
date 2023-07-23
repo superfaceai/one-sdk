@@ -1,6 +1,8 @@
 use std::{borrow::Cow, collections::BTreeMap, str::FromStr};
 
-use sf_std::unstable::{perform::PerformInput, provider::ProviderJson, HostValue};
+use sf_std::unstable::{
+    exception::PerformException, perform::PerformInput, provider::ProviderJson, HostValue,
+};
 
 use interpreter_js::JsInterpreter;
 use map_std::unstable::{
@@ -25,7 +27,6 @@ mod profile_validator;
 // use crate::profile_validator::ProfileValidator;
 use cache::DocumentCache;
 pub use config::CoreConfiguration;
-use exception::PerformExceptionError;
 use map_std_impl::MapStdImpl;
 
 type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
@@ -214,7 +215,7 @@ impl OneClientCore {
         }
     }
 
-    pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
+    pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformException> {
         // we can't send metrics if we don't even know the profile and provider urls
         let perform_input = PerformInput::take_in(MessageExchangeFfi)?;
 
@@ -301,7 +302,7 @@ impl OneClientCore {
             ),
             HostValue::None => MapValueObject::new(),
             _ => {
-                try_metrics!(Err(PerformExceptionError {
+                try_metrics!(Err(PerformException {
                     error_code: "PerformInputParametersFormatError".to_string(),
                     message: "Parameters must be an Object or None".to_string(),
                 }))
@@ -319,7 +320,7 @@ impl OneClientCore {
 
         let result = security_validator.validate(&perform_input.map_security);
         if result.is_err() {
-            return try_metrics!(Err(PerformExceptionError::from(result.unwrap_err())));
+            return try_metrics!(Err(PerformException::from(result.unwrap_err())));
         }
 
         // parse provider json
@@ -361,12 +362,10 @@ impl OneClientCore {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
                 let replacement =
-                    try_metrics!(
-                        Fs::read_to_string(&path).map_err(|err| PerformExceptionError {
-                            error_code: "ReplacementStdlibError".to_string(),
-                            message: format!("Failed to load replacement map_std: {}", err),
-                        })
-                    );
+                    try_metrics!(Fs::read_to_string(&path).map_err(|err| PerformException {
+                        error_code: "ReplacementStdlibError".to_string(),
+                        message: format!("Failed to load replacement map_std: {}", err),
+                    }));
 
                 interpreter.eval_code(&path, &replacement)
             }
