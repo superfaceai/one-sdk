@@ -2,7 +2,11 @@ use std::{collections::HashMap, fmt::Write};
 
 use base64::Engine;
 
-use sf_std::unstable::{provider::ProviderJson, SecurityValue, SecurityValuesMap};
+use sf_std::unstable::{
+    exception::{PerformException, PerformExceptionErrorCode},
+    provider::ProviderJson,
+    HostValue,
+};
 
 use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
 
@@ -75,14 +79,29 @@ pub enum SecurityMapValue {
     Security(Security),
     Error(MapInterpreterSecurityMisconfiguredError),
 }
-
 pub type SecurityMap = HashMap<SecurityMapKey, SecurityMapValue>;
+
+pub enum SecurityValue {
+    ApiKey { apikey: String },
+    Basic { username: String, password: String },
+    Bearer { token: String },
+}
+pub type SecurityValuesMap = HashMap<String, SecurityValue>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PrepareSecurityMapError {
     #[error("Security is misconfigured:\n{}", MapInterpreterSecurityMisconfiguredError::format_errors(.0.as_slice()))]
     SecurityMisconfigured(Vec<MapInterpreterSecurityMisconfiguredError>),
 }
+impl From<PrepareSecurityMapError> for PerformException {
+    fn from(value: PrepareSecurityMapError) -> Self {
+        PerformException {
+            error_code: PerformExceptionErrorCode::PrepareSecurityMapError,
+            message: value.to_string(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct MapInterpreterSecurityMisconfiguredError {
     pub id: String,
@@ -107,11 +126,75 @@ impl MapInterpreterSecurityMisconfiguredError {
 
 pub fn prepare_security_map(
     provider_json: &ProviderJson,
-    security_values: &SecurityValuesMap,
+    map_security: &HostValue,
 ) -> Result<SecurityMap, PrepareSecurityMapError> {
     let security_schemes = match &provider_json.security_schemes {
         Some(security_schemes) => security_schemes,
         None => return Ok(SecurityMap::new()),
+    };
+
+    let security_values = match &map_security {
+        HostValue::Object(obj) => {
+            let mut result = SecurityValuesMap::new();
+
+            for (id, config) in obj.iter() {
+                if let HostValue::Object(obj) = config {
+                    let security_value: SecurityValue;
+
+                    if obj.contains_key("apikey") {
+                        security_value = SecurityValue::ApiKey {
+                            apikey: match obj.get("apikey") {
+                                Some(HostValue::String(str)) => str.to_owned(),
+                                _ => {
+                                    unreachable!(
+                                        "Schema validation should ensure there is String value for apikey field."
+                                    );
+                                }
+                            },
+                        }
+                    } else if obj.contains_key("username") {
+                        security_value = SecurityValue::Basic {
+                            username: match obj.get("username") {
+                                Some(HostValue::String(str)) => str.to_owned(),
+                                _ => {
+                                    unreachable!(
+                                        "Schema validation ensures there is String value for username field."
+                                    );
+                                }
+                            },
+                            password: match obj.get("password") {
+                                Some(HostValue::String(str)) => str.to_owned(),
+                                _ => {
+                                    unreachable!(
+                                        "Schema validation ensures there is String value for password field."
+                                    );
+                                }
+                            },
+                        }
+                    } else if obj.contains_key("token") {
+                        security_value = SecurityValue::Bearer {
+                            token: match obj.get("token") {
+                                Some(HostValue::String(str)) => str.to_owned(),
+                                _ => {
+                                    unreachable!(
+                                        "Schema validation ensures there is String value for token field."
+                                    );
+                                }
+                            },
+                        }
+                    } else {
+                        unreachable!("Schema validation ensures value is one of the types above.");
+                    }
+
+                    result.insert(id.to_owned(), security_value);
+                } else {
+                    unreachable!("JSON Schema validation ensures it is Object.");
+                }
+            }
+
+            result
+        }
+        _ => HashMap::new(),
     };
 
     let mut security_map = SecurityMap::new();

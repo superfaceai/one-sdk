@@ -15,6 +15,7 @@ serde_urlencoded = { version = "0.7" }
 base64 = { version = "0.21" }
 regex = { version = "1" }
 url = { version = "2" }
+jsonschema = { version = "0.17", default-features = false } # https://github.com/Stranger6667/jsonschema-rs/issues/222
 
 tracing = { version = "0.1" }
 

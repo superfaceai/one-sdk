@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{value::SecurityValuesMap, ErrorCode, HostValue};
+use super::{exception::PerformException, ErrorCode, HostValue};
 use crate::abi::{JsonMessageError, MessageExchange};
 
 define_exchange_core_to_host! {
@@ -21,7 +21,7 @@ define_exchange_core_to_host! {
             /// Integrations parameters.
             map_parameters: HostValue,
             /// Security values
-            map_security: SecurityValuesMap
+            map_security: HostValue
         },
         Err {
             error_code: ErrorCode,
@@ -79,6 +79,14 @@ pub enum TakePerformInputError {
     #[error("Unknown perform input error: {0}")]
     Unknown(String),
 }
+impl From<TakePerformInputError> for PerformException {
+    fn from(value: TakePerformInputError) -> Self {
+        PerformException {
+            error_code: super::exception::PerformExceptionErrorCode::TakeInputError,
+            message: value.to_string(),
+        }
+    }
+}
 
 pub struct PerformInput {
     pub profile_url: String,
@@ -87,7 +95,7 @@ pub struct PerformInput {
     pub usecase: String,
     pub map_input: HostValue,
     pub map_parameters: HostValue,
-    pub map_security: SecurityValuesMap,
+    pub map_security: HostValue,
 }
 impl PerformInput {
     pub fn take_in<E: MessageExchange>(
@@ -128,12 +136,6 @@ impl PerformInput {
             ))),
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PerformException {
-    pub error_code: String, // TODO: should this be an enum?
-    pub message: String,
 }
 
 pub fn set_perform_output_result_in<E: MessageExchange>(result: HostValue, message_exchange: E) {
@@ -186,6 +188,8 @@ pub fn set_perform_output_exception_in<E: MessageExchange>(
 
 #[cfg(test)]
 mod test {
+    use std::collections::BTreeMap;
+
     use serde_json::json;
 
     use super::*;
@@ -239,7 +243,20 @@ mod test {
                 assert_eq!(usecase, "bar");
                 assert_eq!(map_input, HostValue::Bool(true));
                 assert_eq!(map_parameters, HostValue::None);
-                assert_eq!(map_security.len(), 1);
+
+                let mut basic = BTreeMap::new();
+                basic.insert(
+                    "username".to_string(),
+                    HostValue::String("username".to_string()),
+                );
+                basic.insert(
+                    "password".to_string(),
+                    HostValue::String("pass".to_string()),
+                );
+
+                let mut security = BTreeMap::new();
+                security.insert("basic".to_string(), HostValue::Object(basic));
+                assert_eq!(map_security, HostValue::Object(security));
             }
             PerformInputResponse::Err { .. } => unreachable!(),
         }

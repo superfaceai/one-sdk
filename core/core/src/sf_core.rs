@@ -1,6 +1,11 @@
-use std::{collections::BTreeMap, borrow::Cow};
+use std::{borrow::Cow, collections::BTreeMap, str::FromStr};
 
-use sf_std::unstable::{perform::PerformInput, provider::ProviderJson, HostValue};
+use sf_std::unstable::{
+    exception::{PerformException, PerformExceptionErrorCode},
+    perform::PerformInput,
+    provider::ProviderJson,
+    HostValue,
+};
 
 use interpreter_js::JsInterpreter;
 use map_std::unstable::{
@@ -9,19 +14,22 @@ use map_std::unstable::{
     MapValue, MapValueObject,
 };
 
-use crate::bindings::{MessageExchangeFfi, StreamExchangeFfi};
+use crate::{
+    bindings::{MessageExchangeFfi, StreamExchangeFfi},
+    sf_core::json_schema_validator::JsonSchemaValidator,
+};
 
 mod cache;
 mod config;
 mod digest;
 mod exception;
+mod json_schema_validator;
 mod map_std_impl;
 mod profile_validator;
 
 // use crate::profile_validator::ProfileValidator;
 use cache::DocumentCache;
 pub use config::CoreConfiguration;
-use exception::PerformExceptionError;
 use map_std_impl::MapStdImpl;
 
 type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
@@ -57,14 +65,13 @@ impl<'a> PerformMetricsData<'a> {
         match self.profile {
             Some(profile) => Cow::Borrowed(profile),
             None => Cow::Owned(
-                self
-                    .profile_url
+                self.profile_url
                     .split('/')
                     .last()
                     .and_then(|b| b.strip_suffix(".profile"))
                     .unwrap()
-                    .replace('.', "/")
-            )
+                    .replace('.', "/"),
+            ),
         }
     }
 
@@ -129,18 +136,18 @@ struct MapCacheEntry {
     pub map: String,
     pub content_hash: String,
     /// This is for the purposes of stacktraces in JsInterpreter
-    pub file_name: String
+    pub file_name: String,
 }
 impl MapCacheEntry {
     // TODO: name should be taken from the manifest
     pub fn new(data: Vec<u8>, file_name: String) -> Result<Self, MapCacheEntryError> {
         let content_hash = digest::content_hash(&data);
         let map = String::from_utf8(data)?;
-        
+
         Ok(Self {
             content_hash,
             map,
-            file_name
+            file_name,
         })
     }
 }
@@ -150,6 +157,7 @@ pub struct OneClientCore {
     profile_cache: DocumentCache<ProfileCacheEntry>,
     provider_cache: DocumentCache<ProviderJsonCacheEntry>,
     map_cache: DocumentCache<MapCacheEntry>,
+    security_validator: JsonSchemaValidator,
 }
 impl OneClientCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
@@ -164,6 +172,13 @@ impl OneClientCore {
             profile_cache: DocumentCache::new(config.cache_duration),
             provider_cache: DocumentCache::new(config.cache_duration),
             map_cache: DocumentCache::new(config.cache_duration),
+            security_validator: JsonSchemaValidator::new(
+                &serde_json::Value::from_str(include_str!(
+                    "../assets/schemas/security_values.schema.json"
+                ))
+                .expect("Valid JSON"),
+            )
+            .expect("Valid JSON Schema for security values exists"),
         })
     }
 
@@ -211,7 +226,7 @@ impl OneClientCore {
         }
     }
 
-    pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformExceptionError> {
+    pub fn perform(&mut self) -> Result<Result<HostValue, HostValue>, PerformException> {
         // we can't send metrics if we don't even know the profile and provider urls
         let perform_input = PerformInput::take_in(MessageExchangeFfi)?;
 
@@ -263,52 +278,16 @@ impl OneClientCore {
             &perform_input.provider_url,
             ProviderJsonCacheEntry::from_data
         ));
-        try_metrics!(self.map_cache.cache(
-            &perform_input.map_url, |data| {
-                // TODO: this is temporary, should be extracted from the map manifest
-                let file_name = perform_input.map_url.split('/').last().unwrap().to_string();
+        try_metrics!(self.map_cache.cache(&perform_input.map_url, |data| {
+            // TODO: this is temporary, should be extracted from the map manifest
+            let file_name = perform_input.map_url.split('/').last().unwrap().to_string();
 
-                MapCacheEntry::new(data, file_name)
-            }
-        ));
+            MapCacheEntry::new(data, file_name)
+        }));
 
         // process map input and parameters
         let map_input = self.host_value_to_map_value(perform_input.map_input);
-        let mut map_parameters = match perform_input.map_parameters {
-            HostValue::Object(o) => MapValueObject::from_iter(
-                o.into_iter()
-                    .map(|(k, v)| (k, self.host_value_to_map_value(v))),
-            ),
-            HostValue::None => MapValueObject::new(),
-            _ => {
-                try_metrics!(Err(PerformExceptionError {
-                    error_code: "PerformInputParametersFormatError".to_string(),
-                    message: "Parameters must be an Object or None".to_string(),
-                }))
-            }
-        };
-
-        // parse provider json
-        let ProviderJsonCacheEntry {
-            provider_json,
-            content_hash: provider_json_content_hash,
-        } = self
-            .provider_cache
-            .get(&perform_input.provider_url)
-            .unwrap();
-        metrics_data.provider_content_hash = Some(&provider_json_content_hash);
-        metrics_data.provider = Some(&provider_json.name);
-
-        // process provider and combine with inputs
-        let mut provider_parameters = prepare_provider_parameters(&provider_json);
-        provider_parameters.append(&mut map_parameters);
-        let map_parameters = provider_parameters;
-        let map_security = try_metrics!(prepare_security_map(
-            &provider_json,
-            &perform_input.map_security
-        ));
-        let map_services = prepare_services_map(&provider_json, &map_parameters);
-
+        // TODO: Validate Input
         // let mut profile_validator = ProfileValidator::new(
         //     std::str::from_utf8(
         //         self.document_cache
@@ -325,6 +304,53 @@ impl OneClientCore {
         // if let Err(err) = profile_validator.validate_input(map_input.clone()) {
         //     tracing::error!("Input validation error: {}", err);
         // }
+
+        // TODO: Validate Parameters
+        let mut map_parameters = match perform_input.map_parameters {
+            HostValue::Object(o) => MapValueObject::from_iter(
+                o.into_iter()
+                    .map(|(k, v)| (k, self.host_value_to_map_value(v))),
+            ),
+            HostValue::None => MapValueObject::new(),
+            _ => {
+                try_metrics!(Err(PerformException {
+                    error_code: PerformExceptionErrorCode::ParametersFormatError,
+                    message: "Parameters must be an Object or None".to_owned(),
+                }))
+            }
+        };
+
+        // Validate security values against json schema
+        let result = self
+            .security_validator
+            .validate(&perform_input.map_security);
+        if result.is_err() {
+            return try_metrics!(Err(PerformException::from(result.unwrap_err())));
+        }
+
+        // parse provider json
+        let ProviderJsonCacheEntry {
+            provider_json,
+            content_hash: provider_json_content_hash,
+        } = self
+            .provider_cache
+            .get(&perform_input.provider_url)
+            .unwrap();
+        // TODO: validate provider json with json schema, to verify OneClient will understand it?
+
+        metrics_data.provider_content_hash = Some(&provider_json_content_hash);
+        metrics_data.provider = Some(&provider_json.name);
+
+        // process provider and combine with inputs
+        let mut provider_parameters = prepare_provider_parameters(&provider_json);
+        provider_parameters.append(&mut map_parameters);
+        let map_parameters = provider_parameters;
+        let map_security = try_metrics!(prepare_security_map(
+            &provider_json,
+            &perform_input.map_security
+        ));
+        let map_services = prepare_services_map(&provider_json, &map_parameters);
+
         let ProfileCacheEntry {
             profile: _,
             content_hash: profile_content_hash,
@@ -341,12 +367,10 @@ impl OneClientCore {
             None => interpreter.eval_code("map_std.js", Self::MAP_STDLIB_JS),
             Some(path) => {
                 let replacement =
-                    try_metrics!(
-                        Fs::read_to_string(&path).map_err(|err| PerformExceptionError {
-                            error_code: "ReplacementStdlibError".to_string(),
-                            message: format!("Failed to load replacement map_std: {}", err),
-                        })
-                    );
+                    try_metrics!(Fs::read_to_string(&path).map_err(|err| PerformException {
+                        error_code: PerformExceptionErrorCode::ReplacementStdlibError,
+                        message: format!("Failed to load replacement map_std: {}", err),
+                    }));
 
                 interpreter.eval_code(&path, &replacement)
             }
@@ -355,7 +379,7 @@ impl OneClientCore {
         let MapCacheEntry {
             map,
             content_hash: map_content_hash,
-            file_name: map_file_name
+            file_name: map_file_name,
         } = self.map_cache.get(&perform_input.map_url).unwrap();
         metrics_data.map_content_hash = Some(map_content_hash);
         let map_result = {
@@ -367,9 +391,7 @@ impl OneClientCore {
                 }),
                 Some(map_security),
             );
-            try_metrics!(
-                interpreter.run(map_file_name, map, &perform_input.usecase)
-            );
+            try_metrics!(interpreter.run(map_file_name, map, &perform_input.usecase));
 
             interpreter.state_mut().take_output().unwrap()
         };
