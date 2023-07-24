@@ -158,7 +158,7 @@ pub fn prepare_security_map(
                                 Some(HostValue::String(str)) => str.to_owned(),
                                 _ => {
                                     unreachable!(
-                                        "Schema validation should ensure there is String value for username field."
+                                        "Schema validation ensures there is String value for username field."
                                     );
                                 }
                             },
@@ -166,7 +166,7 @@ pub fn prepare_security_map(
                                 Some(HostValue::String(str)) => str.to_owned(),
                                 _ => {
                                     unreachable!(
-                                        "Schema validation should ensure there is String value for password field."
+                                        "Schema validation ensures there is String value for password field."
                                     );
                                 }
                             },
@@ -177,13 +177,13 @@ pub fn prepare_security_map(
                                 Some(HostValue::String(str)) => str.to_owned(),
                                 _ => {
                                     unreachable!(
-                                        "Schema validation should ensure there is String value for token field."
+                                        "Schema validation ensures there is String value for token field."
                                     );
                                 }
                             },
                         }
                     } else {
-                        continue;
+                        unreachable!("Schema validation ensures value is one of the types above.");
                     }
 
                     result.insert(id.to_owned(), security_value);
