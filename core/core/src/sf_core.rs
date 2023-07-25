@@ -210,8 +210,9 @@ impl OneClientCore {
         let result = self
             .security_validator
             .validate(&perform_input.map_security);
-        if result.is_err() {
-            return try_metrics!(Err(PerformException::from(result.unwrap_err())));
+
+        if let Err(result) = result {
+            return try_metrics!(Err(PerformException::from(result)));
         }
 
         // parse provider json
@@ -224,18 +225,18 @@ impl OneClientCore {
             .unwrap();
         // TODO: validate provider json with json schema, to verify OneClient will understand it?
 
-        metrics_data.provider_content_hash = Some(&provider_json_content_hash);
+        metrics_data.provider_content_hash = Some(provider_json_content_hash);
         metrics_data.provider = Some(&provider_json.name);
 
         // process provider and combine with inputs
-        let mut provider_parameters = prepare_provider_parameters(&provider_json);
+        let mut provider_parameters = prepare_provider_parameters(provider_json);
         provider_parameters.append(&mut map_parameters);
         let map_parameters = provider_parameters;
         let map_security = try_metrics!(prepare_security_map(
-            &provider_json,
+            provider_json,
             &perform_input.map_security
         ));
-        let map_services = prepare_services_map(&provider_json, &map_parameters);
+        let map_services = prepare_services_map(provider_json, &map_parameters);
 
         let ProfileCacheEntry {
             profile: _,

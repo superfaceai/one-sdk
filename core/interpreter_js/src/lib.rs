@@ -53,7 +53,7 @@ impl<S: MapStdFull + 'static> JsInterpreter<S> {
     }
 
     pub fn eval_code(&mut self, name: &str, code: &str) -> Result<(), JsInterpreterError> {
-        if code.len() == 0 {
+        if code.is_empty() {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
@@ -65,7 +65,7 @@ impl<S: MapStdFull + 'static> JsInterpreter<S> {
     }
 
     pub fn compile_code(&mut self, name: &str, code: &str) -> Result<Vec<u8>, JsInterpreterError> {
-        if code.len() == 0 {
+        if code.is_empty() {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
@@ -86,11 +86,11 @@ impl<S: MapStdFull + 'static> JsInterpreter<S> {
     }
 
     pub fn run(&mut self, name: &str, code: &str, usecase: &str) -> Result<(), JsInterpreterError> {
-        if code.len() == 0 {
+        if code.is_empty() {
             return Err(JsInterpreterError::EvalCodeEmpty);
         }
 
-        self.eval_code(name, &code)?;
+        self.eval_code(name, code)?;
 
         let entry = format!("_start('{}');", usecase);
         self.eval_code("", &entry)?;

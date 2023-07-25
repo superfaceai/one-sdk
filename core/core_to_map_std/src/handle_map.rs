@@ -5,6 +5,11 @@ use sf_std::abi::Handle;
 pub struct HandleMap<T> {
     data: Slab<T>,
 }
+impl<T> Default for HandleMap<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl<T> HandleMap<T> {
     pub fn new() -> Self {
         Self { data: Slab::new() }

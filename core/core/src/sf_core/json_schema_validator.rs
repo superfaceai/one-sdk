@@ -22,7 +22,7 @@ pub struct JsonSchemaValidator {
 }
 impl JsonSchemaValidator {
     pub fn new(schema: &Value) -> Result<Self, JsonSchemaValidatorError> {
-        match JSONSchema::compile(&schema) {
+        match JSONSchema::compile(schema) {
             Err(error) => Err(JsonSchemaValidatorError::SchemaError {
                 kind: format!("{:?}", error.kind),
                 path: error.schema_path.to_string(),

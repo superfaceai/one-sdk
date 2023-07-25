@@ -46,6 +46,11 @@ pub struct OpenOptions {
     create: bool,
     create_new: bool,
 }
+impl Default for OpenOptions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 #[allow(dead_code)]
 impl OpenOptions {
     pub fn new() -> Self {

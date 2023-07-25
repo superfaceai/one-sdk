@@ -99,7 +99,7 @@ fn traverse_object<'ctx>(
                     .object_value()
                     .context("Failed to create property")?;
                 current
-                    .set_property(key, property.clone())
+                    .set_property(key, property)
                     .context("Failed to set newly created property")?;
 
                 property
@@ -178,7 +178,7 @@ impl<'a> JSValueDebug<'a> {
             // these are best effort. It is better to format them through `fmt_ref` as that can also show functions and bigint
             JSValue::Array(array) => {
                 let mut list = f.debug_list();
-                list.entries(array.iter().map(|e| JSValueDebug::Owned(e)));
+                list.entries(array.iter().map(JSValueDebug::Owned));
                 list.finish()
             }
             JSValue::Object(object) => {

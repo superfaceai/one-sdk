@@ -145,7 +145,7 @@ impl<E> DocumentCache<E> {
             url => {
                 if url.starts_with(Self::HTTP_URL_PREFIX) || url.starts_with(Self::HTTPS_URL_PREFIX)
                 {
-                    Self::cache_http(&url)
+                    Self::cache_http(url)
                 } else {
                     let url_base = std::env::var("ONESDK_REGISTRY_URL")
                         .unwrap_or("http://localhost:8321".to_string());
@@ -190,7 +190,7 @@ impl<E> DocumentCache<E> {
         url: &str,
     ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
         let mut response =
-            HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
+            HttpRequest::fetch("GET", url, &Default::default(), &Default::default(), None)
                 .and_then(|v| v.into_response())
                 .map_err(|err| DocumentCacheError::HttpLoadFailed(url.to_string(), err))?;
 
