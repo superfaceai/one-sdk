@@ -3,7 +3,6 @@ use std::{borrow::Cow, collections::BTreeMap, str::FromStr};
 use sf_std::unstable::{
     exception::{PerformException, PerformExceptionErrorCode},
     perform::PerformInput,
-    provider::ProviderJson,
     HostValue,
 };
 
@@ -31,6 +30,8 @@ mod profile_validator;
 use cache::DocumentCache;
 pub use config::CoreConfiguration;
 use map_std_impl::MapStdImpl;
+
+use self::cache::{MapCacheEntry, ProfileCacheEntry, ProviderJsonCacheEntry};
 
 type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
 type HttpRequest = sf_std::unstable::http::HttpRequest<MessageExchangeFfi, StreamExchangeFfi>;
@@ -85,70 +86,6 @@ impl<'a> PerformMetricsData<'a> {
                 .and_then(|b| b.strip_suffix(".provider.json"))
                 .unwrap(),
         }
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-enum ProfileCacheEntryError {
-    #[error("Failed to parse profile data as utf8: {0}")]
-    ParseError(#[from] std::string::FromUtf8Error),
-}
-#[derive(Debug)]
-struct ProfileCacheEntry {
-    pub profile: String, // TODO: parsed so we can extract the version
-    pub content_hash: String,
-}
-impl ProfileCacheEntry {
-    pub fn from_data(data: Vec<u8>) -> Result<Self, ProfileCacheEntryError> {
-        Ok(Self {
-            content_hash: digest::content_hash(&data),
-            profile: String::from_utf8(data)?,
-        })
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-enum ProviderJsonCacheEntryError {
-    #[error("Failed to deserialize provider JSON: {0}")]
-    ParseError(#[from] serde_json::Error),
-}
-#[derive(Debug)]
-struct ProviderJsonCacheEntry {
-    pub provider_json: ProviderJson,
-    pub content_hash: String,
-}
-impl ProviderJsonCacheEntry {
-    pub fn from_data(data: Vec<u8>) -> Result<Self, ProviderJsonCacheEntryError> {
-        Ok(Self {
-            content_hash: digest::content_hash(&data),
-            provider_json: serde_json::from_slice::<ProviderJson>(&data)?,
-        })
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-enum MapCacheEntryError {
-    #[error("Failed to parse map data as utf8: {0}")]
-    ParseError(#[from] std::string::FromUtf8Error),
-}
-#[derive(Debug)]
-struct MapCacheEntry {
-    pub map: String,
-    pub content_hash: String,
-    /// This is for the purposes of stacktraces in JsInterpreter
-    pub file_name: String,
-}
-impl MapCacheEntry {
-    // TODO: name should be taken from the manifest
-    pub fn new(data: Vec<u8>, file_name: String) -> Result<Self, MapCacheEntryError> {
-        let content_hash = digest::content_hash(&data);
-        let map = String::from_utf8(data)?;
-
-        Ok(Self {
-            content_hash,
-            map,
-            file_name,
-        })
     }
 }
 

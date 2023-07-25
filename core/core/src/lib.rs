@@ -11,7 +11,6 @@ use sf_std::{
 
 mod bindings;
 mod observability;
-
 mod sf_core;
 use sf_core::{CoreConfiguration, OneClientCore};
 
