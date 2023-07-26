@@ -14,7 +14,7 @@ impl VecEventBuffer {
 }
 impl TracingEventBuffer for VecEventBuffer {
     fn write(&mut self, data: &[u8]) {
-        self.data.extend(data.into_iter().copied())
+        self.data.extend(data.iter().copied())
     }
 
     fn as_raw_parts(&self) -> [(*const u8, usize); 2] {

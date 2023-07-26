@@ -235,7 +235,7 @@ pub fn prepare_security_map(
                         name: name.to_owned(),
                         apikey: apikey.to_owned(),
                         r#in: ApiKeyPlacement::from(*r#in),
-                        body_type: body_type.map(|bt| ApiKeyBodyType::from(bt)),
+                        body_type: body_type.map(ApiKeyBodyType::from),
                     }),
                 );
             }
@@ -306,7 +306,7 @@ pub fn prepare_security_map(
         }
     }
 
-    if errors.len() > 0 {
+    if !errors.is_empty() {
         return Err(PrepareSecurityMapError::SecurityMisconfigured(errors));
     }
 
@@ -370,7 +370,7 @@ pub fn resolve_security(
                     .insert(name.to_string(), vec![apikey.to_string()]);
             }
             (ApiKeyPlacement::Path, _) => {
-                params.url = params.url.replace(&format!("{{{}}}", name), &apikey);
+                params.url = params.url.replace(&format!("{{{}}}", name), apikey);
             }
             (ApiKeyPlacement::Query, _) => {
                 params
@@ -380,7 +380,7 @@ pub fn resolve_security(
             (ApiKeyPlacement::Body, Some(ApiKeyBodyType::Json)) => {
                 if let Some(body) = &params.body {
                     let mut body =
-                        serde_json::from_slice::<serde_json::Value>(&body).map_err(|e| {
+                        serde_json::from_slice::<serde_json::Value>(body).map_err(|e| {
                             HttpCallError::InvalidSecurityConfiguration(format!(
                                 "Failed to parse body: {}",
                                 e
@@ -393,7 +393,7 @@ pub fn resolve_security(
                         vec![name.as_str()]
                     };
 
-                    if keys.len() == 0 {
+                    if keys.is_empty() {
                         return Err(HttpCallError::InvalidSecurityConfiguration(format!(
                             "Invalid field name '{}'",
                             name
@@ -446,7 +446,7 @@ pub fn prepare_provider_parameters(provider_json: &ProviderJson) -> MapValueObje
         .parameters
         .as_ref()
         .map_or(MapValueObject::new(), |params| {
-            MapValueObject::from_iter(params.into_iter().filter(|p| p.default.is_some()).map(|i| {
+            MapValueObject::from_iter(params.iter().filter(|p| p.default.is_some()).map(|i| {
                 match &i.default {
                     Some(default) => (i.name.to_owned(), MapValue::String(default.to_owned())),
                     None => panic!("None is filtered out"),

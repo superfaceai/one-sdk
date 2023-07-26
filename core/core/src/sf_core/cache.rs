@@ -4,9 +4,73 @@ use std::{
     time::{Duration, Instant},
 };
 
-use sf_std::unstable::http::HttpCallError;
+use sf_std::unstable::{http::HttpCallError, provider::ProviderJson};
 
-use super::{Fs, HttpRequest};
+use super::{digest, Fs, HttpRequest};
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProfileCacheEntryError {
+    #[error("Failed to parse profile data as utf8: {0}")]
+    ParseError(#[from] std::string::FromUtf8Error),
+}
+#[derive(Debug)]
+pub struct ProfileCacheEntry {
+    pub profile: String, // TODO: parsed so we can extract the version
+    pub content_hash: String,
+}
+impl ProfileCacheEntry {
+    pub fn from_data(data: Vec<u8>) -> Result<Self, ProfileCacheEntryError> {
+        Ok(Self {
+            content_hash: digest::content_hash(&data),
+            profile: String::from_utf8(data)?,
+        })
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProviderJsonCacheEntryError {
+    #[error("Failed to deserialize provider JSON: {0}")]
+    ParseError(#[from] serde_json::Error),
+}
+#[derive(Debug)]
+pub struct ProviderJsonCacheEntry {
+    pub provider_json: ProviderJson,
+    pub content_hash: String,
+}
+impl ProviderJsonCacheEntry {
+    pub fn from_data(data: Vec<u8>) -> Result<Self, ProviderJsonCacheEntryError> {
+        Ok(Self {
+            content_hash: digest::content_hash(&data),
+            provider_json: serde_json::from_slice::<ProviderJson>(&data)?,
+        })
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum MapCacheEntryError {
+    #[error("Failed to parse map data as utf8: {0}")]
+    ParseError(#[from] std::string::FromUtf8Error),
+}
+#[derive(Debug)]
+pub struct MapCacheEntry {
+    pub map: String,
+    pub content_hash: String,
+    /// This is for the purposes of stacktraces in JsInterpreter
+    pub file_name: String,
+}
+impl MapCacheEntry {
+    // TODO: name should be taken from the manifest
+    pub fn new(data: Vec<u8>, file_name: String) -> Result<Self, MapCacheEntryError> {
+        let content_hash = digest::content_hash(&data);
+        let map = String::from_utf8(data)?;
+
+        Ok(Self {
+            content_hash,
+            map,
+            file_name,
+        })
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum DocumentCacheError<PostProcessError: std::error::Error> {
@@ -81,7 +145,7 @@ impl<E> DocumentCache<E> {
             url => {
                 if url.starts_with(Self::HTTP_URL_PREFIX) || url.starts_with(Self::HTTPS_URL_PREFIX)
                 {
-                    Self::cache_http(&url)
+                    Self::cache_http(url)
                 } else {
                     let url_base = std::env::var("ONESDK_REGISTRY_URL")
                         .unwrap_or("http://localhost:8321".to_string());
@@ -126,7 +190,7 @@ impl<E> DocumentCache<E> {
         url: &str,
     ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
         let mut response =
-            HttpRequest::fetch("GET", &url, &Default::default(), &Default::default(), None)
+            HttpRequest::fetch("GET", url, &Default::default(), &Default::default(), None)
                 .and_then(|v| v.into_response())
                 .map_err(|err| DocumentCacheError::HttpLoadFailed(url.to_string(), err))?;
 

@@ -21,9 +21,9 @@ impl RingEventBuffer {
     fn pop_event(&mut self) -> impl Iterator<Item = u8> + '_ {
         let (first, second) = self.data.as_slices();
 
-        let event_len = match first.into_iter().position(|&b| b == EVENT_SEPARATOR) {
+        let event_len = match first.iter().position(|&b| b == EVENT_SEPARATOR) {
             Some(i) => i + 1,
-            None => match second.into_iter().position(|&b| b == EVENT_SEPARATOR) {
+            None => match second.iter().position(|&b| b == EVENT_SEPARATOR) {
                 Some(i) => first.len() + i + 1,
                 None => unreachable!(),
             },
@@ -44,7 +44,7 @@ impl TracingEventBuffer for RingEventBuffer {
             let _ = self.pop_event();
         }
 
-        self.data.extend(data.into_iter().copied());
+        self.data.extend(data.iter().copied());
     }
 
     fn as_raw_parts(&self) -> [(*const u8, usize); 2] {

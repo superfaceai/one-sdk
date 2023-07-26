@@ -147,7 +147,7 @@ impl MessageExchange for MessageExchangeFfiFn {
 
             let result: AbiResult = {
                 let out_ptr = response_buffer.as_mut_ptr().into();
-                let out_len = response_buffer.capacity() as usize;
+                let out_len = response_buffer.capacity();
 
                 // SAFETY: caller of constructor promises it is safe
                 unsafe { (self.retrieve_fn)(result_handle, out_ptr, out_len) }
@@ -157,7 +157,7 @@ impl MessageExchange for MessageExchangeFfiFn {
             // these errors are very unlikely and indicate an error in the host implementation
             // therefore we don't propagate them out
             match result.into_io_result() {
-                Ok(written) => assert_eq!(written as usize, result_size),
+                Ok(written) => assert_eq!(written, result_size),
                 Err(err) => panic!("Failed to retrieve stored message: {}", err),
             }
         };
@@ -204,15 +204,15 @@ impl StreamExchangeFfiFn {
 impl StreamExchange for StreamExchangeFfiFn {
     fn read(&self, handle: Handle, buf: &mut [u8]) -> io::Result<Size> {
         let _span = tracing::trace_span!("host/StreamExchange::read").entered();
-        
+
         let out_ptr = buf.as_mut_ptr().into();
         let out_len = buf.len() as Size;
         tracing::trace!(handle, ?out_ptr, out_len);
 
         // SAFETY: caller of constructor promises it is safe
         let result: AbiResult = unsafe { (self.read_fn)(handle, out_ptr, out_len).into() };
-        
-        let result = result.into_io_result().map(|read| read);
+
+        let result = result.into_io_result();
         tracing::trace!(result = ?result);
 
         result
@@ -228,7 +228,7 @@ impl StreamExchange for StreamExchangeFfiFn {
         // SAFETY: caller of constructor promises it is safe
         let result: AbiResult = unsafe { (self.write_fn)(handle, in_ptr, in_len).into() };
 
-        let result = result.into_io_result().map(|written| written);
+        let result = result.into_io_result();
         tracing::trace!(result = ?result);
 
         result

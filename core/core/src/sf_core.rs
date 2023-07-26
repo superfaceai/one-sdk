@@ -1,9 +1,8 @@
-use std::{borrow::Cow, collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr};
 
 use sf_std::unstable::{
     exception::{PerformException, PerformExceptionErrorCode},
     perform::PerformInput,
-    provider::ProviderJson,
     HostValue,
 };
 
@@ -16,7 +15,7 @@ use map_std::unstable::{
 
 use crate::{
     bindings::{MessageExchangeFfi, StreamExchangeFfi},
-    sf_core::json_schema_validator::JsonSchemaValidator,
+    sf_core::{json_schema_validator::JsonSchemaValidator, metrics::PerformMetricsData},
 };
 
 mod cache;
@@ -25,6 +24,7 @@ mod digest;
 mod exception;
 mod json_schema_validator;
 mod map_std_impl;
+mod metrics;
 mod profile_validator;
 
 // use crate::profile_validator::ProfileValidator;
@@ -32,125 +32,11 @@ use cache::DocumentCache;
 pub use config::CoreConfiguration;
 use map_std_impl::MapStdImpl;
 
+use self::cache::{MapCacheEntry, ProfileCacheEntry, ProviderJsonCacheEntry};
+
 type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
 type HttpRequest = sf_std::unstable::http::HttpRequest<MessageExchangeFfi, StreamExchangeFfi>;
 type IoStream = sf_std::unstable::IoStream<StreamExchangeFfi>;
-
-/// For the purposes of metrics we are interested in some data which may or may not be parsed out of the profile, provider and map.
-///
-/// If the perform ends successfully or with a maped error these fields will be available. If it ends with an exception some of these fields might not be available.
-#[derive(Debug, Default)]
-#[allow(dead_code)] // TODO: until we use these fields
-struct PerformMetricsData<'a> {
-    /// Profile id in format `<scope>/<name>`
-    pub profile: Option<&'a str>,
-    /// Profile url as passed into perform
-    pub profile_url: &'a str,
-    /// Profile version as parsed from the profile header
-    pub profile_version: Option<String>,
-    pub profile_content_hash: Option<&'a str>,
-    /// Provider name
-    pub provider: Option<&'a str>,
-    /// Provider url as passed into perform
-    pub provider_url: &'a str,
-    pub provider_content_hash: Option<&'a str>,
-    /// Map url as passed into perform
-    pub map_url: &'a str,
-    /// Map version as parsed from map metadata
-    pub map_version: Option<String>,
-    pub map_content_hash: Option<&'a str>,
-}
-impl<'a> PerformMetricsData<'a> {
-    pub fn get_profile(&self) -> Cow<'_, str> {
-        match self.profile {
-            Some(profile) => Cow::Borrowed(profile),
-            None => Cow::Owned(
-                self.profile_url
-                    .split('/')
-                    .last()
-                    .and_then(|b| b.strip_suffix(".profile"))
-                    .unwrap()
-                    .replace('.', "/"),
-            ),
-        }
-    }
-
-    pub fn get_provider(&self) -> &str {
-        match self.provider {
-            Some(provider) => provider,
-            None => self
-                .provider_url
-                .split('/')
-                .last()
-                .and_then(|b| b.strip_suffix(".provider.json"))
-                .unwrap(),
-        }
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-enum ProfileCacheEntryError {
-    #[error("Failed to parse profile data as utf8: {0}")]
-    ParseError(#[from] std::string::FromUtf8Error),
-}
-#[derive(Debug)]
-struct ProfileCacheEntry {
-    pub profile: String, // TODO: parsed so we can extract the version
-    pub content_hash: String,
-}
-impl ProfileCacheEntry {
-    pub fn from_data(data: Vec<u8>) -> Result<Self, ProfileCacheEntryError> {
-        Ok(Self {
-            content_hash: digest::content_hash(&data),
-            profile: String::from_utf8(data)?,
-        })
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-enum ProviderJsonCacheEntryError {
-    #[error("Failed to deserialize provider JSON: {0}")]
-    ParseError(#[from] serde_json::Error),
-}
-#[derive(Debug)]
-struct ProviderJsonCacheEntry {
-    pub provider_json: ProviderJson,
-    pub content_hash: String,
-}
-impl ProviderJsonCacheEntry {
-    pub fn from_data(data: Vec<u8>) -> Result<Self, ProviderJsonCacheEntryError> {
-        Ok(Self {
-            content_hash: digest::content_hash(&data),
-            provider_json: serde_json::from_slice::<ProviderJson>(&data)?,
-        })
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-enum MapCacheEntryError {
-    #[error("Failed to parse map data as utf8: {0}")]
-    ParseError(#[from] std::string::FromUtf8Error),
-}
-#[derive(Debug)]
-struct MapCacheEntry {
-    pub map: String,
-    pub content_hash: String,
-    /// This is for the purposes of stacktraces in JsInterpreter
-    pub file_name: String,
-}
-impl MapCacheEntry {
-    // TODO: name should be taken from the manifest
-    pub fn new(data: Vec<u8>, file_name: String) -> Result<Self, MapCacheEntryError> {
-        let content_hash = digest::content_hash(&data);
-        let map = String::from_utf8(data)?;
-
-        Ok(Self {
-            content_hash,
-            map,
-            file_name,
-        })
-    }
-}
 
 #[derive(Debug)]
 pub struct OneClientCore {
@@ -324,8 +210,9 @@ impl OneClientCore {
         let result = self
             .security_validator
             .validate(&perform_input.map_security);
-        if result.is_err() {
-            return try_metrics!(Err(PerformException::from(result.unwrap_err())));
+
+        if let Err(result) = result {
+            return try_metrics!(Err(PerformException::from(result)));
         }
 
         // parse provider json
@@ -338,18 +225,18 @@ impl OneClientCore {
             .unwrap();
         // TODO: validate provider json with json schema, to verify OneClient will understand it?
 
-        metrics_data.provider_content_hash = Some(&provider_json_content_hash);
+        metrics_data.provider_content_hash = Some(provider_json_content_hash);
         metrics_data.provider = Some(&provider_json.name);
 
         // process provider and combine with inputs
-        let mut provider_parameters = prepare_provider_parameters(&provider_json);
+        let mut provider_parameters = prepare_provider_parameters(provider_json);
         provider_parameters.append(&mut map_parameters);
         let map_parameters = provider_parameters;
         let map_security = try_metrics!(prepare_security_map(
-            &provider_json,
+            provider_json,
             &perform_input.map_security
         ));
-        let map_services = prepare_services_map(&provider_json, &map_parameters);
+        let map_services = prepare_services_map(provider_json, &map_parameters);
 
         let ProfileCacheEntry {
             profile: _,

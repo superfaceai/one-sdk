@@ -11,7 +11,6 @@ use sf_std::{
 
 mod bindings;
 mod observability;
-
 mod sf_core;
 use sf_core::{CoreConfiguration, OneClientCore};
 
@@ -116,7 +115,7 @@ pub extern "C" fn __export_oneclient_core_perform() {
         Err(exception) => {
             tracing::error!(target: "@user", "Perform failed unexpectedly: {}", exception);
 
-            set_perform_output_exception_in(exception.into(), MessageExchangeFfi)
+            set_perform_output_exception_in(exception, MessageExchangeFfi)
         }
     }
 }
