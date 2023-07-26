@@ -1,19 +1,49 @@
+use std::fmt::Display;
+
 use jsonschema::JSONSchema;
 use serde_json::Value;
 use sf_std::unstable::HostValue;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum JsonSchemaValidatorError {
-    #[error("Invalid JSON Schema {kind:?}: {path:?})")]
     SchemaError { kind: String, path: String },
+    ValidationErrors(Vec<ValidationError>),
+}
+impl Display for JsonSchemaValidatorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SchemaError { kind, path } => {
+                write!(f, "Invalid JSON Schema {:?}: {:?})", kind, path)
+            }
+            Self::ValidationErrors(errors) => {
+                writeln!(f, "following validation errors occured")?;
 
-    #[error("")]
-    ValidationError {
-        kind: String,
-        value: String,
-        path: String,
-    },
+                for error in errors {
+                    writeln!(
+                        f,
+                        "  {} on path: {}, value: {}",
+                        error.kind, error.path, error.value
+                    )?;
+                }
+
+                Ok(())
+            }
+        }
+    }
+}
+impl std::error::Error for JsonSchemaValidatorError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("Validation error {kind:?}: {path:?} ({value:?})")]
+pub struct ValidationError {
+    kind: String,
+    value: String,
+    path: String,
 }
 
 #[derive(Debug)]
@@ -36,13 +66,15 @@ impl JsonSchemaValidator {
         let result = self.compiled.validate(&instance);
 
         if let Err(errors) = result {
-            for error in errors {
-                return Err(JsonSchemaValidatorError::ValidationError {
-                    kind: format!("{:?}", error.kind), // TODO: string or keep original?
-                    value: format!("{:?}", error.instance), // TODO: Serde::Value to HostValue?
-                    path: error.instance_path.to_string(),
-                });
-            }
+            return Err(JsonSchemaValidatorError::ValidationErrors(
+                errors
+                    .map(|error| ValidationError {
+                        kind: format!("{:?}", error.kind), // TODO: string or keep original?
+                        value: format!("{:?}", error.instance), // TODO: Serde::Value to HostValue?
+                        path: error.instance_path.to_string(),
+                    })
+                    .collect(),
+            ));
         }
 
         Ok(())

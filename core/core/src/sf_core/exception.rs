@@ -12,11 +12,27 @@ impl<PostProcessError: std::error::Error> From<DocumentCacheError<PostProcessErr
         }
     }
 }
-impl From<JsonSchemaValidatorError> for PerformException {
-    fn from(value: JsonSchemaValidatorError) -> Self {
+
+pub trait FromJsonSchemaValidationError {
+    fn from_json_schema_validation_error(
+        value: JsonSchemaValidatorError,
+        source: Option<&str>,
+    ) -> Self;
+}
+
+impl FromJsonSchemaValidationError for PerformException {
+    fn from_json_schema_validation_error(
+        value: JsonSchemaValidatorError,
+        source: Option<&str>,
+    ) -> Self {
+        let message = match source {
+            Some(source) => format!("For {} {}", source, value.to_string()),
+            None => value.to_string(),
+        };
+
         PerformException {
             error_code: PerformExceptionErrorCode::InputValidationError,
-            message: format!("err: {:?}", value),
+            message,
         }
     }
 }
