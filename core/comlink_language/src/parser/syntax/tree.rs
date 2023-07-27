@@ -1,10 +1,15 @@
+use std::iter::FilterMap;
+
 use crate::parser::{
     lexer::{tokenize, LexerToken, LexerTokenData},
-    syntax::{SyntaxKind, SyntaxNode, SyntaxToken, SyntaxElement, SyntaxKindSet},
+    syntax::{SyntaxKind, SyntaxNode, SyntaxToken, SyntaxKindSet},
 };
+
+use super::SyntaxElement;
 
 pub mod nodes;
 pub mod tokens;
+pub mod serde;
 
 #[derive(Debug)]
 pub struct ParserError {
@@ -61,11 +66,39 @@ pub trait TreeParser {
     /// Convenience function for consuming the next token if it is of `kind`, otherwise records an error.
     ///
     /// See [`Self::error`] for more info about `recovery_set`.
-    fn expect<T: CstToken>(&mut self, recovery_set: SyntaxKindSet);
+    fn expect<T: CstToken>(&mut self, recovery_set: SyntaxKindSet) {
+        if !T::RAW_KINDS.contains(self.peek()) {
+            self.error(T::EXPECT_MESSAGE, recovery_set);
+        } else {
+            self.token::<T>();
+        }
+    }
     /// Same as [`Self::expect`] but uses [`Self::peek_keyword`] instead of [`Self::peek`].
-    fn expect_keyword<T: CstToken>(&mut self, recovery_set: SyntaxKindSet);
+    fn expect_keyword<T: CstToken>(&mut self, recovery_set: SyntaxKindSet) {
+        if !T::RAW_KINDS.contains(self.peek_keyword()) {
+            self.error(T::EXPECT_MESSAGE, recovery_set);
+        } else {
+            self.token::<T>();
+        }
+    }
     /// Optionally consumes token `T` and returns whether it was consumed.
-    fn opt<T: CstToken>(&mut self) -> bool;
+    fn opt<T: CstToken>(&mut self) -> bool {
+        if T::RAW_KINDS.contains(self.peek()) {
+            self.token::<T>();
+            true
+        } else {
+            false
+        }
+    }
+    /// Same as [`Self::opt_keyword`] but uses [`Self::peek_keyword`] instead of [`Self::peek`].
+    fn opt_keyword<T: CstToken>(&mut self) -> bool {
+        if T::RAW_KINDS.contains(self.peek_keyword()) {
+            self.token::<T>();
+            true
+        } else {
+            false
+        }
+    }
 }
 
 /// Struct representing parser state, passed into rule functions during parsing.
@@ -266,7 +299,7 @@ impl TreeParser for Parser<'_> {
 
     fn skip<T: CstToken>(&mut self) -> usize {
         let mut count = 0;
-        while self.peek() == T::RAW_KIND {
+        while T::RAW_KINDS.contains(self.peek()) {
             self.events.push(ParserEvent::Token { kind: T::KIND });
             self.advance(1);
             count += 1;
@@ -275,37 +308,6 @@ impl TreeParser for Parser<'_> {
         }
 
         count
-    }
-
-    fn expect<T: CstToken>(
-        &mut self,
-        recovery_set: SyntaxKindSet
-    ) {
-        if self.peek() != T::RAW_KIND {
-            self.error(T::EXPECT_MESSAGE, recovery_set);
-        } else {
-            self.token::<T>();
-        }
-    }
-
-    fn expect_keyword<T: CstToken>(
-        &mut self,
-        recovery_set: SyntaxKindSet
-    ) {
-        if self.peek_keyword() != T::RAW_KIND {
-            self.error(T::EXPECT_MESSAGE, recovery_set);
-        } else {
-            self.token::<T>();
-        }
-    }
-
-    fn opt<T: CstToken>(&mut self) -> bool {
-        if self.peek() == T::RAW_KIND {
-            self.token::<T>();
-            true
-        } else {
-            false
-        }
     }
 }
 impl std::fmt::Debug for Parser<'_> {
@@ -354,17 +356,8 @@ pub trait CstNode: AstNode {
         (Self::cast(SyntaxNode::new_root(node)).unwrap(), errors)
     }
 }
-/// An abstract syntax tree node.
-/// 
-/// An AstdNode may not be physically presend in the green tree and might just be an abstraction over a set of CstNodes.
-pub trait AstNode: Sized + AsRef<SyntaxNode> {
-    /// Attempts to cast `node` into `Self`.
-    ///
-    /// If node is of a different kind than `Self::KIND` then this returns `None`.
-    fn cast(node: SyntaxNode) -> Option<Self>;
-}
 pub trait CstToken: Sized + AsRef<SyntaxToken> {
-    const RAW_KIND: SyntaxKind;
+    const RAW_KINDS: SyntaxKindSet;
     const KIND: SyntaxKind;
     const EXPECT_MESSAGE: &'static str;
 
@@ -374,62 +367,53 @@ pub trait CstToken: Sized + AsRef<SyntaxToken> {
     fn cast(token: SyntaxToken) -> Option<Self>;
 }
 
-#[cfg(test)]
-mod test {
-    use std::borrow::Borrow;
+pub struct FilterTokensIter<C: CstToken> {
+    inner: FilterMap<rowan::SyntaxElementChildren<super::ComlinkLanguage>, fn(SyntaxElement) -> Option<C>>
+}
+impl<C: CstToken> Iterator for FilterTokensIter<C> {
+    type Item = C;
 
-    use crate::parser::{CstNode, syntax::ObjectTypeNode, testing::syntax_tree_print};
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+pub struct FilterNodesIter<C: AstNode> {
+    inner: FilterMap<rowan::SyntaxNodeChildren<super::ComlinkLanguage>, fn(SyntaxNode) -> Option<C>>
+}
+impl<C: AstNode> Iterator for FilterNodesIter<C> {
+    type Item = C;
 
-    #[test]
-    fn test_me() {
-        let source: &str = "{ 'field doc' \n field! string \n '''f2 doc''' f2 number, f3 boolean, f4! }";
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
 
-        let (node, errors) = ObjectTypeNode::parse_root(source);
+/// An abstract syntax tree node.
+/// 
+/// An AstdNode may not be physically presend in the green tree and might just be an abstraction over a set of CstNodes.
+pub trait AstNode: Sized + AsRef<SyntaxNode> {
+    /// Attempts to cast `node` into `Self`.
+    ///
+    /// If node is of a different kind than `Self::KIND` then this returns `None`.
+    fn cast(node: SyntaxNode) -> Option<Self>;
 
-        assert_eq!(
-            syntax_tree_print(&node.as_ref().green().borrow(), false),
-            "ObjectDefinition[73]:
-  BraceLeft[1]
-  Whitespace[1]
-  FieldDefinition[28]:
-    StringDoc[11]
-    Whitespace[1]
-    Newline[1]
-    Whitespace[1]
-    Identifier[5]
-    Bang[1]
-    Whitespace[1]
-    TypeDefinition[7]:
-      PrimitiveTypeName[7]:
-        KeywordString[6]
-        Whitespace[1]
-  Newline[1]
-  Whitespace[1]
-  FieldDefinition[22]:
-    StringDoc[12]
-    Whitespace[1]
-    Identifier[2]
-    Whitespace[1]
-    TypeDefinition[6]:
-      PrimitiveTypeName[6]:
-        KeywordNumber[6]
-  Comma[1]
-  Whitespace[1]
-  FieldDefinition[10]:
-    Identifier[2]
-    Whitespace[1]
-    TypeDefinition[7]:
-      PrimitiveTypeName[7]:
-        KeywordBoolean[7]
-  Comma[1]
-  Whitespace[1]
-  FieldDefinition[4]:
-    Identifier[2]
-    Bang[1]
-    Whitespace[1]
-  BraceRight[1]
-"
-        );
-        assert!(errors.is_empty());
+    fn find_token<Ch: CstToken>(&self) -> Option<Ch> {
+        self.as_ref().children_with_tokens().find_map(
+            |ch| ch.into_token().and_then(Ch::cast)
+        )
+    }
+
+    fn filter_tokens<Ch: CstToken>(&self) -> FilterTokensIter<Ch> {
+        FilterTokensIter {
+            inner: self.as_ref().children_with_tokens().filter_map(|ch| ch.into_token().and_then(Ch::cast))
+        }
+    }
+
+    fn find_node<Ch: AstNode>(&self) -> Option<Ch> {
+        self.as_ref().children().find_map(Ch::cast)
+    }
+
+    fn filter_nodes<Ch: AstNode>(&self) -> FilterNodesIter<Ch> {
+        FilterNodesIter { inner: self.as_ref().children().filter_map(Ch::cast) }
     }
 }

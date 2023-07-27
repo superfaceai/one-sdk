@@ -69,11 +69,15 @@ pub enum SyntaxKind {
     KeywordModel,
     KeywordField,
     KeywordEnum,
-    // --- other --- //
+    // --- specialization tokens --- //
+    UseCaseSafety,
     StringDoc,
     StringLiteral,
-    // ------- nodes ------- //
+    ProfileName,
+    ProfileVersion,
+    PrimitiveTypeName,
     FieldName,
+    // ------- nodes ------- //
     // --- literals --- //
     PrimitiveLiteral,
     ListLiteral,
@@ -89,9 +93,9 @@ pub enum SyntaxKind {
     ObjectTypeField,
     UnionType,
     // --- items --- //
-    ProfileName,
-    ProfileVersion,
+    ProfileHeader,
     UseCaseDefinition,
+    UseCaseDefinitionSafety,
     UseCaseDefinitionInput,
     UseCaseDefinitionResult,
     UseCaseDefinitionAsyncResult,

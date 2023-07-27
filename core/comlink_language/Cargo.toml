@@ -6,8 +6,12 @@ publish = false
 
 [dependencies]
 thiserror = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 
 either = { version = "1.8" }
 
 rowan = { version = "0.15" }
+
+[dev-dependencies]
+pretty_assertions = "1"
