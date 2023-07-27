@@ -71,25 +71,6 @@ fn init_tracing(
                 .from_env_lossy(),
         );
 
-    // let metrics_layer = tracing_subscriber::fmt::layer()
-    //     .event_format(
-    //         format::json()
-    //             .without_time() // we add our own time as a field
-    //             .with_level(false)
-    //             .flatten_event(true)
-    //             .with_target(false)
-    //             .with_file(false)
-    //             .with_line_number(false)
-    //             .with_current_span(false)
-    //             .with_span_list(false)
-    //             .with_thread_names(false)
-    //             .with_thread_ids(false),
-    //     )
-    //     .with_writer(metrics_buffer)
-    //     .with_filter(FilterFn::new(|metadata| {
-    //         metadata.target().starts_with("@metrics")
-    //     }));
-
     let developer_layer = tracing_subscriber::fmt::layer()
         .with_writer(std::io::stderr)
         .with_filter(
@@ -103,14 +84,10 @@ fn init_tracing(
         .event_format(
             format::format().with_ansi(false), // disable ansi colors because this will usually go into a file
         )
-        .with_writer(developer_dump_buffer)
-        .with_filter(FilterFn::new(|metadata| {
-            !metadata.target().starts_with("@metrics")
-        }));
+        .with_writer(developer_dump_buffer);
 
     tracing_subscriber::registry()
         .with(user_layer)
-        // .with(metrics_layer)
         .with(developer_layer)
         .with(developer_dump_layer)
         .init();
