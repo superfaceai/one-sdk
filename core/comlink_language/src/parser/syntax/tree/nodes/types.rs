@@ -1,6 +1,7 @@
 use super::*;
 
-const TYPE_RECOVERY: SyntaxKindSet = SyntaxKindSet::from_static_slice(&[Newline, Comma, BracketRight, BraceRight, Bang, Pipe]);
+const TYPE_RECOVERY: SyntaxKindSet =
+    SyntaxKindSet::from_static_slice(&[Newline, Comma, BracketRight, BraceRight, Bang, Pipe]);
 node! {
     #[derive(Serialize, Deserialize)]
     #[serde(untagged)]
@@ -110,14 +111,18 @@ node! {
     }
 }
 impl ObjectTypeNode {
-    pub fn fields(&self) -> impl Iterator<Item = ObjectTypeFieldNode> { self.filter_nodes() }
-    pub fn required(&self) -> bool { self.find_token::<BangToken>().is_some() }
+    pub fn fields(&self) -> impl Iterator<Item = ObjectTypeFieldNode> {
+        self.filter_nodes()
+    }
+    pub fn required(&self) -> bool {
+        self.find_token::<BangToken>().is_some()
+    }
 }
 node! {
     pub struct ObjectTypeFieldNode = ObjectTypeField;
     parse(p) {
         const RECOVERY: SyntaxKindSet = SyntaxKindSet::from_static_slice(&[BraceRight, Newline, Comma, Dot, Bang]);
-        
+
         opt_string_doc(p);
         p.expect::<FieldNameToken>(RECOVERY);
         p.opt::<BangToken>();
@@ -129,10 +134,18 @@ node! {
     }
 }
 impl ObjectTypeFieldNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn name(&self) -> Option<FieldNameToken> { self.find_token() }
-    pub fn required(&self) -> bool { self.find_token::<BangToken>().is_some() }
-    pub fn ty(&self) -> Option<TypeNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn name(&self) -> Option<FieldNameToken> {
+        self.find_token()
+    }
+    pub fn required(&self) -> bool {
+        self.find_token::<BangToken>().is_some()
+    }
+    pub fn ty(&self) -> Option<TypeNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct ListTypeNode = ListType;
@@ -146,8 +159,12 @@ node! {
     }
 }
 impl ListTypeNode {
-    pub fn ty(&self) -> Option<TypeNode> { self.find_node() }
-    pub fn required(&self) -> bool { self.find_token::<BangToken>().is_some() }
+    pub fn ty(&self) -> Option<TypeNode> {
+        self.find_node()
+    }
+    pub fn required(&self) -> bool {
+        self.find_token::<BangToken>().is_some()
+    }
 }
 node! {
     pub struct EnumTypeNode = EnumType;
@@ -179,8 +196,12 @@ node! {
     }
 }
 impl EnumTypeNode {
-    pub fn variants(&self) -> impl Iterator<Item = EnumTypeVariantNode> { self.filter_nodes() }
-    pub fn required(&self) -> bool { self.find_token::<BangToken>().is_some() }
+    pub fn variants(&self) -> impl Iterator<Item = EnumTypeVariantNode> {
+        self.filter_nodes()
+    }
+    pub fn required(&self) -> bool {
+        self.find_token::<BangToken>().is_some()
+    }
 }
 node! {
     pub struct EnumTypeVariantNode = EnumTypeVariant;
@@ -202,13 +223,17 @@ node! {
     }
 }
 impl EnumTypeVariantNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn name(&self) -> Option<IdentifierToken> { self.find_token() }
-    pub fn value(&self) -> Option<LiteralValue<'_>> {        
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn name(&self) -> Option<IdentifierToken> {
+        self.find_token()
+    }
+    pub fn value(&self) -> Option<LiteralValue<'_>> {
         // TODO: return a reference
         match self.find_node::<PrimitiveLiteralNode>() {
             Some(n) => n.value().map(|v| v.to_owned()),
-            None => Some(LiteralValue::String(self.name()?.value().into()).to_owned())
+            None => Some(LiteralValue::String(self.name()?.value().into()).to_owned()),
         }
     }
 }
@@ -220,8 +245,12 @@ node! {
     }
 }
 impl PrimitiveTypeNode {
-    pub fn name(&self) -> Option<PrimitiveTypeNameToken> { self.find_token() }
-    pub fn required(&self) -> bool { self.find_token::<BangToken>().is_some() }
+    pub fn name(&self) -> Option<PrimitiveTypeNameToken> {
+        self.find_token()
+    }
+    pub fn required(&self) -> bool {
+        self.find_token::<BangToken>().is_some()
+    }
 }
 node! {
     pub struct NamedTypeNode = NamedType;
@@ -231,6 +260,10 @@ node! {
     }
 }
 impl NamedTypeNode {
-    pub fn name(&self) -> Option<IdentifierToken> { self.find_token() }
-    pub fn required(&self) -> bool { self.find_token::<BangToken>().is_some() }
+    pub fn name(&self) -> Option<IdentifierToken> {
+        self.find_token()
+    }
+    pub fn required(&self) -> bool {
+        self.find_token::<BangToken>().is_some()
+    }
 }

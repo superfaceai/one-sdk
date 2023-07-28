@@ -1,7 +1,7 @@
 mod lexer;
 mod syntax;
 
-pub use syntax::{CstNode, AstNode, CstToken, ParserError, ProfileDocumentNode};
+pub use syntax::{AstNode, CstNode, CstToken, ParserError, ProfileDocumentNode};
 
 pub fn parse_profile(source: &str) -> (ProfileDocumentNode, Vec<ParserError>) {
     ProfileDocumentNode::parse_root(source)
@@ -59,7 +59,7 @@ pub mod testing {
         } else {
             SyntaxKindSet::empty()
         };
-        
+
         let mut string = String::new();
         syntax_tree_print_inner(&mut string, &skip, NodeOrToken::Node(node), 0);
 

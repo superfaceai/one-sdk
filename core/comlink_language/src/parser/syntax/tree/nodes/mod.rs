@@ -1,8 +1,11 @@
 use std::string::String as StdString;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use super::{ tokens::*, AstNode, CstNode, CstToken, TreeParser, SyntaxKind, SyntaxKind::*, SyntaxNode, SyntaxKindSet };
+use super::{
+    tokens::*, AstNode, CstNode, CstToken, SyntaxKind, SyntaxKind::*, SyntaxKindSet, SyntaxNode,
+    TreeParser,
+};
 
 use super::tokens::ProfileVersion as ProfileVersionRepr;
 
@@ -87,10 +90,7 @@ macro_rules! node {
 
 mod examples;
 mod types;
-pub use self::{
-    examples::*,
-    types::*
-};
+pub use self::{examples::*, types::*};
 
 fn opt_string_doc(p: &mut impl TreeParser) {
     if p.opt::<StringDocToken>() {
@@ -108,7 +108,7 @@ fn peek_keyword_after_string_doc(p: &mut impl TreeParser) -> SyntaxKind {
 
             k
         }
-        k => k
+        k => k,
     }
 }
 
@@ -117,7 +117,7 @@ fn peek_keyword_after_string_doc(p: &mut impl TreeParser) -> SyntaxKind {
 pub struct AstMetadata {
     pub ast_version: ProfileVersionRepr,
     pub parser_version: ProfileVersionRepr,
-    pub source_checksum: StdString
+    pub source_checksum: StdString,
 }
 node! {
     pub struct ProfileDocumentNode = ProfileDocument;
@@ -141,14 +141,19 @@ node! {
 impl ProfileDocumentNode {
     pub fn metadata(&self) -> AstMetadata {
         AstMetadata {
-            ast_version: ProfileVersionRepr { major: 1, minor: 3, patch: 0, label: None }, // TODO
+            ast_version: ProfileVersionRepr {
+                major: 1,
+                minor: 3,
+                patch: 0,
+                label: None,
+            }, // TODO
             parser_version: ProfileVersionRepr {
                 major: env!("CARGO_PKG_VERSION_MAJOR").parse::<usize>().unwrap(),
                 minor: env!("CARGO_PKG_VERSION_MINOR").parse::<usize>().unwrap(),
                 patch: env!("CARGO_PKG_VERSION_PATCH").parse::<usize>().unwrap(),
-                label: None
+                label: None,
             },
-            source_checksum: "".to_string()
+            source_checksum: "".to_string(),
         }
     }
 
@@ -157,15 +162,14 @@ impl ProfileDocumentNode {
     }
 
     pub fn definitions(&self) -> impl Iterator<Item = ProfileDocumentDefinitionNode> {
-        self.as_ref().children().filter_map(ProfileDocumentDefinitionNode::cast)
+        self.as_ref()
+            .children()
+            .filter_map(ProfileDocumentDefinitionNode::cast)
     }
 }
 
-const PROFILE_HEADER_RECOVERY: SyntaxKindSet = SyntaxKindSet::from_static_slice(&[
-    Equals,
-    String,
-    Newline
-]);
+const PROFILE_HEADER_RECOVERY: SyntaxKindSet =
+    SyntaxKindSet::from_static_slice(&[Equals, String, Newline]);
 node! {
     pub struct ProfileHeaderNode = ProfileHeader;
     parse(p) {
@@ -185,9 +189,15 @@ node! {
     }
 }
 impl ProfileHeaderNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn name(&self) -> Option<ProfileNameToken> { self.find_token() }
-    pub fn version(&self) -> Option<ProfileVersionToken> { self.find_token() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn name(&self) -> Option<ProfileNameToken> {
+        self.find_token()
+    }
+    pub fn version(&self) -> Option<ProfileVersionToken> {
+        self.find_token()
+    }
 }
 node! {
     #[derive(Serialize, Deserialize)]
@@ -253,19 +263,34 @@ node! {
     }
 }
 impl UseCaseDefinitionNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn name(&self) -> Option<IdentifierToken> { self.find_token() }
-    pub fn safety(&self) -> Option<UseCaseSafetyToken> { self.find_token() }
-    pub fn input(&self) -> Option<UseCaseDefinitionInputNode> { self.find_node() }
-    pub fn result(&self) -> Option<UseCaseDefinitionResultNode> { self.find_node() }
-    pub fn async_result(&self) -> Option<UseCaseDefinitionAsyncResultNode> { self.find_node() }
-    pub fn error(&self) -> Option<UseCaseDefinitionErrorNode> { self.find_node() }
-    pub fn examples(&self) -> impl Iterator<Item = UseCaseDefinitionExampleNode> { self.filter_nodes() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn name(&self) -> Option<IdentifierToken> {
+        self.find_token()
+    }
+    pub fn safety(&self) -> Option<UseCaseSafetyToken> {
+        self.find_token()
+    }
+    pub fn input(&self) -> Option<UseCaseDefinitionInputNode> {
+        self.find_node()
+    }
+    pub fn result(&self) -> Option<UseCaseDefinitionResultNode> {
+        self.find_node()
+    }
+    pub fn async_result(&self) -> Option<UseCaseDefinitionAsyncResultNode> {
+        self.find_node()
+    }
+    pub fn error(&self) -> Option<UseCaseDefinitionErrorNode> {
+        self.find_node()
+    }
+    pub fn examples(&self) -> impl Iterator<Item = UseCaseDefinitionExampleNode> {
+        self.filter_nodes()
+    }
 }
 
-const USECASE_SLOT_RECOVERY: SyntaxKindSet = SyntaxKindSet::from_static_slice(&[
-    Newline, BraceRight
-]);
+const USECASE_SLOT_RECOVERY: SyntaxKindSet =
+    SyntaxKindSet::from_static_slice(&[Newline, BraceRight]);
 node! {
     pub struct UseCaseDefinitionInputNode = UseCaseDefinitionInput;
     parse(p) {
@@ -275,8 +300,12 @@ node! {
     }
 }
 impl UseCaseDefinitionInputNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn ty(&self) -> Option<ObjectTypeNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn ty(&self) -> Option<ObjectTypeNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct UseCaseDefinitionResultNode = UseCaseDefinitionResult;
@@ -287,8 +316,12 @@ node! {
     }
 }
 impl UseCaseDefinitionResultNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn ty(&self) -> Option<TypeNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn ty(&self) -> Option<TypeNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct UseCaseDefinitionAsyncResultNode = UseCaseDefinitionAsyncResult;
@@ -300,8 +333,12 @@ node! {
     }
 }
 impl UseCaseDefinitionAsyncResultNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn ty(&self) -> Option<TypeNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn ty(&self) -> Option<TypeNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct UseCaseDefinitionErrorNode = UseCaseDefinitionError;
@@ -312,8 +349,12 @@ node! {
     }
 }
 impl UseCaseDefinitionErrorNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn ty(&self) -> Option<TypeNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn ty(&self) -> Option<TypeNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct NamedModelDefinitionNode = NamedModelDefinition;
@@ -332,9 +373,15 @@ node! {
     }
 }
 impl NamedModelDefinitionNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn ty(&self) -> Option<TypeNode> { self.find_node() }
-    pub fn name(&self) -> Option<IdentifierToken> { self.find_token() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn ty(&self) -> Option<TypeNode> {
+        self.find_node()
+    }
+    pub fn name(&self) -> Option<IdentifierToken> {
+        self.find_token()
+    }
 }
 node! {
     pub struct NamedFieldDefinitionNode = NamedFieldDefinition;
@@ -353,7 +400,13 @@ node! {
     }
 }
 impl NamedFieldDefinitionNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn ty(&self) -> Option<TypeNode> { self.find_node() }
-    pub fn name(&self) -> Option<IdentifierToken> { self.find_token() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn ty(&self) -> Option<TypeNode> {
+        self.find_node()
+    }
+    pub fn name(&self) -> Option<IdentifierToken> {
+        self.find_token()
+    }
 }

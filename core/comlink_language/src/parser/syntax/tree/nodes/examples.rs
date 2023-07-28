@@ -7,10 +7,10 @@ use super::*;
 // be mindful of the enum order - serde(untagged) dependso on it
 pub enum LiteralValue<'a> {
     None,
-	String(Cow<'a, str>),
-	Bool(bool),
-	FloatNumber(f64),
-	IntNumber(isize),
+    String(Cow<'a, str>),
+    Bool(bool),
+    FloatNumber(f64),
+    IntNumber(isize),
 }
 impl LiteralValue<'_> {
     pub fn to_owned(self) -> LiteralValue<'static> {
@@ -19,21 +19,29 @@ impl LiteralValue<'_> {
             Self::None => LiteralValue::None,
             Self::Bool(v) => LiteralValue::Bool(v),
             Self::FloatNumber(v) => LiteralValue::FloatNumber(v),
-            Self::IntNumber(v) => LiteralValue::IntNumber(v)
+            Self::IntNumber(v) => LiteralValue::IntNumber(v),
         }
     }
 }
 impl<'a> From<&'a str> for LiteralValue<'a> {
-    fn from(value: &'a str) -> Self { Self::String(value.into()) }
+    fn from(value: &'a str) -> Self {
+        Self::String(value.into())
+    }
 }
 impl<'a> From<bool> for LiteralValue<'a> {
-    fn from(value: bool) -> Self { Self::Bool(value) }
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
 }
 impl<'a> From<f64> for LiteralValue<'a> {
-    fn from(value: f64) -> Self { Self::FloatNumber(value) }
+    fn from(value: f64) -> Self {
+        Self::FloatNumber(value)
+    }
 }
 impl<'a> From<isize> for LiteralValue<'a> {
-    fn from(value: isize) -> Self { Self::IntNumber(value) }
+    fn from(value: isize) -> Self {
+        Self::IntNumber(value)
+    }
 }
 
 node! {
@@ -67,12 +75,24 @@ node! {
     }
 }
 impl UseCaseDefinitionExampleNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn name(&self) -> Option<IdentifierToken> { self.find_token() }
-    pub fn input(&self) -> Option<UseCaseDefinitionExampleInputNode> { self.find_node() }
-    pub fn result(&self) -> Option<UseCaseDefinitionExampleResultNode> { self.find_node() }
-    pub fn async_result(&self) -> Option<UseCaseDefinitionExampleAsyncResultNode> { self.find_node() }
-    pub fn error(&self) -> Option<UseCaseDefinitionExampleErrorNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn name(&self) -> Option<IdentifierToken> {
+        self.find_token()
+    }
+    pub fn input(&self) -> Option<UseCaseDefinitionExampleInputNode> {
+        self.find_node()
+    }
+    pub fn result(&self) -> Option<UseCaseDefinitionExampleResultNode> {
+        self.find_node()
+    }
+    pub fn async_result(&self) -> Option<UseCaseDefinitionExampleAsyncResultNode> {
+        self.find_node()
+    }
+    pub fn error(&self) -> Option<UseCaseDefinitionExampleErrorNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct UseCaseDefinitionExampleInputNode = UseCaseDefinitionExampleInput;
@@ -83,8 +103,12 @@ node! {
     }
 }
 impl UseCaseDefinitionExampleInputNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn literal(&self) -> Option<ObjectLiteralNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn literal(&self) -> Option<ObjectLiteralNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct UseCaseDefinitionExampleResultNode = UseCaseDefinitionExampleResult;
@@ -95,8 +119,12 @@ node! {
     }
 }
 impl UseCaseDefinitionExampleResultNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn literal(&self) -> Option<LiteralNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn literal(&self) -> Option<LiteralNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct UseCaseDefinitionExampleAsyncResultNode = UseCaseDefinitionExampleAsyncResult;
@@ -108,8 +136,12 @@ node! {
     }
 }
 impl UseCaseDefinitionExampleAsyncResultNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn literal(&self) -> Option<LiteralNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn literal(&self) -> Option<LiteralNode> {
+        self.find_node()
+    }
 }
 node! {
     pub struct UseCaseDefinitionExampleErrorNode = UseCaseDefinitionExampleError;
@@ -120,8 +152,12 @@ node! {
     }
 }
 impl UseCaseDefinitionExampleErrorNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn literal(&self) -> Option<LiteralNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn literal(&self) -> Option<LiteralNode> {
+        self.find_node()
+    }
 }
 
 node! {
@@ -174,11 +210,15 @@ impl PrimitiveLiteralNode {
             KeywordTrue => LiteralValue::Bool(true),
             KeywordFalse => LiteralValue::Bool(false),
             StringLiteral => LiteralValue::String(
-                StringLiteralToken::cast(t).unwrap().value()?.into_owned().into() // TODO: don't clone
+                StringLiteralToken::cast(t)
+                    .unwrap()
+                    .value()?
+                    .into_owned()
+                    .into(), // TODO: don't clone
             ),
             IntNumber => LiteralValue::IntNumber(IntNumberToken::cast(t).unwrap().value()?),
             FloatNumber => LiteralValue::FloatNumber(FloatNumberToken::cast(t).unwrap().value()?),
-            _ => return None
+            _ => return None,
         };
 
         Some(r)
@@ -215,7 +255,9 @@ node! {
     }
 }
 impl ListLiteralNode {
-    pub fn elements(&self) -> impl Iterator<Item = LiteralNode> { self.filter_nodes() }
+    pub fn elements(&self) -> impl Iterator<Item = LiteralNode> {
+        self.filter_nodes()
+    }
 }
 node! {
     pub struct ObjectLiteralNode = ObjectLiteral;
@@ -248,7 +290,9 @@ node! {
     }
 }
 impl ObjectLiteralNode {
-    pub fn fields(&self) -> impl Iterator<Item = ObjectLiteralFieldNode> { self.filter_nodes() }
+    pub fn fields(&self) -> impl Iterator<Item = ObjectLiteralFieldNode> {
+        self.filter_nodes()
+    }
 }
 node! {
     pub struct ObjectLiteralFieldNode = ObjectLiteralField;
@@ -269,7 +313,13 @@ node! {
     }
 }
 impl ObjectLiteralFieldNode {
-    pub fn doc(&self) -> Option<StringDocToken> { self.find_token() }
-    pub fn key(&self) -> impl Iterator<Item = FieldNameToken> { self.filter_tokens() }
-    pub fn literal(&self) -> Option<LiteralNode> { self.find_node() }
+    pub fn doc(&self) -> Option<StringDocToken> {
+        self.find_token()
+    }
+    pub fn key(&self) -> impl Iterator<Item = FieldNameToken> {
+        self.filter_tokens()
+    }
+    pub fn literal(&self) -> Option<LiteralNode> {
+        self.find_node()
+    }
 }

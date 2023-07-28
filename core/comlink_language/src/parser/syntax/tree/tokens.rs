@@ -1,10 +1,8 @@
-use std::{
-    str::FromStr, borrow::Cow, string::String as StdString
-};
+use std::{borrow::Cow, str::FromStr, string::String as StdString};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use super::{CstToken, SyntaxKind, SyntaxKind::*, SyntaxToken, SyntaxKindSet};
+use super::{CstToken, SyntaxKind, SyntaxKind::*, SyntaxKindSet, SyntaxToken};
 
 macro_rules! token {
     (
@@ -57,11 +55,11 @@ token! { "integer" pub struct IntNumberToken = IntNumber; }
 impl IntNumberToken {
     pub fn value(&self) -> Option<isize> {
         let text = self.as_ref().text();
-        
+
         let (sign, sign_len) = match text.chars().next()? {
             '-' => (-1, 1),
             '+' => (1, 1),
-            _ => (1, 0)
+            _ => (1, 0),
         };
         let (radix, radix_len) = {
             let mut it = text[sign_len..].chars();
@@ -69,7 +67,7 @@ impl IntNumberToken {
                 ('0', Some('b')) => (2, 2),
                 ('0', Some('o')) => (8, 2),
                 ('0', Some('x')) => (16, 2),
-                (_, _) => (10, 0)
+                (_, _) => (10, 0),
             }
         };
 
@@ -80,9 +78,7 @@ impl IntNumberToken {
 token! { "float" pub struct FloatNumberToken = FloatNumber; }
 impl FloatNumberToken {
     pub fn value(&self) -> Option<f64> {
-        f64::from_str(
-            self.as_ref().text()
-        ).ok()
+        f64::from_str(self.as_ref().text()).ok()
     }
 }
 token! { "end of file" pub struct EndOfFileToken = EndOfFile; }
@@ -94,9 +90,9 @@ token! { "None keyword" pub struct KeywordNoneToken = KeywordNone; }
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PrimitiveTypeName {
-	Boolean,
-	Number,
-	String
+    Boolean,
+    Number,
+    String,
 }
 token! { "primitive type name" pub struct PrimitiveTypeNameToken = KeywordString, KeywordNumber, KeywordBoolean => PrimitiveTypeName; }
 impl PrimitiveTypeNameToken {
@@ -105,7 +101,7 @@ impl PrimitiveTypeNameToken {
             "string" => PrimitiveTypeName::String,
             "number" => PrimitiveTypeName::Number,
             "boolean" => PrimitiveTypeName::Boolean,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -119,7 +115,7 @@ token! { "usecase keyword" pub struct KeywordUsecaseToken = KeywordUsecase; }
 pub enum UseCaseSafety {
     Safe,
     Idempotent,
-    Unsafe
+    Unsafe,
 }
 token! { "safe, idempotent or unsafe keyword" pub struct UseCaseSafetyToken = KeywordUnsafe, KeywordIdempotent, KeywordSafe => UseCaseSafety; }
 impl UseCaseSafetyToken {
@@ -128,7 +124,7 @@ impl UseCaseSafetyToken {
             "safe" => UseCaseSafety::Safe,
             "idempotent" => UseCaseSafety::Idempotent,
             "unsafe" => UseCaseSafety::Unsafe,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -147,12 +143,15 @@ fn quote_pair_count(text: &str) -> usize {
     let quote_char = text.chars().next().unwrap();
     match quote_char {
         '\'' | '"' => (),
-        _ => return 0
+        _ => return 0,
     };
 
     let mut current = text;
     let mut count = 0;
-    while let Some(next) = current.strip_prefix(quote_char).and_then(|c| c.strip_suffix(quote_char)) {
+    while let Some(next) = current
+        .strip_prefix(quote_char)
+        .and_then(|c| c.strip_suffix(quote_char))
+    {
         current = next;
         count += 1;
     }
@@ -166,34 +165,37 @@ fn string_literal_value(raw: &str) -> Option<Cow<'_, str>> {
         return None;
     }
     // TODO: resolve escapes
-    Some(
-        Cow::Borrowed(&raw[quote_count .. raw.len() - quote_count])
-    )
+    Some(Cow::Borrowed(&raw[quote_count..raw.len() - quote_count]))
 }
 
 token! { "string literal" pub struct StringLiteralToken = String => StringLiteral; }
 impl StringLiteralToken {
-    pub fn value(&self) -> Option<Cow<'_, str>> { string_literal_value(self.as_ref().text()) }
+    pub fn value(&self) -> Option<Cow<'_, str>> {
+        string_literal_value(self.as_ref().text())
+    }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Documentation {
     pub title: StdString,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<StdString>
+    pub description: Option<StdString>,
 }
 token! { "doc string" pub struct StringDocToken = String => StringDoc; }
 impl StringDocToken {
     pub fn value(&self) -> Option<Documentation> {
         let text = string_literal_value(self.as_ref().text())?;
         let text = text.trim();
-        
+
         Some(match text.split_once('\n') {
-            None => Documentation { title: text.to_string(), description: None },
+            None => Documentation {
+                title: text.to_string(),
+                description: None,
+            },
             Some((title, description)) => Documentation {
                 title: title.trim().to_string(),
-                description: Some(description.trim().to_string())
-            }
+                description: Some(description.trim().to_string()),
+            },
         })
     }
 }
@@ -207,9 +209,7 @@ impl FieldNameToken {
             return None;
         }
 
-        Some(
-            Cow::Borrowed(&raw[quote_count .. raw.len() - quote_count])
-        )
+        Some(Cow::Borrowed(&raw[quote_count..raw.len() - quote_count]))
     }
 }
 
@@ -217,15 +217,21 @@ impl FieldNameToken {
 pub struct ProfileId {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scope: Option<StdString>,
-    pub name: StdString
+    pub name: StdString,
 }
 token! { "profile name" pub struct ProfileNameToken = String => ProfileName; }
 impl ProfileNameToken {
     pub fn id(&self) -> Option<ProfileId> {
         let text = string_literal_value(self.as_ref().text())?;
         Some(match text.split_once('/') {
-            None => ProfileId { scope: None, name: text.into_owned() },
-            Some((scope, name)) => ProfileId { scope: Some(scope.to_string()), name: name.to_string() }
+            None => ProfileId {
+                scope: None,
+                name: text.into_owned(),
+            },
+            Some((scope, name)) => ProfileId {
+                scope: Some(scope.to_string()),
+                name: name.to_string(),
+            },
         })
     }
 }
@@ -236,21 +242,20 @@ pub struct ProfileVersion {
     pub minor: usize,
     pub patch: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub label: Option<std::string::String>
+    pub label: Option<std::string::String>,
 }
 token! { "profile version" pub struct ProfileVersionToken = String => ProfileVersion; }
 impl ProfileVersionToken {
     pub fn value(&self) -> Option<ProfileVersion> {
         let value = string_literal_value(self.as_ref().text())?;
-        
+
         let mut it = value.split('.');
 
         Some(ProfileVersion {
             major: it.next()?.parse::<usize>().ok()?,
             minor: it.next()?.parse::<usize>().ok()?,
             patch: it.next()?.parse::<usize>().ok()?,
-            label: None
+            label: None,
         })
     }
 }
-

@@ -2,14 +2,14 @@ use std::iter::FilterMap;
 
 use crate::parser::{
     lexer::{tokenize, LexerToken, LexerTokenData},
-    syntax::{SyntaxKind, SyntaxNode, SyntaxToken, SyntaxKindSet},
+    syntax::{SyntaxKind, SyntaxKindSet, SyntaxNode, SyntaxToken},
 };
 
 use super::SyntaxElement;
 
 pub mod nodes;
-pub mod tokens;
 pub mod serde;
+pub mod tokens;
 
 #[derive(Debug)]
 pub struct ParserError {
@@ -24,8 +24,12 @@ struct ParserToken {
 }
 #[derive(Debug)]
 enum ParserEvent {
-    FrameStart { position: usize },
-    NodeStart { kind: SyntaxKind },
+    FrameStart {
+        position: usize,
+    },
+    NodeStart {
+        kind: SyntaxKind,
+    },
     NodeEnd,
     /// Token is a tree leaf and comes directly from the lexed tokens.
     Token {
@@ -54,7 +58,9 @@ pub trait TreeParser {
     /// Record an error event.
     ///
     /// Advances by one token unless the next token is in `recovery_set`.
-    fn error<M>(&mut self, message: M, recovery_set: SyntaxKindSet) where String: From<M>;
+    fn error<M>(&mut self, message: M, recovery_set: SyntaxKindSet)
+    where
+        String: From<M>;
     /// Returns the kind of the next token.
     fn peek(&self) -> SyntaxKind;
     /// Like [`Self::peek`] but transforms valid identifiers into keywords.
@@ -182,7 +188,7 @@ impl<'a> Parser<'a> {
                     self.events.push(ParserEvent::Token { kind });
                     self.advance(1);
                 }
-                _ => break
+                _ => break,
             }
         }
     }
@@ -220,12 +226,17 @@ impl<'a> Parser<'a> {
 impl TreeParser for Parser<'_> {
     fn start_frame(&mut self) {
         self.active_stack.push(self.events.len());
-        self.events.push(ParserEvent::FrameStart { position: self.position });
+        self.events.push(ParserEvent::FrameStart {
+            position: self.position,
+        });
     }
 
     fn finish_frame_node<N: CstNode>(&mut self) {
         let start_index = self.active_stack.pop().unwrap();
-        debug_assert!(matches!(self.events[start_index], ParserEvent::FrameStart { .. }));
+        debug_assert!(matches!(
+            self.events[start_index],
+            ParserEvent::FrameStart { .. }
+        ));
 
         self.events[start_index] = ParserEvent::NodeStart { kind: N::KIND };
         self.events.push(ParserEvent::NodeEnd);
@@ -235,7 +246,7 @@ impl TreeParser for Parser<'_> {
         let start_index = self.active_stack.pop().unwrap();
         let old_position = match self.events[start_index] {
             ParserEvent::FrameStart { position } => position,
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         self.position = old_position;
@@ -293,7 +304,7 @@ impl TreeParser for Parser<'_> {
             "model" => SyntaxKind::KeywordModel,
             "field" => SyntaxKind::KeywordField,
             "enum" => SyntaxKind::KeywordEnum,
-            _ => kind
+            _ => kind,
         }
     }
 
@@ -313,29 +324,42 @@ impl TreeParser for Parser<'_> {
 impl std::fmt::Debug for Parser<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let current_tokens = {
-            let t = &self.tokens[self.position ..];
-            &t[.. t.len().min(5)]
+            let t = &self.tokens[self.position..];
+            &t[..t.len().min(5)]
         };
         let before_tokens = {
             let before_len = self.position - self.position.saturating_sub(2);
-            &self.tokens[self.position - before_len ..][.. before_len]
+            &self.tokens[self.position - before_len..][..before_len]
         };
 
         for token in before_tokens {
-            write!(f, "{:?}:{:?}@{}..{} ", &self.source[token.offset ..][.. token.len], token.kind, token.offset, token.offset + token.len)?;
+            write!(
+                f,
+                "{:?}:{:?}@{}..{} ",
+                &self.source[token.offset..][..token.len],
+                token.kind,
+                token.offset,
+                token.offset + token.len
+            )?;
         }
         write!(f, "| ")?;
         for token in current_tokens {
-            write!(f, "{:?}:{:?}@{}..{} ", &self.source[token.offset ..][.. token.len], token.kind, token.offset, token.offset + token.len)?;
+            write!(
+                f,
+                "{:?}:{:?}@{}..{} ",
+                &self.source[token.offset..][..token.len],
+                token.kind,
+                token.offset,
+                token.offset + token.len
+            )?;
         }
 
         Ok(())
     }
 }
 
-
 /// A concrete syntax tree node.
-/// 
+///
 /// A CstNode is physically present in the green tree and can be directly parsed out of the source.
 pub trait CstNode: AstNode {
     const KIND: SyntaxKind;
@@ -368,7 +392,10 @@ pub trait CstToken: Sized + AsRef<SyntaxToken> {
 }
 
 pub struct FilterTokensIter<C: CstToken> {
-    inner: FilterMap<rowan::SyntaxElementChildren<super::ComlinkLanguage>, fn(SyntaxElement) -> Option<C>>
+    inner: FilterMap<
+        rowan::SyntaxElementChildren<super::ComlinkLanguage>,
+        fn(SyntaxElement) -> Option<C>,
+    >,
 }
 impl<C: CstToken> Iterator for FilterTokensIter<C> {
     type Item = C;
@@ -378,7 +405,8 @@ impl<C: CstToken> Iterator for FilterTokensIter<C> {
     }
 }
 pub struct FilterNodesIter<C: AstNode> {
-    inner: FilterMap<rowan::SyntaxNodeChildren<super::ComlinkLanguage>, fn(SyntaxNode) -> Option<C>>
+    inner:
+        FilterMap<rowan::SyntaxNodeChildren<super::ComlinkLanguage>, fn(SyntaxNode) -> Option<C>>,
 }
 impl<C: AstNode> Iterator for FilterNodesIter<C> {
     type Item = C;
@@ -389,7 +417,7 @@ impl<C: AstNode> Iterator for FilterNodesIter<C> {
 }
 
 /// An abstract syntax tree node.
-/// 
+///
 /// An AstdNode may not be physically presend in the green tree and might just be an abstraction over a set of CstNodes.
 pub trait AstNode: Sized + AsRef<SyntaxNode> {
     /// Attempts to cast `node` into `Self`.
@@ -398,14 +426,17 @@ pub trait AstNode: Sized + AsRef<SyntaxNode> {
     fn cast(node: SyntaxNode) -> Option<Self>;
 
     fn find_token<Ch: CstToken>(&self) -> Option<Ch> {
-        self.as_ref().children_with_tokens().find_map(
-            |ch| ch.into_token().and_then(Ch::cast)
-        )
+        self.as_ref()
+            .children_with_tokens()
+            .find_map(|ch| ch.into_token().and_then(Ch::cast))
     }
 
     fn filter_tokens<Ch: CstToken>(&self) -> FilterTokensIter<Ch> {
         FilterTokensIter {
-            inner: self.as_ref().children_with_tokens().filter_map(|ch| ch.into_token().and_then(Ch::cast))
+            inner: self
+                .as_ref()
+                .children_with_tokens()
+                .filter_map(|ch| ch.into_token().and_then(Ch::cast)),
         }
     }
 
@@ -414,6 +445,8 @@ pub trait AstNode: Sized + AsRef<SyntaxNode> {
     }
 
     fn filter_nodes<Ch: AstNode>(&self) -> FilterNodesIter<Ch> {
-        FilterNodesIter { inner: self.as_ref().children().filter_map(Ch::cast) }
+        FilterNodesIter {
+            inner: self.as_ref().children().filter_map(Ch::cast),
+        }
     }
 }

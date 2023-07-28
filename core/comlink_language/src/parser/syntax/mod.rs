@@ -1,6 +1,6 @@
 mod tree;
 
-pub use tree::{nodes::*, tokens::*, CstNode, AstNode, CstToken, Parser, ParserError};
+pub use tree::{nodes::*, tokens::*, AstNode, CstNode, CstToken, Parser, ParserError};
 
 /// All syntax token kinds that this parser can produce.
 ///
@@ -125,7 +125,7 @@ impl From<rowan::SyntaxKind> for SyntaxKind {
 }
 
 /// Set of syntax kinds which can be queried.
-/// 
+///
 /// Mostly used for recovery tokens.
 pub struct SyntaxKindSet {
     // TODO: should be a bit set like they do in <https://github.com/rust-lang/rust-analyzer/blob/master/crates/parser/src/token_set.rs>
