@@ -24,6 +24,8 @@ macro_rules! link_into {
         $({
             let state = $state.clone();
             let fun = $context.wrap_callback(move |_context, this, args| {
+                use $crate::core_to_map_bindings::JSValueDebug;
+
                 let __span = tracing::trace_span!(concat!("map/", $key)).entered();
 
                 // SAFETY: this is safe because JSValueRef now contains a lifetime of the context, but the authors of the crate forgot to update `inner_value`
@@ -155,7 +157,12 @@ impl<'a> JSValueDebug<'a> {
                 const MAX_SHOWN: usize = 300 - 2;
 
                 if string.len() > MAX_SHOWN && !f.alternate() {
-                    write!(f, "{}..", &string[..MAX_SHOWN])
+                    // ensure we never cut strings at invalid places
+                    let mut end_index = MAX_SHOWN;
+                    while !string.is_char_boundary(end_index) {
+                        end_index -= 1;
+                    }
+                    write!(f, "{}..", &string[..end_index])
                 } else {
                     write!(f, "{}", string)
                 }
