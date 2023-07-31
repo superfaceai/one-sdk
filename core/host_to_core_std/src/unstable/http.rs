@@ -210,16 +210,13 @@ impl<Se: StreamExchange> HttpResponse<Se> {
         &self.headers
     }
 
-    #[allow(dead_code)]
     pub fn body(&mut self) -> impl Read + '_ {
         &mut self.body
     }
 
     // like <https://docs.rs/hyper/latest/hyper/struct.Response.html#method.into_body>
     pub fn into_body(self) -> IoStream<Se> {
-        let HttpResponse { body, .. } = self;
-
-        body
+        self.body
     }
 }
 
