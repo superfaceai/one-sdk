@@ -1,4 +1,4 @@
 target/
 dist/
 wasi-sdk-*/
-core/assets/js/*
+core/assets/*

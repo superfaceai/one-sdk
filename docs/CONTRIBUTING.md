@@ -90,7 +90,7 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
           [ts files]
   core/
     .cargo/
-      config
+      config.toml
     Cargo.toml # workspace
     wasi-sdk-*/ # not in git, needed for building quickjs
     core/ # main crate, builds into core.wasm
@@ -107,6 +107,11 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
     interpreter_js/ # quickjs interpreter, core_to_map export
       Cargo.toml
       src/
+    json_schemas/ # JSON schemas used by core
+      Cargo.toml
+      src/
+        main.rs # script translating YAML to JSON
+        schemas/ # actual JSON schemas
   integration/ # any tooling for integration development
     package.json # for yarn workspace configuration
     core-ffi/ # TypeScript declarations for core_to_map imports

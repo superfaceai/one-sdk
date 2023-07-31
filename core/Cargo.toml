@@ -3,20 +3,20 @@ members = [
 	"core",
 	"host_to_core_std",
 	"core_to_map_std",
-	"interpreter_js"
+	"interpreter_js",
+	"json_schemas"
 ]
 
 [workspace.dependencies]
-thiserror = { version = "1" }
 
+base64 = { version = "0.21" }
+jsonschema = { version = "0.17", default-features = false } # https://github.com/Stranger6667/jsonschema-rs/issues/222
+regex = { version = "1" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1"}
 serde_urlencoded = { version = "0.7" }
-base64 = { version = "0.21" }
-regex = { version = "1" }
+thiserror = { version = "1" }
 url = { version = "2" }
-jsonschema = { version = "0.17", default-features = false } # https://github.com/Stranger6667/jsonschema-rs/issues/222
-
 tracing = { version = "0.1" }
 
 [profile.release]

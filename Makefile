@@ -44,6 +44,9 @@ CORE_JS_ASSETS_MAP_STD=${CORE_JS_ASSETS}/map_std.js
 CORE_JS_ASSETS_PROFILE_VALIDATOR=${CORE_JS_ASSETS}/profile_validator.js
 MAP_STD=integration/map-std/dist/map_std.js
 PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
+CORE_SCHEMA_ASSETS=core/core/assets/schemas
+CORE_SCHEMA_ASSETS_SECURITY_VALUES=${CORE_SCHEMA_ASSETS}/security_values.json
+SECURITY_VALUES_JSON_SCHEMA=core/json_schemas/src/schemas/security_values.json
 # Hosts
 HOST_JAVASCRIPT_ASSETS=host/javascript/assets
 HOST_PYTHON_ASSETS=host/python/src/one_sdk/assets
@@ -58,16 +61,19 @@ ifeq ($(CORE_PHONY),1)
 .PHONY: ${CORE_DIST} ${MAP_STD} ${PROFILE_VALIDATOR}
 endif
 
-deps: deps_core deps_host_python
+deps: git_hooks deps_core deps_host_python
 build: build_core build_integration build_hosts
 test: test_core
 clean: clean_core clean_integration clean_hosts
+
+git_hooks:
+	cp .githooks/* .git/hooks
 
 ##########
 ## CORE ##
 ##########
 ifeq ($(CORE_DOCKER),1)
-${CORE_DIST}: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
+${CORE_DIST}: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_SCHEMA_ASSETS_SECURITY_VALUES}
 	mkdir -p ${CORE_DIST}
 	docker build ./core -o ${CORE_DIST}
 ${CORE_WASM}: ${CORE_DIST}
@@ -77,7 +83,7 @@ deps_core: ${WASI_SDK_FOLDER}
 	rustup target add wasm32-wasi
 	curl https://wasmtime.dev/install.sh -sSf | bash
 
-${CORE_DIST}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
+${CORE_DIST}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_SCHEMA_ASSETS_SECURITY_VALUES}
 	mkdir -p ${CORE_DIST}
 	touch ${CORE_DIST}
 
@@ -100,11 +106,13 @@ ${TEST_CORE_ASYNCIFY_WASM}: ${TEST_CORE_WASM}
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
 
-test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
+test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_SCHEMA_ASSETS_SECURITY_VALUES}
 	cd core && cargo test -- -- --nocapture
 endif
 
 build_core: ${CORE_WASM} ${TEST_CORE_WASM} ${CORE_ASYNCIFY_WASM} ${TEST_CORE_ASYNCIFY_WASM}
+build_core_json_schemas:
+	cd core/json_schemas && cargo run -- --dir=.
 
 ${CORE_JS_ASSETS_MAP_STD}: ${MAP_STD}
 	mkdir -p ${CORE_JS_ASSETS}
@@ -113,6 +121,10 @@ ${CORE_JS_ASSETS_MAP_STD}: ${MAP_STD}
 ${CORE_JS_ASSETS_PROFILE_VALIDATOR}: ${PROFILE_VALIDATOR}
 	mkdir -p ${CORE_JS_ASSETS}
 	cp ${PROFILE_VALIDATOR} ${CORE_JS_ASSETS_PROFILE_VALIDATOR}
+
+${CORE_SCHEMA_ASSETS_SECURITY_VALUES}:
+	mkdir -p ${CORE_SCHEMA_ASSETS}
+	cp ${SECURITY_VALUES_JSON_SCHEMA} ${CORE_SCHEMA_ASSETS_SECURITY_VALUES}
 
 clean_core:
 	rm -rf ${CORE_DIST} core/target

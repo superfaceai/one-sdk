@@ -60,7 +60,7 @@ impl OneClientCore {
             map_cache: DocumentCache::new(config.cache_duration),
             security_validator: JsonSchemaValidator::new(
                 &serde_json::Value::from_str(include_str!(
-                    "../assets/schemas/security_values.schema.json"
+                    "../assets/schemas/security_values.json"
                 ))
                 .expect("Valid JSON"),
             )
