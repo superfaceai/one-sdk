@@ -203,9 +203,6 @@ The next-gen OneSDK is still in beta stage and several features are not yet impl
   - Currently the maps (integration glue) needs to be bundled with the worker at the build time
   - Future OneSDK will be fetching the maps at the runtime to enable dynamic healing and recovery
 
-- Integrations monitoring won't work
-  - Metrics are not yet send to Registry, so project dashboard will reamin empty.
-
 ### Cloudflare Workers specific
 
 - The compiled WASM OneSDK is hitting the 1MB limit of the Cloudflare workers free tier
