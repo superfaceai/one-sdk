@@ -15,7 +15,10 @@ use map_std::unstable::{
 
 use crate::{
     bindings::{MessageExchangeFfi, StreamExchangeFfi},
-    sf_core::{json_schema_validator::JsonSchemaValidator, metrics::PerformMetricsData},
+    sf_core::{
+        exception::FromJsonSchemaValidationError, json_schema_validator::JsonSchemaValidator,
+        metrics::PerformMetricsData,
+    },
 };
 
 mod cache;
@@ -207,13 +210,14 @@ impl OneClientCore {
         };
 
         // Validate security values against json schema
-        let result = self
-            .security_validator
-            .validate(&perform_input.map_security);
-
-        if let Err(result) = result {
-            return try_metrics!(Err(PerformException::from(result)));
-        }
+        self.security_validator
+            .validate(&perform_input.map_security)
+            .map_err(|err| {
+                PerformException::from_json_schema_validation_error(
+                    err,
+                    Some("Security".to_string().as_ref()),
+                )
+            })?;
 
         // parse provider json
         let ProviderJsonCacheEntry {
