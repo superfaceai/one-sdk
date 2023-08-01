@@ -1,0 +1,3 @@
+#!/bin/sh
+
+make build_core_json_schemas

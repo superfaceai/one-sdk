@@ -150,7 +150,7 @@ mod test {
     #[test]
     fn test_security_values_validator() {
         const SECURITY_VALUES_SCHEMA: &str =
-            include_str!("../../assets/schemas/security_values.schema.json"); // read higher
+            include_str!("../../assets/schemas/security_values.json"); // read higher
 
         let security_validator = JsonSchemaValidator::new(
             &serde_json::Value::from_str(&SECURITY_VALUES_SCHEMA).unwrap(),
