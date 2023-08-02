@@ -205,11 +205,12 @@ dependencies = [
 name = "comlink_language"
 version = "0.1.0"
 dependencies = [
- "either",
+ "hex",
  "pretty_assertions",
  "rowan",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
 ]
 

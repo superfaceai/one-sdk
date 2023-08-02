@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     nodes::*,
-    tokens::{PrimitiveTypeName, ProfileVersion, StringDocToken, UseCaseSafety},
+    tokens::{PrimitiveTypeName, ProfileVersion, StringDocToken, UseCaseSafety, Documentation},
 };
 
 macro_rules! serde_repr {
@@ -121,11 +121,10 @@ struct LocationSpanRepr {
 
 #[derive(Serialize, Deserialize)]
 struct DocumentationRepr {
-    title: String,
+    #[serde(flatten)]
+    inner: Documentation,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    location: Option<LocationSpanRepr>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
+    location: Option<LocationSpanRepr>
 }
 serde_repr! {
     repr DocumentationRepr;
@@ -134,8 +133,7 @@ serde_repr! {
         let doc = node.value().ok_or("doc missing")?;
 
         Self {
-            title: doc.title,
-            description: doc.description,
+            inner: doc,
             location: None
         }
     }

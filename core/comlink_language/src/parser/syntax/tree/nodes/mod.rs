@@ -139,6 +139,17 @@ node! {
     }
 }
 impl ProfileDocumentNode {
+    fn source_checksum(&self) -> StdString {
+        use hex::ToHex;
+        use sha2::{Digest, Sha256};
+
+        let mut hasher = Sha256::new();
+        self.as_ref().text().for_each_chunk(
+            |chunk| hasher.update(chunk)
+        );
+        hasher.finalize().as_slice().encode_hex::<StdString>()
+    }
+    
     pub fn metadata(&self) -> AstMetadata {
         AstMetadata {
             ast_version: ProfileVersionRepr {
@@ -153,7 +164,7 @@ impl ProfileDocumentNode {
                 patch: env!("CARGO_PKG_VERSION_PATCH").parse::<usize>().unwrap(),
                 label: None,
             },
-            source_checksum: "".to_string(),
+            source_checksum: self.source_checksum()
         }
     }
 
