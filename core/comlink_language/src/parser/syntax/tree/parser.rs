@@ -38,6 +38,9 @@ enum ParserEvent {
 /// Struct representing parser state, passed into rule functions during parsing.
 pub struct Parser<'a> {
     source: &'a str,
+    /// Tokens from `source` but without trvia tokens.
+    /// 
+    /// Trivia tokens are added back again while the resulting tree is built.
     tokens: Vec<ParserToken>,
     /// Events represent start, token and end events as will be called on syntax tree builder.
     ///
@@ -50,8 +53,19 @@ pub struct Parser<'a> {
     active_stack: Vec<usize>,
 }
 impl<'a> Parser<'a> {
+    const TRIVIA_TOKENS: SyntaxKindSet = SyntaxKindSet::trivia_tokens();
+
     pub fn new(source: &'a str) -> Self {
-        let tokens: Vec<_> = tokenize(source).map(Self::map_token).collect();
+        let tokens: Vec<_> = tokenize(source).filter_map(
+            |t| {
+                let t = Self::map_token(t);
+                if Self::TRIVIA_TOKENS.contains(t.kind) {
+                    None
+                } else {
+                    Some(t)
+                }
+            }
+        ).collect();
         assert!(!tokens.is_empty());
 
         Self {
@@ -107,34 +121,43 @@ impl<'a> Parser<'a> {
         self.position = (self.position + count).min(self.tokens.len() - 1);
     }
 
-    fn skip_trivia(&mut self) {
-        const TRIVIA_TOKENS: SyntaxKindSet = SyntaxKindSet::trivia_tokens();
-
-        loop {
-            match self.peek() {
-                kind if TRIVIA_TOKENS.contains(kind) => {
-                    self.events.push(ParserEvent::Token { kind });
-                    self.advance(1);
-                }
-                _ => break,
-            }
-        }
-    }
-
     pub fn build_tree(self) -> (rowan::GreenNode, Vec<ParserError>) {
         assert_eq!(self.active_stack.len(), 0);
 
         let mut builder = rowan::GreenNodeBuilder::new();
         let mut errors = Vec::new();
-        let mut tokens = self.tokens.into_iter();
         let mut error_offset = 0;
+        
+        // the parser internally stores tokens without trivia, so here we replay all the events
+        // and output trivia tokens in-between as appropriate - this ensures that nodes never start nor end with trivia - it's always pushed to the outermost node
+        let mut tokens = tokenize(self.source).map(Self::map_token).peekable();
+        macro_rules! skip_trivia {
+            () => {
+                #[allow(unused_assignments)]
+                while tokens.peek().map(|t| Self::TRIVIA_TOKENS.contains(t.kind)).unwrap_or(false) {
+                    let token = tokens.next().unwrap();
+
+                    builder.token(token.kind.into(), &self.source[token.offset..][..token.len]);
+                    error_offset = token.offset + token.len;
+                }
+            };
+        }
 
         for event in self.events {
             match event {
+                // this means there is an unclosed frame - this is a bug
                 ParserEvent::FrameStart { .. } => unreachable!(),
-                ParserEvent::NodeStart { kind } => builder.start_node(kind.into()),
+                // skip trivia before node start so that nodes never start with trivia
+                ParserEvent::NodeStart { kind } => {
+                    skip_trivia!();
+
+                    builder.start_node(kind.into());
+                }
                 ParserEvent::NodeEnd => builder.finish_node(),
+                // skip trivia before each token
                 ParserEvent::Token { kind } => {
+                    skip_trivia!();
+
                     let token = tokens.next().unwrap();
                     builder.token(kind.into(), &self.source[token.offset..][..token.len]);
                     error_offset = token.offset + token.len;
@@ -147,6 +170,9 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+        // skip trivia so that final trivia is included
+        skip_trivia!();
+        debug_assert!(tokens.next().is_none());
 
         (builder.finish(), errors)
     }
@@ -184,7 +210,6 @@ impl TreeParser for Parser<'_> {
     fn token<T: CstToken>(&mut self) {
         self.events.push(ParserEvent::Token { kind: T::KIND });
         self.advance(1);
-        self.skip_trivia();
     }
 
     fn error<M>(&mut self, message: M, recovery_set: SyntaxKindSet)
@@ -194,9 +219,10 @@ impl TreeParser for Parser<'_> {
         self.events.push(ParserEvent::Error {
             message: String::from(message),
         });
-        if !recovery_set.contains(self.peek()) {
+        let next = self.peek();
+        if !recovery_set.contains(next) {
+            self.events.push(ParserEvent::Token { kind: next });
             self.advance(1);
-            self.skip_trivia();
         }
     }
 
@@ -239,11 +265,8 @@ impl TreeParser for Parser<'_> {
     fn skip<T: CstToken>(&mut self) -> usize {
         let mut count = 0;
         while T::RAW_KINDS.contains(self.peek()) {
-            self.events.push(ParserEvent::Token { kind: T::KIND });
-            self.advance(1);
+            self.token::<T>();
             count += 1;
-
-            self.skip_trivia();
         }
 
         count

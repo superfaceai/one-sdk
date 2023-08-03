@@ -6,8 +6,11 @@ fn clean_json_ast(value: &mut JsonValue) {
     match value {
         JsonValue::Array(a) => a.iter_mut().for_each(clean_json_ast),
         JsonValue::Object(obj) => {
-            // TODO: match these as well
-            obj.remove("astMetadata");
+            // parser version doesn't have to match, all other fields should
+            obj.remove("parserVersion");
+            // locations don't match in some places
+            // - original parser did not include documentation location into the main node
+            // - NonNullDefinition is doesn't exist now and is emulated
             obj.remove("location");
             for child in obj.values_mut() {
                 clean_json_ast(child);

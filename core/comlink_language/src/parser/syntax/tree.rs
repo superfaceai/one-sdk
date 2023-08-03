@@ -1,5 +1,7 @@
 use std::iter::FilterMap;
 
+use rowan::TextRange;
+
 use crate::parser::{
     syntax::{SyntaxKind, SyntaxKindSet, SyntaxNode, SyntaxToken},
 };
@@ -10,8 +12,13 @@ pub mod nodes;
 pub mod serde;
 pub mod tokens;
 mod parser;
+mod location;
 
-pub use parser::{Parser, ParserError};
+pub use self::{
+    parser::{Parser, ParserError},
+    location::{Location, LocationSpan}
+};
+use location::RawLocation;
 
 /// Trait for methods which are available to the rule definitions.
 pub trait TreeParser {
@@ -110,6 +117,21 @@ pub trait CstToken: Sized + AsRef<SyntaxToken> {
     ///
     /// If token is of a different kind than `Self::KIND` then this returns `None`.
     fn cast(token: SyntaxToken) -> Option<Self>;
+
+    fn location(&self) -> LocationSpan {
+        let before_range = TextRange::new(
+            0.into(),
+            self.as_ref().text_range().start()
+        );
+
+        let start = match self.as_ref().parent_ancestors().last() {
+            Some(root) => RawLocation::compute_syntax_text_end(root.text().slice(before_range)),
+            None => RawLocation::empty()
+        };
+        let end = start + RawLocation::compute_end(self.as_ref().text());
+
+        LocationSpan { start: start.into(), end: end.into() }
+    }
 }
 
 // These are newtypes because the inner FilterMap types are too verbose
@@ -170,5 +192,21 @@ pub trait AstNode: Sized + AsRef<SyntaxNode> {
         FilterNodesIter {
             inner: self.as_ref().children().filter_map(Ch::cast),
         }
+    }
+
+    fn location(&self) -> LocationSpan {        
+        let range = self.as_ref().text_range();
+        let before_range = TextRange::new(
+            0.into(),
+            range.start()
+        );
+        
+        let start = match self.as_ref().ancestors().last() {
+            Some(root) => RawLocation::compute_syntax_text_end(root.text().slice(before_range)),
+            None => RawLocation::empty()
+        };
+        let end = start + RawLocation::compute_syntax_text_end(self.as_ref().text());
+
+        LocationSpan { start: start.into(), end: end.into() }
     }
 }

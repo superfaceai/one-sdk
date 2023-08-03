@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
+    LocationSpan, AstNode, CstToken,
     nodes::*,
     tokens::{PrimitiveTypeName, ProfileVersion, StringDocToken, UseCaseSafety, Documentation},
 };
@@ -31,7 +32,7 @@ macro_rules! serde_repr {
 		struct $repr_name $(<$($repr_generic),+>)? {
 			kind: $kind_name,
 			#[serde(default, skip_serializing_if = "Option::is_none")]
-			location: Option<LocationSpanRepr>,
+			location: Option<LocationSpan>,
 			$(
 				$(#[$field_attr])*
 				$field_name: $field_type
@@ -66,7 +67,7 @@ macro_rules! serde_repr {
 					Ok(v) => v.serialize(s),
 					Err(err) => ErrorNodeRepr {
 						kind: ErrorNodeRepr::KIND,
-						location: None, // TODO
+						location: Some(self.location()),
 						error: err.to_string()
 					}.serialize(s)
 				}
@@ -103,28 +104,13 @@ serde_repr! {
         error: String
     }
 }
-#[derive(Serialize, Deserialize)]
-#[allow(non_snake_case)]
-struct LocationRepr {
-    /// Line number - starts at 1
-    line: usize,
-    /// Column number - starts at 1
-    column: usize,
-    /// Character index within the source code - starts at 0
-    charIndex: usize,
-}
-#[derive(Serialize, Deserialize)]
-struct LocationSpanRepr {
-    start: LocationRepr,
-    end: LocationRepr,
-}
 
 #[derive(Serialize, Deserialize)]
 struct DocumentationRepr {
     #[serde(flatten)]
     inner: Documentation,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    location: Option<LocationSpanRepr>
+    location: Option<LocationSpan>
 }
 serde_repr! {
     repr DocumentationRepr;
@@ -134,7 +120,7 @@ serde_repr! {
 
         Self {
             inner: doc,
-            location: None
+            location: Some(node.location())
         }
     }
     from_repr(_value) {
@@ -154,7 +140,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             astMetadata: node.metadata(),
             header: node.header().ok_or("header missing")?,
             definitions: node.definitions().collect()
@@ -179,7 +165,7 @@ serde_repr! {
 
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             scope: id.scope,
             name: id.name,
@@ -215,7 +201,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             useCaseName: node.name().map(|n| n.value().to_string()).ok_or("usecase name missing")?,
             safety: node.safety().map(|s| s.value()),
@@ -244,7 +230,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: node.ty().ok_or("type missing")?
         }
@@ -259,7 +245,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: node.ty().ok_or("type missing")?
         }
@@ -274,7 +260,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: node.ty().ok_or("type missing")?
         }
@@ -289,7 +275,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: node.ty().ok_or("type missing")?
         }
@@ -321,11 +307,11 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: UseCaseDefinitionExampleNodeRepr {
                 kind: UseCaseDefinitionExampleNodeRepr::KIND,
-                location: None,
+                location: Some(node.location()),
                 exampleName: node.name().map(|n| n.value().to_string()),
                 input: node.input(),
                 result: node.result(),
@@ -344,7 +330,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: node.literal().ok_or("literal missing")?
         }
@@ -359,7 +345,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: node.literal().ok_or("literal missing")?
         }
@@ -374,7 +360,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: node.literal().ok_or("literal missing")?
         }
@@ -389,7 +375,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             value: node.literal().ok_or("literal missing")?
         }
@@ -412,7 +398,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             modelName: node.name().map(|n| n.value().to_string()).ok_or("model name missing")?,
             r#type: node.ty()
@@ -435,7 +421,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             fieldName: node.name().map(|n| n.value().to_string()).ok_or("field name missing")?,
             r#type: node.ty()
@@ -458,7 +444,7 @@ enum NonNullDefinitionNodeRepr<T> {
     Required {
         kind: NonNullDefinitionNodeKind,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        location: Option<LocationRepr>,
+        location: Option<LocationSpan>,
         r#type: T,
     },
     Nullable(T),
@@ -474,17 +460,17 @@ macro_rules! non_null_type {
 		if $node.required() {
 			NonNullDefinitionNodeRepr::Required {
 				kind: NonNullDefinitionNodeKind::NonNullDefinition,
-				location: None, // TODO
+				location: Some($node.location()),
 				r#type: $inner_ty {
 					kind: <$inner_ty>::KIND,
-					location: None, // TODO
+					location: Some($node.location()),
 					$($inner_field_name: $inner_field_value),+
 				}
 			}
 		} else {
 			NonNullDefinitionNodeRepr::Nullable($inner_ty {
 				kind: <$inner_ty>::KIND,
-				location: None, // TODO
+				location: Some($node.location()),
 				$($inner_field_name: $inner_field_value),+
 			})
 		}
@@ -500,7 +486,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             types: node.types().collect()
         }
     }
@@ -540,7 +526,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             fieldName: node.name().and_then(|n| n.value().map(|v| v.into_owned())).ok_or("field name missing")?,
             required: node.required(),
@@ -599,7 +585,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             name: node.name().map(|n| n.value().to_string()),
             value: node.value().ok_or("value missing")?.to_owned()
@@ -658,12 +644,12 @@ serde_repr! {
         match value {
             LiteralValue::None => Self {
                 kind: PrimitiveLiteralNodeKind::ComlinkNoneLiteral,
-                location: None,
+                location: Some(node.location()),
                 value: None
             },
             _ => Self {
                 kind: PrimitiveLiteralNodeKind::ComlinkPrimitiveLiteral,
-                location: None,
+                location: Some(node.location()),
                 value: Some(value)
             }
         }
@@ -681,7 +667,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             items: node.elements().collect()
         }
     }
@@ -698,7 +684,7 @@ serde_repr! {
     to_repr(node) {
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             fields: node.fields().collect()
         }
     }
@@ -725,7 +711,7 @@ serde_repr! {
 
         Self {
             kind: Self::KIND,
-            location: None,
+            location: Some(node.location()),
             documentation: node.doc(),
             key,
             value: node.literal().ok_or("literal missing")?
