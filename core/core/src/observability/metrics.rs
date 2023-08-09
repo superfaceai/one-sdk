@@ -55,13 +55,13 @@ pub mod __private {
     #[derive(Debug, Serialize)]
     pub struct PanicData<'a> {
         pub message: &'a str,
-        pub location: Option<PanicDataLocation<'a>>
+        pub location: Option<PanicDataLocation<'a>>,
     }
     #[derive(Debug, Serialize)]
     pub struct PanicDataLocation<'a> {
         pub file: &'a str,
         pub line: u32,
-        pub column: u32
+        pub column: u32,
     }
 
     pub fn log_metric_event(event: impl Serialize) {

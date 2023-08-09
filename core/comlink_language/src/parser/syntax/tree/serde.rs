@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    LocationSpan, AstNode, CstToken,
     nodes::*,
-    tokens::{PrimitiveTypeName, ProfileVersion, StringDocToken, UseCaseSafety, Documentation},
+    tokens::{Documentation, PrimitiveTypeName, ProfileVersion, StringDocToken, UseCaseSafety},
+    AstNode, CstToken, LocationSpan,
 };
 
 macro_rules! serde_repr {
@@ -110,7 +110,7 @@ struct DocumentationRepr {
     #[serde(flatten)]
     inner: Documentation,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    location: Option<LocationSpan>
+    location: Option<LocationSpan>,
 }
 serde_repr! {
     repr DocumentationRepr;

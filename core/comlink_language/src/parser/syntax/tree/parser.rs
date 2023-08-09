@@ -3,7 +3,7 @@ use crate::parser::{
     syntax::{SyntaxKind, SyntaxKindSet},
 };
 
-use super::{CstNode, TreeParser, CstToken};
+use super::{CstNode, CstToken, TreeParser};
 
 #[derive(Debug)]
 pub struct ParserError {
@@ -39,7 +39,7 @@ enum ParserEvent {
 pub struct Parser<'a> {
     source: &'a str,
     /// Tokens from `source` but without trvia tokens.
-    /// 
+    ///
     /// Trivia tokens are added back again while the resulting tree is built.
     tokens: Vec<ParserToken>,
     /// Events represent start, token and end events as will be called on syntax tree builder.
@@ -56,16 +56,16 @@ impl<'a> Parser<'a> {
     const TRIVIA_TOKENS: SyntaxKindSet = SyntaxKindSet::trivia_tokens();
 
     pub fn new(source: &'a str) -> Self {
-        let tokens: Vec<_> = tokenize(source).filter_map(
-            |t| {
+        let tokens: Vec<_> = tokenize(source)
+            .filter_map(|t| {
                 let t = Self::map_token(t);
                 if Self::TRIVIA_TOKENS.contains(t.kind) {
                     None
                 } else {
                     Some(t)
                 }
-            }
-        ).collect();
+            })
+            .collect();
         assert!(!tokens.is_empty());
 
         Self {
@@ -127,14 +127,18 @@ impl<'a> Parser<'a> {
         let mut builder = rowan::GreenNodeBuilder::new();
         let mut errors = Vec::new();
         let mut error_offset = 0;
-        
+
         // the parser internally stores tokens without trivia, so here we replay all the events
         // and output trivia tokens in-between as appropriate - this ensures that nodes never start nor end with trivia - it's always pushed to the outermost node
         let mut tokens = tokenize(self.source).map(Self::map_token).peekable();
         macro_rules! skip_trivia {
             () => {
                 #[allow(unused_assignments)]
-                while tokens.peek().map(|t| Self::TRIVIA_TOKENS.contains(t.kind)).unwrap_or(false) {
+                while tokens
+                    .peek()
+                    .map(|t| Self::TRIVIA_TOKENS.contains(t.kind))
+                    .unwrap_or(false)
+                {
                     let token = tokens.next().unwrap();
 
                     builder.token(token.kind.into(), &self.source[token.offset..][..token.len]);

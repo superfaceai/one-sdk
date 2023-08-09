@@ -2,21 +2,19 @@ use std::iter::FilterMap;
 
 use rowan::TextRange;
 
-use crate::parser::{
-    syntax::{SyntaxKind, SyntaxKindSet, SyntaxNode, SyntaxToken},
-};
+use crate::parser::syntax::{SyntaxKind, SyntaxKindSet, SyntaxNode, SyntaxToken};
 
 use super::SyntaxElement;
 
+mod location;
 pub mod nodes;
+mod parser;
 pub mod serde;
 pub mod tokens;
-mod parser;
-mod location;
 
 pub use self::{
+    location::{Location, LocationSpan},
     parser::{Parser, ParserError},
-    location::{Location, LocationSpan}
 };
 use location::RawLocation;
 
@@ -52,18 +50,18 @@ pub trait TreeParser {
     ///
     /// See [`Self::error`] for more info about `recovery_set`.
     fn expect<T: CstToken>(&mut self, recovery_set: SyntaxKindSet) {
-        if !T::RAW_KINDS.contains(self.peek()) {
-            self.error(T::EXPECT_MESSAGE, recovery_set);
-        } else {
+        if T::RAW_KINDS.contains(self.peek()) {
             self.token::<T>();
+        } else {
+            self.error(T::EXPECT_MESSAGE, recovery_set);
         }
     }
     /// Same as [`Self::expect`] but uses [`Self::peek_keyword`] instead of [`Self::peek`].
     fn expect_keyword<T: CstToken>(&mut self, recovery_set: SyntaxKindSet) {
-        if !T::RAW_KINDS.contains(self.peek_keyword()) {
-            self.error(T::EXPECT_MESSAGE, recovery_set);
-        } else {
+        if T::RAW_KINDS.contains(self.peek_keyword()) {
             self.token::<T>();
+        } else {
+            self.error(T::EXPECT_MESSAGE, recovery_set);
         }
     }
     /// Optionally consumes token `T` and returns whether it was consumed.
@@ -119,18 +117,18 @@ pub trait CstToken: Sized + AsRef<SyntaxToken> {
     fn cast(token: SyntaxToken) -> Option<Self>;
 
     fn location(&self) -> LocationSpan {
-        let before_range = TextRange::new(
-            0.into(),
-            self.as_ref().text_range().start()
-        );
+        let before_range = TextRange::new(0.into(), self.as_ref().text_range().start());
 
         let start = match self.as_ref().parent_ancestors().last() {
             Some(root) => RawLocation::compute_syntax_text_end(root.text().slice(before_range)),
-            None => RawLocation::empty()
+            None => RawLocation::empty(),
         };
         let end = start + RawLocation::compute_end(self.as_ref().text());
 
-        LocationSpan { start: start.into(), end: end.into() }
+        LocationSpan {
+            start: start.into(),
+            end: end.into(),
+        }
     }
 }
 
@@ -194,19 +192,19 @@ pub trait AstNode: Sized + AsRef<SyntaxNode> {
         }
     }
 
-    fn location(&self) -> LocationSpan {        
+    fn location(&self) -> LocationSpan {
         let range = self.as_ref().text_range();
-        let before_range = TextRange::new(
-            0.into(),
-            range.start()
-        );
-        
+        let before_range = TextRange::new(0.into(), range.start());
+
         let start = match self.as_ref().ancestors().last() {
             Some(root) => RawLocation::compute_syntax_text_end(root.text().slice(before_range)),
-            None => RawLocation::empty()
+            None => RawLocation::empty(),
         };
         let end = start + RawLocation::compute_syntax_text_end(self.as_ref().text());
 
-        LocationSpan { start: start.into(), end: end.into() }
+        LocationSpan {
+            start: start.into(),
+            end: end.into(),
+        }
     }
 }
