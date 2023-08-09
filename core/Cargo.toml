@@ -4,12 +4,14 @@ members = [
 	"host_to_core_std",
 	"core_to_map_std",
 	"interpreter_js",
-	"json_schemas"
+	"json_schemas",
+	"comlink_language"
 ]
 
 [workspace.dependencies]
-
 base64 = { version = "0.21" }
+sha2 = { version = "0.10" }
+hex = { version = "0.4" }
 jsonschema = { version = "0.17", default-features = false } # https://github.com/Stranger6667/jsonschema-rs/issues/222
 regex = { version = "1" }
 serde = { version = "1", features = ["derive"] }

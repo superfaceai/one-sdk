@@ -1,0 +1,377 @@
+{
+  "kind": "ProfileDocument",
+  "header": {
+    "kind": "ProfileHeader",
+    "scope": "scope",
+    "name": "example",
+    "version": {
+      "major": 1,
+      "minor": 2,
+      "patch": 3
+    },
+    "location": {
+      "start": {
+        "line": 2,
+        "column": 1,
+        "charIndex": 9
+      },
+      "end": {
+        "line": 3,
+        "column": 18,
+        "charIndex": 49
+      }
+    },
+    "documentation": {
+      "title": "aaaaaa",
+      "location": {
+        "start": {
+          "line": 1,
+          "column": 1,
+          "charIndex": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 9,
+          "charIndex": 8
+        }
+      }
+    }
+  },
+  "definitions": [
+    {
+      "kind": "NamedModelDefinition",
+      "modelName": "X",
+      "type": {
+        "kind": "ListDefinition",
+        "elementType": {
+          "kind": "EnumDefinition",
+          "values": [
+            {
+              "kind": "EnumValue",
+              "name": "A",
+              "value": "A",
+              "location": {
+                "start": {
+                  "line": 7,
+                  "column": 3,
+                  "charIndex": 71
+                },
+                "end": {
+                  "line": 7,
+                  "column": 4,
+                  "charIndex": 72
+                }
+              }
+            },
+            {
+              "kind": "EnumValue",
+              "name": "B",
+              "value": "B",
+              "location": {
+                "start": {
+                  "line": 8,
+                  "column": 3,
+                  "charIndex": 75
+                },
+                "end": {
+                  "line": 8,
+                  "column": 4,
+                  "charIndex": 76
+                }
+              }
+            }
+          ],
+          "location": {
+            "start": {
+              "line": 6,
+              "column": 2,
+              "charIndex": 62
+            },
+            "end": {
+              "line": 9,
+              "column": 3,
+              "charIndex": 79
+            }
+          }
+        },
+        "location": {
+          "start": {
+            "line": 5,
+            "column": 9,
+            "charIndex": 59
+          },
+          "end": {
+            "line": 10,
+            "column": 2,
+            "charIndex": 81
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 5,
+          "column": 1,
+          "charIndex": 51
+        },
+        "end": {
+          "line": 10,
+          "column": 2,
+          "charIndex": 81
+        }
+      }
+    },
+    {
+      "kind": "NamedModelDefinition",
+      "modelName": "A",
+      "type": {
+        "kind": "ObjectDefinition",
+        "fields": [],
+        "location": {
+          "start": {
+            "line": 12,
+            "column": 9,
+            "charIndex": 91
+          },
+          "end": {
+            "line": 12,
+            "column": 11,
+            "charIndex": 93
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 12,
+          "column": 1,
+          "charIndex": 83
+        },
+        "end": {
+          "line": 12,
+          "column": 11,
+          "charIndex": 93
+        }
+      }
+    },
+    {
+      "kind": "NamedModelDefinition",
+      "modelName": "Y",
+      "type": {
+        "kind": "UnionDefinition",
+        "types": [
+          {
+            "kind": "ObjectDefinition",
+            "fields": [
+              {
+                "kind": "FieldDefinition",
+                "fieldName": "name",
+                "required": false,
+                "location": {
+                  "start": {
+                    "line": 13,
+                    "column": 11,
+                    "charIndex": 105
+                  },
+                  "end": {
+                    "line": 13,
+                    "column": 15,
+                    "charIndex": 109
+                  }
+                }
+              }
+            ],
+            "location": {
+              "start": {
+                "line": 13,
+                "column": 9,
+                "charIndex": 103
+              },
+              "end": {
+                "line": 13,
+                "column": 17,
+                "charIndex": 111
+              }
+            }
+          },
+          {
+            "kind": "ObjectDefinition",
+            "fields": [
+              {
+                "kind": "FieldDefinition",
+                "fieldName": "email",
+                "required": false,
+                "location": {
+                  "start": {
+                    "line": 13,
+                    "column": 22,
+                    "charIndex": 116
+                  },
+                  "end": {
+                    "line": 13,
+                    "column": 27,
+                    "charIndex": 121
+                  }
+                }
+              }
+            ],
+            "location": {
+              "start": {
+                "line": 13,
+                "column": 20,
+                "charIndex": 114
+              },
+              "end": {
+                "line": 13,
+                "column": 29,
+                "charIndex": 123
+              }
+            }
+          }
+        ],
+        "location": {
+          "start": {
+            "line": 13,
+            "column": 9,
+            "charIndex": 103
+          },
+          "end": {
+            "line": 13,
+            "column": 29,
+            "charIndex": 123
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 13,
+          "column": 1,
+          "charIndex": 95
+        },
+        "end": {
+          "line": 13,
+          "column": 29,
+          "charIndex": 123
+        }
+      }
+    },
+    {
+      "kind": "NamedFieldDefinition",
+      "fieldName": "fieldName",
+      "type": {
+        "kind": "UnionDefinition",
+        "types": [
+          {
+            "kind": "NonNullDefinition",
+            "type": {
+              "kind": "ModelTypeName",
+              "name": "B",
+              "location": {
+                "start": {
+                  "line": 15,
+                  "column": 17,
+                  "charIndex": 141
+                },
+                "end": {
+                  "line": 15,
+                  "column": 18,
+                  "charIndex": 142
+                }
+              }
+            },
+            "location": {
+              "start": {
+                "line": 15,
+                "column": 17,
+                "charIndex": 141
+              },
+              "end": {
+                "line": 15,
+                "column": 19,
+                "charIndex": 143
+              }
+            }
+          },
+          {
+            "kind": "NonNullDefinition",
+            "type": {
+              "kind": "ModelTypeName",
+              "name": "A",
+              "location": {
+                "start": {
+                  "line": 15,
+                  "column": 22,
+                  "charIndex": 146
+                },
+                "end": {
+                  "line": 15,
+                  "column": 23,
+                  "charIndex": 147
+                }
+              }
+            },
+            "location": {
+              "start": {
+                "line": 15,
+                "column": 22,
+                "charIndex": 146
+              },
+              "end": {
+                "line": 15,
+                "column": 25,
+                "charIndex": 149
+              }
+            }
+          }
+        ],
+        "location": {
+          "start": {
+            "line": 15,
+            "column": 17,
+            "charIndex": 141
+          },
+          "end": {
+            "line": 15,
+            "column": 25,
+            "charIndex": 149
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 15,
+          "column": 1,
+          "charIndex": 125
+        },
+        "end": {
+          "line": 15,
+          "column": 25,
+          "charIndex": 149
+        }
+      }
+    }
+  ],
+  "location": {
+    "start": {
+      "line": 2,
+      "column": 1,
+      "charIndex": 9
+    },
+    "end": {
+      "line": 15,
+      "column": 25,
+      "charIndex": 149
+    }
+  },
+  "astMetadata": {
+    "astVersion": {
+      "major": 1,
+      "minor": 3,
+      "patch": 0
+    },
+    "parserVersion": {
+      "major": 2,
+      "minor": 1,
+      "patch": 0
+    },
+    "sourceChecksum": "f3d739bd1ddfeae65266f08855b30799f1ae30177aacc8b02bad5d4738bc4ecc"
+  }
+}

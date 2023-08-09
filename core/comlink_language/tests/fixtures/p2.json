@@ -1,0 +1,839 @@
+{
+  "kind": "ProfileDocument",
+  "header": {
+    "kind": "ProfileHeader",
+    "scope": "conversation",
+    "name": "send-message",
+    "version": {
+      "major": 0,
+      "minor": 1,
+      "patch": 0
+    },
+    "location": {
+      "start": {
+        "line": 1,
+        "column": 1,
+        "charIndex": 0
+      },
+      "end": {
+        "line": 2,
+        "column": 18,
+        "charIndex": 52
+      }
+    }
+  },
+  "definitions": [
+    {
+      "kind": "UseCaseDefinition",
+      "useCaseName": "SendMessage",
+      "safety": "unsafe",
+      "input": {
+        "kind": "UseCaseSlotDefinition",
+        "value": {
+          "kind": "ObjectDefinition",
+          "fields": [
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "to",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 7,
+                  "column": 5,
+                  "charIndex": 132
+                },
+                "end": {
+                  "line": 7,
+                  "column": 7,
+                  "charIndex": 134
+                }
+              }
+            },
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "from",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 8,
+                  "column": 5,
+                  "charIndex": 139
+                },
+                "end": {
+                  "line": 8,
+                  "column": 9,
+                  "charIndex": 143
+                }
+              }
+            },
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "channel",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 9,
+                  "column": 5,
+                  "charIndex": 148
+                },
+                "end": {
+                  "line": 9,
+                  "column": 12,
+                  "charIndex": 155
+                }
+              }
+            },
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "text",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 10,
+                  "column": 5,
+                  "charIndex": 160
+                },
+                "end": {
+                  "line": 10,
+                  "column": 9,
+                  "charIndex": 164
+                }
+              }
+            }
+          ],
+          "location": {
+            "start": {
+              "line": 6,
+              "column": 9,
+              "charIndex": 126
+            },
+            "end": {
+              "line": 11,
+              "column": 4,
+              "charIndex": 168
+            }
+          }
+        },
+        "location": {
+          "start": {
+            "line": 6,
+            "column": 3,
+            "charIndex": 120
+          },
+          "end": {
+            "line": 11,
+            "column": 4,
+            "charIndex": 168
+          }
+        }
+      },
+      "result": {
+        "kind": "UseCaseSlotDefinition",
+        "value": {
+          "kind": "ObjectDefinition",
+          "fields": [
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "messageId",
+              "required": true,
+              "location": {
+                "start": {
+                  "line": 17,
+                  "column": 5,
+                  "charIndex": 232
+                },
+                "end": {
+                  "line": 17,
+                  "column": 15,
+                  "charIndex": 242
+                }
+              }
+            }
+          ],
+          "location": {
+            "start": {
+              "line": 16,
+              "column": 10,
+              "charIndex": 226
+            },
+            "end": {
+              "line": 18,
+              "column": 4,
+              "charIndex": 246
+            }
+          }
+        },
+        "location": {
+          "start": {
+            "line": 16,
+            "column": 3,
+            "charIndex": 219
+          },
+          "end": {
+            "line": 18,
+            "column": 4,
+            "charIndex": 246
+          }
+        },
+        "documentation": {
+          "title": "Title",
+          "description": "Description of the result",
+          "location": {
+            "start": {
+              "line": 13,
+              "column": 3,
+              "charIndex": 172
+            },
+            "end": {
+              "line": 15,
+              "column": 6,
+              "charIndex": 216
+            }
+          }
+        }
+      },
+      "asyncResult": {
+        "kind": "UseCaseSlotDefinition",
+        "value": {
+          "kind": "ObjectDefinition",
+          "fields": [
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "messageId",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 21,
+                  "column": 5,
+                  "charIndex": 269
+                },
+                "end": {
+                  "line": 21,
+                  "column": 14,
+                  "charIndex": 278
+                }
+              }
+            },
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "deliveryStatus",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 22,
+                  "column": 5,
+                  "charIndex": 283
+                },
+                "end": {
+                  "line": 22,
+                  "column": 19,
+                  "charIndex": 297
+                }
+              }
+            }
+          ],
+          "location": {
+            "start": {
+              "line": 20,
+              "column": 16,
+              "charIndex": 263
+            },
+            "end": {
+              "line": 23,
+              "column": 4,
+              "charIndex": 301
+            }
+          }
+        },
+        "location": {
+          "start": {
+            "line": 20,
+            "column": 3,
+            "charIndex": 250
+          },
+          "end": {
+            "line": 23,
+            "column": 4,
+            "charIndex": 301
+          }
+        }
+      },
+      "error": {
+        "kind": "UseCaseSlotDefinition",
+        "value": {
+          "kind": "ObjectDefinition",
+          "fields": [
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "problem",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 28,
+                  "column": 5,
+                  "charIndex": 367
+                },
+                "end": {
+                  "line": 28,
+                  "column": 12,
+                  "charIndex": 374
+                }
+              },
+              "documentation": {
+                "title": "Problem",
+                "description": "Description of this field",
+                "location": {
+                  "start": {
+                    "line": 26,
+                    "column": 5,
+                    "charIndex": 317
+                  },
+                  "end": {
+                    "line": 27,
+                    "column": 34,
+                    "charIndex": 362
+                  }
+                }
+              }
+            },
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "detail",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 30,
+                  "column": 5,
+                  "charIndex": 398
+                },
+                "end": {
+                  "line": 30,
+                  "column": 11,
+                  "charIndex": 404
+                }
+              },
+              "documentation": {
+                "title": "Detail",
+                "location": {
+                  "start": {
+                    "line": 29,
+                    "column": 5,
+                    "charIndex": 379
+                  },
+                  "end": {
+                    "line": 29,
+                    "column": 19,
+                    "charIndex": 393
+                  }
+                }
+              }
+            },
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "instance",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 34,
+                  "column": 5,
+                  "charIndex": 443
+                },
+                "end": {
+                  "line": 34,
+                  "column": 13,
+                  "charIndex": 451
+                }
+              },
+              "documentation": {
+                "title": "Instance whoop whoop",
+                "location": {
+                  "start": {
+                    "line": 31,
+                    "column": 5,
+                    "charIndex": 409
+                  },
+                  "end": {
+                    "line": 33,
+                    "column": 6,
+                    "charIndex": 438
+                  }
+                }
+              }
+            }
+          ],
+          "location": {
+            "start": {
+              "line": 25,
+              "column": 9,
+              "charIndex": 311
+            },
+            "end": {
+              "line": 35,
+              "column": 4,
+              "charIndex": 455
+            }
+          }
+        },
+        "location": {
+          "start": {
+            "line": 25,
+            "column": 3,
+            "charIndex": 305
+          },
+          "end": {
+            "line": 35,
+            "column": 4,
+            "charIndex": 455
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 5,
+          "column": 1,
+          "charIndex": 89
+        },
+        "end": {
+          "line": 36,
+          "column": 2,
+          "charIndex": 457
+        }
+      },
+      "documentation": {
+        "title": "Send single conversation message",
+        "location": {
+          "start": {
+            "line": 4,
+            "column": 1,
+            "charIndex": 54
+          },
+          "end": {
+            "line": 4,
+            "column": 35,
+            "charIndex": 88
+          }
+        }
+      }
+    },
+    {
+      "kind": "UseCaseDefinition",
+      "useCaseName": "RetrieveMessageStatus",
+      "safety": "safe",
+      "input": {
+        "kind": "UseCaseSlotDefinition",
+        "value": {
+          "kind": "ObjectDefinition",
+          "fields": [
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "messageId",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 41,
+                  "column": 5,
+                  "charIndex": 546
+                },
+                "end": {
+                  "line": 41,
+                  "column": 14,
+                  "charIndex": 555
+                }
+              }
+            }
+          ],
+          "location": {
+            "start": {
+              "line": 40,
+              "column": 9,
+              "charIndex": 540
+            },
+            "end": {
+              "line": 42,
+              "column": 4,
+              "charIndex": 559
+            }
+          }
+        },
+        "location": {
+          "start": {
+            "line": 40,
+            "column": 3,
+            "charIndex": 534
+          },
+          "end": {
+            "line": 42,
+            "column": 4,
+            "charIndex": 559
+          }
+        }
+      },
+      "result": {
+        "kind": "UseCaseSlotDefinition",
+        "value": {
+          "kind": "ObjectDefinition",
+          "fields": [
+            {
+              "kind": "FieldDefinition",
+              "fieldName": "deliveryStatus",
+              "required": false,
+              "location": {
+                "start": {
+                  "line": 45,
+                  "column": 5,
+                  "charIndex": 576
+                },
+                "end": {
+                  "line": 45,
+                  "column": 19,
+                  "charIndex": 590
+                }
+              }
+            }
+          ],
+          "location": {
+            "start": {
+              "line": 44,
+              "column": 10,
+              "charIndex": 570
+            },
+            "end": {
+              "line": 46,
+              "column": 4,
+              "charIndex": 594
+            }
+          }
+        },
+        "location": {
+          "start": {
+            "line": 44,
+            "column": 3,
+            "charIndex": 563
+          },
+          "end": {
+            "line": 46,
+            "column": 4,
+            "charIndex": 594
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 39,
+          "column": 1,
+          "charIndex": 495
+        },
+        "end": {
+          "line": 47,
+          "column": 2,
+          "charIndex": 596
+        }
+      },
+      "documentation": {
+        "title": "Retrieve status of a sent message",
+        "location": {
+          "start": {
+            "line": 38,
+            "column": 1,
+            "charIndex": 459
+          },
+          "end": {
+            "line": 38,
+            "column": 36,
+            "charIndex": 494
+          }
+        }
+      }
+    },
+    {
+      "kind": "NamedFieldDefinition",
+      "fieldName": "messageId",
+      "type": {
+        "kind": "PrimitiveTypeName",
+        "name": "string",
+        "location": {
+          "start": {
+            "line": 51,
+            "column": 17,
+            "charIndex": 767
+          },
+          "end": {
+            "line": 51,
+            "column": 23,
+            "charIndex": 773
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 51,
+          "column": 1,
+          "charIndex": 751
+        },
+        "end": {
+          "line": 51,
+          "column": 23,
+          "charIndex": 773
+        }
+      },
+      "documentation": {
+        "title": "Identifier of Message",
+        "description": "The identifier is channel-specific and not unique. It should be treated as an opaque value and only used in subsequent calls",
+        "location": {
+          "start": {
+            "line": 49,
+            "column": 1,
+            "charIndex": 598
+          },
+          "end": {
+            "line": 50,
+            "column": 128,
+            "charIndex": 750
+          }
+        }
+      }
+    },
+    {
+      "kind": "NamedFieldDefinition",
+      "fieldName": "deliveryStatus",
+      "type": {
+        "kind": "EnumDefinition",
+        "values": [
+          {
+            "kind": "EnumValue",
+            "name": "accepted",
+            "value": "accepted",
+            "location": {
+              "start": {
+                "line": 56,
+                "column": 3,
+                "charIndex": 900
+              },
+              "end": {
+                "line": 56,
+                "column": 11,
+                "charIndex": 908
+              }
+            }
+          },
+          {
+            "kind": "EnumValue",
+            "name": "delivered",
+            "value": "delivered",
+            "location": {
+              "start": {
+                "line": 57,
+                "column": 3,
+                "charIndex": 911
+              },
+              "end": {
+                "line": 57,
+                "column": 12,
+                "charIndex": 920
+              }
+            }
+          },
+          {
+            "kind": "EnumValue",
+            "name": "seen",
+            "value": "seen",
+            "location": {
+              "start": {
+                "line": 58,
+                "column": 3,
+                "charIndex": 923
+              },
+              "end": {
+                "line": 58,
+                "column": 7,
+                "charIndex": 927
+              }
+            }
+          }
+        ],
+        "location": {
+          "start": {
+            "line": 55,
+            "column": 22,
+            "charIndex": 891
+          },
+          "end": {
+            "line": 59,
+            "column": 2,
+            "charIndex": 929
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 55,
+          "column": 1,
+          "charIndex": 870
+        },
+        "end": {
+          "line": 59,
+          "column": 2,
+          "charIndex": 929
+        }
+      },
+      "documentation": {
+        "title": "Delivery Status of Message",
+        "description": "Status of a sent message. Harmonized across different channels.",
+        "location": {
+          "start": {
+            "line": 53,
+            "column": 1,
+            "charIndex": 775
+          },
+          "end": {
+            "line": 54,
+            "column": 67,
+            "charIndex": 869
+          }
+        }
+      }
+    },
+    {
+      "kind": "NamedFieldDefinition",
+      "fieldName": "channel",
+      "type": {
+        "kind": "EnumDefinition",
+        "values": [
+          {
+            "kind": "EnumValue",
+            "name": "sms",
+            "value": "sms",
+            "location": {
+              "start": {
+                "line": 66,
+                "column": 3,
+                "charIndex": 1018
+              },
+              "end": {
+                "line": 66,
+                "column": 6,
+                "charIndex": 1021
+              }
+            }
+          },
+          {
+            "kind": "EnumValue",
+            "name": "whatsapp",
+            "value": "whatsapp",
+            "location": {
+              "start": {
+                "line": 67,
+                "column": 3,
+                "charIndex": 1024
+              },
+              "end": {
+                "line": 67,
+                "column": 11,
+                "charIndex": 1032
+              }
+            }
+          },
+          {
+            "kind": "EnumValue",
+            "name": "apple_business_chat",
+            "value": "apple_business_chat",
+            "location": {
+              "start": {
+                "line": 68,
+                "column": 3,
+                "charIndex": 1035
+              },
+              "end": {
+                "line": 68,
+                "column": 22,
+                "charIndex": 1054
+              }
+            }
+          },
+          {
+            "kind": "EnumValue",
+            "name": "facebook_messenger",
+            "value": "facebook_messenger",
+            "location": {
+              "start": {
+                "line": 69,
+                "column": 3,
+                "charIndex": 1057
+              },
+              "end": {
+                "line": 69,
+                "column": 21,
+                "charIndex": 1075
+              }
+            }
+          }
+        ],
+        "location": {
+          "start": {
+            "line": 65,
+            "column": 15,
+            "charIndex": 1009
+          },
+          "end": {
+            "line": 70,
+            "column": 2,
+            "charIndex": 1077
+          }
+        }
+      },
+      "location": {
+        "start": {
+          "line": 65,
+          "column": 1,
+          "charIndex": 995
+        },
+        "end": {
+          "line": 70,
+          "column": 2,
+          "charIndex": 1077
+        }
+      },
+      "documentation": {
+        "title": "Title of the field channel",
+        "description": "Description of the field channel",
+        "location": {
+          "start": {
+            "line": 61,
+            "column": 1,
+            "charIndex": 931
+          },
+          "end": {
+            "line": 64,
+            "column": 2,
+            "charIndex": 994
+          }
+        }
+      }
+    }
+  ],
+  "location": {
+    "start": {
+      "line": 1,
+      "column": 1,
+      "charIndex": 0
+    },
+    "end": {
+      "line": 70,
+      "column": 2,
+      "charIndex": 1077
+    }
+  },
+  "astMetadata": {
+    "astVersion": {
+      "major": 1,
+      "minor": 3,
+      "patch": 0
+    },
+    "parserVersion": {
+      "major": 2,
+      "minor": 1,
+      "patch": 0
+    },
+    "sourceChecksum": "8b1f2afac416500c1ba9e06cf7447d77b761fb129ff35ac4d81d7b34c8af4d5d"
+  }
+}
