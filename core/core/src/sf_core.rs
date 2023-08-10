@@ -35,10 +35,14 @@ use cache::DocumentCache;
 pub use config::CoreConfiguration;
 use map_std_impl::MapStdImpl;
 
-use self::cache::{MapCacheEntry, ProfileCacheEntry, ProviderJsonCacheEntry};
+use self::{
+    cache::{MapCacheEntry, ProfileCacheEntry, ProviderJsonCacheEntry},
+    map_std_impl::MapStdImplConfig,
+};
 
 type Fs = sf_std::unstable::fs::FsConvenience<MessageExchangeFfi, StreamExchangeFfi>;
 type HttpRequest = sf_std::unstable::http::HttpRequest<MessageExchangeFfi, StreamExchangeFfi>;
+type HttpResponse = sf_std::unstable::http::HttpResponse<StreamExchangeFfi>;
 type IoStream = sf_std::unstable::IoStream<StreamExchangeFfi>;
 
 #[derive(Debug)]
@@ -47,20 +51,21 @@ pub struct OneClientCore {
     provider_cache: DocumentCache<ProviderJsonCacheEntry>,
     map_cache: DocumentCache<MapCacheEntry>,
     security_validator: JsonSchemaValidator,
+    mapstd_config: MapStdImplConfig,
 }
 impl OneClientCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
 
     // TODO: Use thiserror and define specific errors
-    pub fn new(config: CoreConfiguration) -> anyhow::Result<Self> {
+    pub fn new(config: &CoreConfiguration) -> anyhow::Result<Self> {
         tracing::info!(target: "@user", config = ?config);
 
         crate::observability::metrics::log_metric!(Init);
 
         Ok(Self {
-            profile_cache: DocumentCache::new(config.cache_duration),
-            provider_cache: DocumentCache::new(config.cache_duration),
-            map_cache: DocumentCache::new(config.cache_duration),
+            profile_cache: DocumentCache::new(config.cache_duration, config.registry_url.clone()),
+            provider_cache: DocumentCache::new(config.cache_duration, config.registry_url.clone()),
+            map_cache: DocumentCache::new(config.cache_duration, config.registry_url.clone()),
             security_validator: JsonSchemaValidator::new(
                 &serde_json::Value::from_str(include_str!(
                     "../assets/schemas/security_values.json"
@@ -68,6 +73,10 @@ impl OneClientCore {
                 .expect("Valid JSON"),
             )
             .expect("Valid JSON Schema for security values exists"),
+            mapstd_config: MapStdImplConfig {
+                log_http_transactions: config.user_log,
+                log_http_transactions_body_max_size: config.user_log_http_body_max_size,
+            },
         })
     }
 
@@ -251,7 +260,7 @@ impl OneClientCore {
         // start interpreting stdlib and then map code
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = try_metrics!(JsInterpreter::new(MapStdImpl::new()));
+        let mut interpreter = try_metrics!(JsInterpreter::new(MapStdImpl::new(self.mapstd_config)));
         // here we allow runtime stdlib replacement for development purposes
         // this might be removed in the future
         try_metrics!(match std::env::var("ONESDK_REPLACE_MAP_STDLIB").ok() {

@@ -4,6 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use url::Url;
+
 use sf_std::unstable::{http::HttpCallError, provider::ProviderJson};
 
 use super::{digest, Fs, HttpRequest};
@@ -102,6 +104,7 @@ impl<E: std::fmt::Debug> std::fmt::Debug for DocumentCacheEntry<E> {
 pub struct DocumentCache<E> {
     map: HashMap<String, DocumentCacheEntry<E>>,
     cache_duration: Duration,
+    registry_url: Url,
 }
 impl<E> DocumentCache<E> {
     const FILE_URL_PREFIX: &str = "file://";
@@ -109,10 +112,11 @@ impl<E> DocumentCache<E> {
     const HTTPS_URL_PREFIX: &str = "https://";
     const BASE64_URL_PREFIX: &str = "data:;base64,";
 
-    pub fn new(cache_duration: Duration) -> Self {
+    pub fn new(cache_duration: Duration, registry_url: Url) -> Self {
         Self {
             map: HashMap::new(),
             cache_duration,
+            registry_url,
         }
     }
 
@@ -147,11 +151,15 @@ impl<E> DocumentCache<E> {
                 {
                     Self::cache_http(url)
                 } else {
-                    let url_base = std::env::var("ONESDK_REGISTRY_URL")
-                        .unwrap_or("http://localhost:8321".to_string());
-                    let url = format!("{}/{}.js", url_base, url);
+                    let file = format!("{}.js", url);
+                    let full_url = self.registry_url.join(&file).map_err(|_e| {
+                        DocumentCacheError::HttpLoadFailed(
+                            url.to_string(),
+                            HttpCallError::InvalidUrl(file.clone()),
+                        )
+                    })?;
 
-                    Self::cache_http(&url)
+                    Self::cache_http(full_url.as_str())
                 }
             }
         }?;

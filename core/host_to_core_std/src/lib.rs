@@ -99,6 +99,7 @@ macro_rules! define_exchange_core_to_host {
 use std::collections::HashMap;
 
 pub mod abi;
+pub mod fmt;
 pub mod unstable;
 
 pub type MultiMap = HashMap<String, Vec<String>>;
