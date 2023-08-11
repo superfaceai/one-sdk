@@ -141,7 +141,7 @@ export default {
 
     const client = new OneClient({
       env: {
-        ONESDK_LOG: 'info' // use `debug` or `trace` for development debugging
+        ONESDK_LOG: 'off' // use `on` for debugging
       },
       // preopens describes the virtual filesystem whith the OneClient file convention mapped to assets
       preopens: {

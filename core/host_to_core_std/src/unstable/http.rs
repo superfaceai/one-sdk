@@ -10,15 +10,9 @@ use crate::{
         Handle, MessageExchange, MessageExchangeFfiFn, StaticMessageExchange, StaticStreamExchange,
         StreamExchange, StreamExchangeFfiFn,
     },
+    fmt::AltDebug,
     lowercase_headers_multimap, HeadersMultiMap, MultiMap,
 };
-
-struct AltDebug<T: std::fmt::Debug>(pub T);
-impl<T: std::fmt::Debug> std::fmt::Debug for AltDebug<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#?}", self.0)
-    }
-}
 
 define_exchange_core_to_host! {
     struct HttpCallRequest<'a> {
@@ -110,7 +104,7 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
         message_exchange: Me,
         stream_exchange: Se,
     ) -> Result<Self, HttpCallError> {
-        let _span = tracing::debug_span!(target: "@user", "HttpRequest::fetch").entered();
+        let _span = tracing::trace_span!("HttpRequest::fetch").entered();
 
         let mut url = Url::parse(url).map_err(|err| HttpCallError::InvalidUrl(err.to_string()))?;
         // merge query params already in the URL with the params passed in query
@@ -121,8 +115,8 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
                 .flat_map(|(key, values)| values.iter().map(move |value| (key, value))),
         );
 
-        if tracing::enabled!(tracing::Level::DEBUG, target: "@user") {
-            tracing::debug!(target: "@user", %method, %url, headers = ?AltDebug(&headers), ?body);
+        if tracing::enabled!(tracing::Level::TRACE) {
+            tracing::trace!(%method, %url, headers = ?AltDebug(&headers), ?body);
         }
 
         let response = HttpCallRequest {
@@ -155,7 +149,7 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
     }
 
     pub fn into_response(self) -> Result<HttpResponse<Se>, HttpCallError> {
-        let _span = tracing::debug_span!(target: "@user", "HttpRequest::into_response").entered();
+        let _span = tracing::trace_span!("HttpRequest::into_response").entered();
 
         let exchange_response = HttpCallHeadRequest::new(self.handle)
             .send_json_in(&self.message_exchange)
@@ -167,8 +161,8 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
                 headers,
                 body_stream,
             } => {
-                if tracing::enabled!(tracing::Level::DEBUG, target: "@user") {
-                    tracing::debug!(target: "@user", %status, headers = ?AltDebug(&headers));
+                if tracing::enabled!(tracing::Level::TRACE) {
+                    tracing::trace!(%status, headers = ?AltDebug(&headers));
                 }
 
                 Ok(HttpResponse {

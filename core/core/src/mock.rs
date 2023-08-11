@@ -8,8 +8,7 @@ use sf_std::unstable::{
     perform::{set_perform_output_result_in, PerformInput},
     HostValue,
 };
-use tracing::metadata::LevelFilter;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::bindings::MessageExchangeFfi;
 
@@ -23,16 +22,7 @@ pub fn __export_oneclient_core_setup() {
 
     // initialize tracing
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_writer(std::io::stderr)
-                .with_filter(
-                    EnvFilter::builder()
-                        .with_default_directive(LevelFilter::TRACE.into())
-                        .with_env_var("ONESDK_DEV_LOG")
-                        .from_env_lossy(),
-                ),
-        )
+        .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
         .init();
 
     tracing::debug!("mocked oneclient core setup");

@@ -5,7 +5,10 @@ use thiserror::Error;
 use interpreter_js::{JsInterpreter, JsInterpreterError};
 use map_std::unstable::MapValue;
 
-use super::{map_std_impl::MapStdImpl, Fs};
+use super::{
+    map_std_impl::{MapStdImpl, MapStdImplConfig},
+    Fs,
+};
 
 #[derive(Debug, Error)]
 pub enum ProfileValidatorError {
@@ -32,7 +35,10 @@ impl ProfileValidator {
     const PROFILE_VALIDATOR_JS: &str = include_str!("../../assets/js/profile_validator.js");
 
     pub fn new(profile: String, usecase: String) -> Result<Self, ProfileValidatorError> {
-        let mut interpreter = JsInterpreter::new(MapStdImpl::new())?;
+        let mut interpreter = JsInterpreter::new(MapStdImpl::new(MapStdImplConfig {
+            log_http_transactions: false,
+            log_http_transactions_body_max_size: 0,
+        }))?;
 
         let validator_bytecode = match std::env::var("ONESDK_REPLACE_PROFILE_VALIDATOR").ok() {
             None => interpreter.compile_code("profile_validator.js", Self::PROFILE_VALIDATOR_JS),

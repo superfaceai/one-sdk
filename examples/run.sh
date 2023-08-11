@@ -29,7 +29,7 @@ case $1 in
 	python)
 		if [ "$MAKE_FLAGS" != nomake ]; then
 			cd "$base/.."
-			make build_host_py $MAKE_FLAGS
+			make build_host_python $MAKE_FLAGS
 		fi
 		cd "$base"
 		source ../host/python/venv/bin/activate

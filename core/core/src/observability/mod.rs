@@ -7,6 +7,7 @@ use tracing_subscriber::{
 };
 
 use self::buffer::{RingEventBuffer, SharedEventBuffer, TracingEventBuffer, VecEventBuffer};
+use crate::sf_core::CoreConfiguration;
 
 mod buffer;
 pub mod metrics;
@@ -15,17 +16,19 @@ static mut METRICS_BUFFER: Option<SharedEventBuffer<VecEventBuffer>> = None;
 static mut DEVELOPER_DUMP_BUFFER: Option<SharedEventBuffer<RingEventBuffer>> = None;
 
 /// SAFETY: must only be called once during initialization of the program
-pub unsafe fn init(ring_event_buffer_size: usize) {
+pub unsafe fn init(config: &CoreConfiguration) {
     // SAFETY: this is only called once and there is no asynchronous mutation
     unsafe {
         METRICS_BUFFER.replace(SharedEventBuffer::new(VecEventBuffer::new()));
         DEVELOPER_DUMP_BUFFER.replace(SharedEventBuffer::new(RingEventBuffer::new(
-            ring_event_buffer_size,
+            config.developer_dump_buffer_size,
         )));
 
         init_tracing(
             // METRICS_BUFFER.as_ref().cloned().unwrap(),
             DEVELOPER_DUMP_BUFFER.as_ref().cloned().unwrap(),
+            config.user_log,
+            &config.developer_log,
         );
     }
 
@@ -44,6 +47,11 @@ pub unsafe fn init(ring_event_buffer_size: usize) {
             message = message.as_ref(),
             location = info.location().map(|l| (l.file(), l.line(), l.column()))
         );
+        tracing::error!(
+            target: "panic",
+            message = message.as_ref(),
+            location = ?info.location().map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+        );
     }));
 }
 
@@ -51,6 +59,8 @@ fn init_tracing(
     // TODO: we don't use tracing to store metrics in the metrics buffer because we need more complex fields than tracing currently supports
     // _metrics_buffer: SharedEventBuffer<VecEventBuffer>,
     developer_dump_buffer: SharedEventBuffer<RingEventBuffer>,
+    user_log: bool,
+    developer_log: &str,
 ) {
     // we set up these layers:
     // * user layer (@user) - output intended/relevant for users of the sdk
@@ -59,32 +69,26 @@ fn init_tracing(
     // * dump layer (not @metrics) - output dumped after a panic, excluding metrics which are dumped separately
 
     let user_layer = tracing_subscriber::fmt::layer()
-        .with_target(false)
+        .event_format(format::format().with_target(false).with_level(false))
         .with_writer(std::io::stdout)
-        .with_filter(FilterFn::new(|metadata| {
-            metadata.target().starts_with("@user")
-        }))
-        .with_filter(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::WARN.into())
-                .with_env_var("ONESDK_LOG")
-                .from_env_lossy(),
-        );
+        .with_filter(FilterFn::new(move |metadata| {
+            user_log && metadata.target().starts_with("@user")
+        }));
 
     let developer_layer = tracing_subscriber::fmt::layer()
         .with_writer(std::io::stderr)
         .with_filter(
             EnvFilter::builder()
                 .with_default_directive(LevelFilter::OFF.into())
-                .with_env_var("ONESDK_DEV_LOG")
-                .from_env_lossy(),
+                .parse_lossy(developer_log),
         );
 
     let developer_dump_layer = tracing_subscriber::fmt::layer()
+        .with_writer(developer_dump_buffer)
         .event_format(
             format::format().with_ansi(false), // disable ansi colors because this will usually go into a file
         )
-        .with_writer(developer_dump_buffer);
+        .with_filter(LevelFilter::DEBUG);
 
     tracing_subscriber::registry()
         .with(user_layer)

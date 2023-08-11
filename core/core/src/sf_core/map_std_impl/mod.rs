@@ -10,25 +10,42 @@ use map_std::{
     },
     MapStdFull,
 };
-use sf_std::abi::Handle;
+use sf_std::{
+    abi::Handle,
+    fmt::{HttpRequestFmt, HttpResponseFmt},
+};
 
-use super::{HttpRequest, IoStream};
+use self::stream::PeekableStream;
+
+use super::HttpRequest;
+
+mod stream;
+
+#[derive(Debug, Clone, Copy)]
+pub struct MapStdImplConfig {
+    /// Whether to log http transactions.
+    pub log_http_transactions: bool,
+    /// Maximum number of bytes to peek from http transaction bodies when logging them.
+    pub log_http_transactions_body_max_size: usize,
+}
 
 pub struct MapStdImpl {
     http_requests: HandleMap<HttpRequest>,
-    streams: HandleMap<IoStream>,
+    streams: HandleMap<stream::StreamEntry>,
     security: Option<SecurityMap>,
     map_context: Option<MapValue>,
     map_output: Option<Result<MapValue, MapValue>>,
+    config: MapStdImplConfig,
 }
 impl MapStdImpl {
-    pub fn new() -> Self {
+    pub fn new(config: MapStdImplConfig) -> Self {
         Self {
             http_requests: HandleMap::new(),
             streams: HandleMap::new(),
             security: None,
             map_context: None,
             map_output: None,
+            config,
         }
     }
 
@@ -74,15 +91,34 @@ impl MapStdUnstable for MapStdImpl {
         let security_map = self.security.as_ref().unwrap();
         resolve_security(security_map, &mut params)?;
 
-        let request = HttpRequest::fetch(
+        // We want to log the transaction below together with the handle, but we want to log it even if it fails
+        // in which case it doesn't get a handle, so we play around with a result here
+        let handle_result = HttpRequest::fetch(
             &params.method,
             &params.url,
             &params.headers,
             &params.query,
             params.body.as_deref(),
-        )?;
+        )
+        .map(|request| self.http_requests.insert(request))
+        .map_err(MapHttpCallError::from);
 
-        Ok(self.http_requests.insert(request))
+        // IDEA: mark this branch as unlikely?
+        if self.config.log_http_transactions {
+            let _span =
+                tracing::debug_span!(target: "@user", "HTTP Request", id = handle_result.as_ref().copied().unwrap_or(0)).entered();
+            tracing::debug!(
+                target: "@user",
+                "\n{:?}", HttpRequestFmt {
+                    method: &params.method,
+                    url: &params.url,
+                    headers: &params.headers,
+                    body: params.body.as_deref().unwrap_or(&[])
+                }
+            );
+        }
+
+        handle_result
     }
 
     fn http_call_head(&mut self, handle: Handle) -> Result<MapHttpResponse, MapHttpCallHeadError> {
@@ -90,11 +126,35 @@ impl MapStdUnstable for MapStdImpl {
             None => Err(MapHttpCallHeadError::InvalidHandle),
             Some(request) => {
                 let response = request.into_response()?;
+                let status = response.status();
+                let headers = response.headers().clone();
+                let body = response.into_body();
+
+                // IDEA: mark this branch as unlikely?
+                let body_stream = if self.config.log_http_transactions {
+                    let _span = tracing::debug_span!(target: "@user", "HTTP Response", id = handle)
+                        .entered();
+
+                    let mut stream = PeekableStream::from(body);
+
+                    tracing::debug!(
+                        target: "@user",
+                        "\n{:?}", HttpResponseFmt {
+                            status,
+                            headers: &headers,
+                            body: stream.peek(self.config.log_http_transactions_body_max_size).unwrap_or(b"<error>")
+                        }
+                    );
+
+                    stream.into()
+                } else {
+                    body.into()
+                };
 
                 Ok(MapHttpResponse {
-                    status: response.status(),
-                    headers: response.headers().clone(),
-                    body_stream: self.streams.insert(response.into_body()),
+                    status,
+                    headers,
+                    body_stream: self.streams.insert(body_stream),
                 })
             }
         }
