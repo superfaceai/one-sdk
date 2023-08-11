@@ -91,10 +91,22 @@ impl MapStdUnstable for MapStdImpl {
         let security_map = self.security.as_ref().unwrap();
         resolve_security(security_map, &mut params)?;
 
+        // We want to log the transaction below together with the handle, but we want to log it even if it fails
+        // in which case it doesn't get a handle, so we play around with a result here
+        let handle_result = HttpRequest::fetch(
+            &params.method,
+            &params.url,
+            &params.headers,
+            &params.query,
+            params.body.as_deref(),
+        )
+        .map(|request| self.http_requests.insert(request))
+        .map_err(MapHttpCallError::from);
+
         // IDEA: mark this branch as unlikely?
         if self.config.log_http_transactions {
             let _span =
-                tracing::debug_span!(target: "@user", "MapStdUnstable::http_call").entered();
+                tracing::debug_span!(target: "@user", "HTTP Request", id = handle_result.as_ref().copied().unwrap_or(0)).entered();
             tracing::debug!(
                 target: "@user",
                 "\n{:?}", HttpRequestFmt {
@@ -106,15 +118,7 @@ impl MapStdUnstable for MapStdImpl {
             );
         }
 
-        let request = HttpRequest::fetch(
-            &params.method,
-            &params.url,
-            &params.headers,
-            &params.query,
-            params.body.as_deref(),
-        )?;
-
-        Ok(self.http_requests.insert(request))
+        handle_result
     }
 
     fn http_call_head(&mut self, handle: Handle) -> Result<MapHttpResponse, MapHttpCallHeadError> {
@@ -128,9 +132,8 @@ impl MapStdUnstable for MapStdImpl {
 
                 // IDEA: mark this branch as unlikely?
                 let body_stream = if self.config.log_http_transactions {
-                    let _span =
-                        tracing::debug_span!(target: "@user", "MapStdUnstable::http_call_head")
-                            .entered();
+                    let _span = tracing::debug_span!(target: "@user", "HTTP Response", id = handle)
+                        .entered();
 
                     let mut stream = PeekableStream::from(body);
 

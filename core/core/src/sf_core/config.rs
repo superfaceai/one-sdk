@@ -14,7 +14,7 @@ pub struct CoreConfiguration {
     pub cache_duration: Duration,
     /// Size of the developer dump buffer in bytes.
     pub developer_dump_buffer_size: usize,
-    /// URL to document registry from which to downlaod documents.
+    /// URL to document registry from which to download documents.
     pub registry_url: Url,
     pub user_log: bool,
     pub user_log_http_body_max_size: usize,
