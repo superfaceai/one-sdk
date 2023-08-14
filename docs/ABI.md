@@ -44,11 +44,11 @@ type Result<T, E> = T | E
 type WasiErrno = success | 2big | ...
 /// Custom error code represented as a string.
 type ErrorCode = 
-	| "network:error"
-	| "network:ECONNREFUSED"
-	| "network:ENOTFOUND"
-	| "network:invalid_url"
-	| "network:invalid_handle"
+    | "network:error"
+    | "network:ECONNREFUSED"
+    | "network:ENOTFOUND"
+    | "network:invalid_url"
+    | "network:invalid_handle"
 ```
 
 ### Messaging
@@ -87,21 +87,21 @@ Supported messages are part of the ABI and have the same stability as `message_e
 ///
 /// See <https://www.man7.org/linux/man-pages/man2/open.2.html>.
 type Request = {
-	"kind": "file-open",
-	"path": string,
-	"read": bool,
-	"write": bool,
-	"append": bool,
-	"truncate": bool,
-	"create": bool,
-	"create_new": bool
+    "kind": "file-open",
+    "path": string,
+    "read": bool,
+    "write": bool,
+    "append": bool,
+    "truncate": bool,
+    "create": bool,
+    "create_new": bool
 }
 type Response = {
-	"kind": "ok",
-	"stream": Handle
+    "kind": "ok",
+    "stream": Handle
 } | {
-	"kind": "err",
-	"errno": WasiErrno
+    "kind": "err",
+    "errno": WasiErrno
 }
 ```
 
@@ -112,19 +112,19 @@ type Response = {
 ///
 /// Returns a handle which can be used to retrieve the response.
 type Request = {
-	"kind": "http-call",
-	"method": string,
-	"url": string,
-	"headers": Record<string, string[]>,
-	"body": u8[] | null // array of numbers where each number is in [0; 255]
+    "kind": "http-call",
+    "method": string,
+    "url": string,
+    "headers": Record<string, string[]>,
+    "body": u8[] | null // array of numbers where each number is in [0; 255]
 }
 type Response = {
-	"kind": "ok",
-	"handle": Handle
+    "kind": "ok",
+    "handle": Handle
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
@@ -133,99 +133,99 @@ type Response = {
 ///
 /// Body is exposed as a stream. The Host does not explicitly read the body until the stream is read.
 type Request = {
-	"kind": "http-call-head",
-	"handle": Handle
+    "kind": "http-call-head",
+    "handle": Handle
 }
 type Response = {
-	"kind": "ok",
-	"status": number,
-	"headers": Record<string, string[]>, // keys are always lowercase
-	"body_stream": Handle // raw response body, it is not parsed according to content-type but it is decoded according to content-encoding
+    "kind": "ok",
+    "status": number,
+    "headers": Record<string, string[]>, // keys are always lowercase
+    "body_stream": Handle // raw response body, it is not parsed according to content-type but it is decoded according to content-encoding
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
 ```ts
 /// Any kind of JSON value with custom types support.
 type HostValue =
-	| { "$HostValue::Stream": Handle }
-	| null
-	| boolean
-	| number
-	| string
-	| HostValue[]
-	| Record<String, HostValue>
+    | { "$HostValue::Stream": Handle }
+    | null
+    | boolean
+    | number
+    | string
+    | HostValue[]
+    | Record<String, HostValue>
 ```
 
 ```ts
 /// Retrieves inputs to the invoked perform.
 type Request = {
-	"kind": "perform-input"
+    "kind": "perform-input"
 }
 type Response = {
-	"kind": "ok",
-	"profile_url": string,
-	"provider_url": string,
-	"map_url": string, // if prefixed with `file://` it is treated as a local path
-	"usecase": string,
-	"map_input": HostValue,
-	"map_parameters": HostValue,
-	"map_security": HostValue
+    "kind": "ok",
+    "profile_url": string,
+    "provider_url": string,
+    "map_url": string, // if prefixed with `file://` it is treated as a local path
+    "usecase": string,
+    "map_input": HostValue,
+    "map_parameters": HostValue,
+    "map_security": HostValue
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
 ```ts
 /// Sends the output of the invoked perform.
 type Request = {
-	"kind": "perform-output-result",
-	"result": HostValue
+    "kind": "perform-output-result",
+    "result": HostValue
 }
 type Response = {
-	"kind": "ok"
+    "kind": "ok"
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
 ```ts
 /// Sends the output of the invoked perform.
 type Request = {
-	"kind": "perform-output-error",
-	"error": HostValue
+    "kind": "perform-output-error",
+    "error": HostValue
 }
 type Response = {
-	"kind": "ok"
+    "kind": "ok"
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
 ```ts
 /// Sends the output of the invoked perform.
 type Request = {
-	"kind": "perform-output-exception",
-	"exception": {
-		name: string,
-		message: string
-	}
+    "kind": "perform-output-exception",
+    "exception": {
+        name: string,
+        message: string
+    }
 }
 type Response = {
-	"kind": "ok"
+    "kind": "ok"
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
@@ -340,15 +340,15 @@ This description uses `TypeScript` syntax. All interface appear the same way in 
 ```ts
 type Handle = number // Same as Host to Core Handle - u32
 type ErrorCode = 
-	| "network:error"
-	| "network:ECONNREFUSED"
-	| "network:ENOTFOUND"
-	| "network:invalid_handle"
-	| "network:invalid_url"
-	| "security:misssing_secret"
-	| "security:invalid_configuration"
-	| "outcome:unxpected"
-	| "context:taken"
+    | "network:error"
+    | "network:ECONNREFUSED"
+    | "network:ENOTFOUND"
+    | "network:invalid_handle"
+    | "network:invalid_url"
+    | "security:misssing_secret"
+    | "security:invalid_configuration"
+    | "outcome:unxpected"
+    | "context:taken"
 ```
 
 ### Messaging
@@ -374,21 +374,21 @@ Supported messages are part of the ABI and have the same stability as `message_e
 ///
 /// Returns a handle which can be used to retrieve the response.
 type Request = {
-	"kind": "http-call",
-	"method": string,
-	"url": string,
-	"headers": Record<string, string[]>,
-	"query": Record<string, string[]>,
-	"security": string | null,
-	"body": u8[] | null // array of numbers where each number is in [0; 255]
+    "kind": "http-call",
+    "method": string,
+    "url": string,
+    "headers": Record<string, string[]>,
+    "query": Record<string, string[]>,
+    "security": string | null,
+    "body": u8[] | null // array of numbers where each number is in [0; 255]
 }
 type Response = {
-	"kind": "ok",
-	"handle": Handle
+    "kind": "ok",
+    "handle": Handle
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
@@ -397,29 +397,29 @@ type Response = {
 ///
 /// Body is exposed as a stream. The Core does not explicitly read the body until the stream is read.
 type Request = {
-	"kind": "http-call-head",
-	"handle": Handle
+    "kind": "http-call-head",
+    "handle": Handle
 }
 type Response = {
-	"kind": "ok",
-	"status": number,
-	"headers": Record<string, string[]>,
-	"body_stream": Handle
+    "kind": "ok",
+    "status": number,
+    "headers": Record<string, string[]>,
+    "body_stream": Handle
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
 ```ts
 type MapValue =
-	| null
-	| boolean
-	| number
-	| string
-	| MapValue[]
-	| Record<string, MapValue>
+    | null
+    | boolean
+    | number
+    | string
+    | MapValue[]
+    | Record<string, MapValue>
 ```
 
 ```ts
@@ -427,45 +427,45 @@ type MapValue =
 ///
 /// After being taken, these values cannot be retrieved again.
 type Request = {
-	"kind": "take-context",
+    "kind": "take-context",
 }
 type Response = {
-	"kind": "ok",
-	"input": MapValue
+    "kind": "ok",
+    "input": MapValue
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
 ```ts
 /// Sets output success for currently executing action.
 type Request = {
-	"kind": "set-output-success",
-	"output": MapValue
+    "kind": "set-output-success",
+    "output": MapValue
 }
 type Response = {
-	"kind": "ok",
+    "kind": "ok",
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
 ```ts
 /// Sets output failure for currently executing action.
 type Request = {
-	"kind": "set-output-failure",
-	"output": MapValue
+    "kind": "set-output-failure",
+    "output": MapValue
 }
 type Response = {
-	"kind": "ok",
+    "kind": "ok",
 } | {
-	"kind": "err",
-	"error_code": ErrorCode,
-	"message": string
+    "kind": "err",
+    "error_code": ErrorCode,
+    "message": string
 }
 ```
 
