@@ -62,11 +62,6 @@ pub type Handle = u32;
 /// This encoding is not suitable for transferring pointers.
 pub struct AbiPair<const LOWER_BITS: usize>(pub Size, pub Size);
 impl<const LOWER_BITS: usize> AbiPair<LOWER_BITS> {
-    // #[cfg(target_pointer_width = "32")]
-    // const LOWER_BITS: usize = 31;
-    // #[cfg(target_pointer_width = "64")]
-    // const LOWER_BITS: usize = 48;
-
     const LOWER_MASK: AbiPairRepr = ((1 as AbiPairRepr) << LOWER_BITS) - 1;
 }
 impl<const LOWER_BITS: usize> From<AbiPairRepr> for AbiPair<LOWER_BITS> {

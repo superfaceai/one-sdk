@@ -73,6 +73,7 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
 
 ```shell
 .
+  Makefile # makefile with targets for development and releases/CI
   host/
     python/
       __main__.py
@@ -112,6 +113,10 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
       src/
         main.rs # script translating YAML to JSON
         schemas/ # actual JSON schemas
+    comlink_language/ # Comlink language tooling
+      Cargo.toml
+      src/
+        parser/
   integration/ # any tooling for integration development
     package.json # for yarn workspace configuration
     core-ffi/ # TypeScript declarations for core_to_map imports
@@ -121,13 +126,13 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
       src/
   examples/
     run.sh # script to run examples
-    node_example.mjs # js code to run example
-    Basic/ # Basic integration to demenostrate how the SDK works
-    cloudflare_worker/ # example of cloudflare worker
-    maps/ # example of how map authoring can look
+    cloudflare_worker/ # example of a cloudflare worker
+    comlinks/ # example of how comlink authoring can work, including language server support for maps
       package.json # pulls in map-std types
       src/
         [.map.js files]
+    node_js/ # example of a node.js application
+    python/ # example of a python application
 ```
 
 ## Allowed Licenses
