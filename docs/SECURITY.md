@@ -8,14 +8,14 @@ The only purpose of user secrets within Superface is to authorize the user again
 
 ## Providing user secrets
 
-Secrets are provided to the OneSDK through `options` argument of the `perform` function.
+Secrets are provided to the OneSDK through the `perform` function.
 
 ## How the SDK uses secrets
 
-OneSDK applies secrets according to security requirements specified in the relevant map. These secrets are applied to the request body right before the request is executed.
+OneSDK applies secrets according to security requirements specified in the relevant map. These secrets are applied to the request right before the request is executed, and are not made available to the map.
 
 Once the request is executed no secrets are accessed until another request is to be prepared.
 
 ## Logging
 
-Another aspect to consider is logging. Logging is **disabled** by default. When enabled, logging may leak user secrets, so an appropriate logging level should be selected to only expose as much information as is secure in given context.
+Another aspect to consider is logging. Logging is **disabled** by default, however on failure a developer log dump, which contains low-level data including secrets, is emitted. When enabled, logging may leak user secrets, so expose only as much information as is secure in given context.
