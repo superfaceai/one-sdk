@@ -20,8 +20,8 @@ class MyServer(BaseHTTPRequestHandler):
         }
     ), "utf8"))
 
-webServer = HTTPServer(("127.0.0.1", 8000), MyServer)
-threading.Thread(target = webServer.serve_forever).start()
+web_server = HTTPServer(("127.0.0.1", 8000), MyServer)
+threading.Thread(target = web_server.serve_forever).start()
 
 client = OneClient(
     assets_path = "../examples/comlinks/src",
@@ -39,13 +39,10 @@ try:
         security = { "basic_auth": { "username": "username", "password": "password" } }
     )
     print(f"RESULT: {r}")
-except Exception as e:
-    if isinstance(e, PerformError):
-        print(f"ERROR RESULT: {e.error_result}")
-    elif isinstance(e, UnexpectedError):
-        print(f"ERROR:", e, file=sys.stderr)
-    else:
-        raise e
+except PerformError as e:
+    print(f"ERROR RESULT: {e.error_result}")
+except UnexpectedError as e:
+    print(f"ERROR:", e, file = sys.stderr)
 finally:
     client.send_metrics_to_superface()
-    webServer.shutdown()
+    web_server.shutdown()
