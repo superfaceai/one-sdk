@@ -128,6 +128,9 @@ It is also possible (but not required) to build the wasi-sdk in docker `docker b
     run.sh # script to run examples
     cloudflare_worker/ # example of a cloudflare worker
     comlinks/ # example of how comlink authoring can work, including language server support for maps
+      package.json # pulls in map-std types
+      src/
+        [.map.js files]
     node_js/ # example of a node.js application
     python/ # example of a python application
 ```
