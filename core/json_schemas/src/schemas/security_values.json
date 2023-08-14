@@ -12,6 +12,10 @@
               "type": "string"
             }
           },
+          "required": [
+            "username",
+            "password"
+          ],
           "type": "object"
         },
         {
@@ -21,6 +25,9 @@
               "type": "string"
             }
           },
+          "required": [
+            "token"
+          ],
           "type": "object"
         },
         {
@@ -30,6 +37,9 @@
               "type": "string"
             }
           },
+          "required": [
+            "apikey"
+          ],
           "type": "object"
         }
       ],

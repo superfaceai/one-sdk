@@ -10,14 +10,21 @@ patternProperties:
           type: string
         password:
           type: string
+      required:
+        - username
+        - password
       additionalProperties: false
     - type: object
       properties:
         token:
           type: string
+      required:
+        - token
       additionalProperties: false
     - type: object
       properties:
         apikey:
           type: string
+      required:
+        - apikey
       additionalProperties: false

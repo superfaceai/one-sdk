@@ -183,5 +183,23 @@ mod test {
             .unwrap(),
         );
         assert!(result.is_err());
+
+        let result = security_validator.validate(
+            &HostValue::deserialize(&json!({
+                "partial_basic": {
+                    "username": "username"
+                }
+            }))
+            .unwrap(),
+        );
+        assert!(result.is_err());
+
+        let result = security_validator.validate(
+            &HostValue::deserialize(&json!({
+                "empty": {}
+            }))
+            .unwrap(),
+        );
+        assert!(result.is_err());
     }
 }
