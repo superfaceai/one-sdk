@@ -87,9 +87,12 @@ jobs:
 
   host-javascript:
     name: JavaScript Host
-    needs: [core]
+    # when host-python is skipped this job should still run if inputs allow
+    # so we need to include a status check, then manually ensure core build didn't fail
+    # (see https://docs.github.com/en/actions/learn-github-actions/expressions#status-check-functions)
+    needs: [core, host-python]
+    if: ${{ !cancelled() && (needs.core.result == 'success') && (inputs.host == 'js' || inputs.host == 'all') }}
     runs-on: ubuntu-latest
-    if: inputs.host == 'js' || inputs.host == 'all'
     steps:
     # checkout
     - uses: actions/checkout@v3
@@ -171,8 +174,8 @@ jobs:
   host-python:
     name: Python Host
     needs: [core]
-    runs-on: ubuntu-latest
     if: inputs.host == 'python' || inputs.host == 'all'
+    runs-on: ubuntu-latest
     steps:
     # Checkout
     - uses: actions/checkout@v3
