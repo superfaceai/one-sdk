@@ -499,6 +499,7 @@ dependencies = [
 name = "json_schemas"
 version = "0.1.0"
 dependencies = [
+ "jsonschema",
  "serde_json",
  "serde_yaml",
 ]

@@ -7,3 +7,6 @@ publish = false
 [dependencies]
 serde_json = { workspace = true }
 serde_yaml = { version = "0.9" }
+
+[dev-dependencies]
+jsonschema = { workspace = true }

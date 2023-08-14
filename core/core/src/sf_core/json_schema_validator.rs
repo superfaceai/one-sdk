@@ -83,8 +83,6 @@ impl JsonSchemaValidator {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
     use super::*;
     use serde::Deserialize;
     use serde_json::json;
@@ -145,61 +143,5 @@ mod test {
             validator.err().unwrap(),
             JsonSchemaValidatorError::SchemaError { .. }
         ));
-    }
-
-    #[test]
-    fn test_security_values_validator() {
-        const SECURITY_VALUES_SCHEMA: &str =
-            include_str!("../../assets/schemas/security_values.json"); // read higher
-
-        let security_validator = JsonSchemaValidator::new(
-            &serde_json::Value::from_str(&SECURITY_VALUES_SCHEMA).unwrap(),
-        )
-        .unwrap();
-
-        let result = security_validator.validate(
-            &HostValue::deserialize(&json!({
-                "my_basic": {
-                    "username": "username",
-                    "password": "password"
-                },
-                "my_token": {
-                    "token": "token"
-                },
-                "my_api_key": {
-                    "apikey": "api key"
-                }
-            }))
-            .unwrap(),
-        );
-        assert!(result.is_ok());
-
-        let result = security_validator.validate(
-            &HostValue::deserialize(&json!({
-                "security_config": {
-                    "unknown": "so invalid"
-                }
-            }))
-            .unwrap(),
-        );
-        assert!(result.is_err());
-
-        let result = security_validator.validate(
-            &HostValue::deserialize(&json!({
-                "partial_basic": {
-                    "username": "username"
-                }
-            }))
-            .unwrap(),
-        );
-        assert!(result.is_err());
-
-        let result = security_validator.validate(
-            &HostValue::deserialize(&json!({
-                "empty": {}
-            }))
-            .unwrap(),
-        );
-        assert!(result.is_err());
     }
 }
