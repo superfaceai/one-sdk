@@ -3,9 +3,11 @@
 //! Use usecase to request some behaviour for perform:
 //! - CORE_PERFORM_PANIC
 //! - CORE_PERFORM_TRUE
+//! - CORE_PERFORM_INPUT_VALIDATION_ERROR
 
 use sf_std::unstable::{
-    perform::{set_perform_output_result_in, PerformInput},
+    exception::{PerformException, PerformExceptionErrorCode},
+    perform::{set_perform_output_exception_in, set_perform_output_result_in, PerformInput},
     HostValue,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -43,6 +45,13 @@ pub fn __export_oneclient_core_perform() {
         "CORE_PERFORM_TRUE" => {
             set_perform_output_result_in(HostValue::Bool(true), MessageExchangeFfi)
         }
+        "CORE_PERFORM_INPUT_VALIDATION_ERROR" => set_perform_output_exception_in(
+            PerformException {
+                error_code: PerformExceptionErrorCode::InputValidationError,
+                message: "Test validation error".to_string(),
+            },
+            MessageExchangeFfi,
+        ),
         _ => panic!("Unknown usecase: {}", perform_input.usecase),
     };
 }

@@ -1,7 +1,7 @@
 import { Asyncify } from './asyncify.js';
 import { HandleMap } from './handle_map.js';
 
-import { PerformError, UnexpectedError, UninitializedError, WasiErrno, WasiError } from './error.js';
+import { PerformError, UnexpectedError, UninitializedError, ValidationError, WasiErrno, WasiError } from './error.js';
 import { AppContext, FileSystem, Network, TextCoder, Timers, WasiContext, Persistence } from './interfaces.js';
 import { SecurityValuesMap } from './security.js';
 import * as sf_host from './sf_host.js';
@@ -239,7 +239,7 @@ export class App implements AppContext {
   }
 
   /**
-   * @throws {PerformError | UnexpectedError}
+   * @throws {PerformError | ValidationError | UnexpectedError}
    */
   public async perform(
     profileUrl: string,
@@ -273,7 +273,7 @@ export class App implements AppContext {
   }
 
   public async handleMessage(message: any): Promise<any> {
-    switch (message['kind']) {
+    switch (message.kind) {
       case 'perform-input':
         return {
           kind: 'ok',
@@ -295,7 +295,11 @@ export class App implements AppContext {
         return { kind: 'ok' };
 
       case 'perform-output-exception':
-        this.performState!.exception = new UnexpectedError(message.exception.error_code, message.exception.message);
+        if (message.exception.error_code === "InputValidationError") {
+          this.performState!.exception = new ValidationError(message.exception.message);
+        } else {
+          this.performState!.exception = new UnexpectedError(message.exception.error_code, message.exception.message);
+        }
         return { kind: 'ok' };
 
       case 'file-open': {

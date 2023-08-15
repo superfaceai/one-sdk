@@ -101,6 +101,8 @@ try:
     print(f"RESULT: {r}")
 except PerformError as e:
     print(f"ERROR RESULT: {e.error_result}")
+except ValidationError as e:
+    print(f"INVALID INPUT: {e.message}", file = sys.stderr)
 except UnexpectedError as e:
     print(f"ERROR:", e, file = sys.stderr)
 finally:

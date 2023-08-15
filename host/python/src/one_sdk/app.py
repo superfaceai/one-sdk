@@ -10,7 +10,7 @@ import wasmtime
 
 from one_sdk.handle_map import HandleMap
 from one_sdk.sf_host import Ptr, Size, link as sf_host_link
-from one_sdk.error import HostError, ErrorCode, PerformError, UnexpectedError, UninitializedError, WasiError, WasiErrno
+from one_sdk.error import HostError, ErrorCode, PerformError, ValidationError, UnexpectedError, UninitializedError, WasiError, WasiErrno
 from one_sdk.platform import PythonFilesystem, PythonNetwork, PythonPersistence, DeferredHttpResponse, HttpResponse
 
 # TODO: TypeAlias - needs 3.10
@@ -133,7 +133,10 @@ class WasiApp:
 			self._perform_state.error = PerformError(message["error"])
 			return { "kind": "ok" }
 		elif message["kind"] == "perform-output-exception":
-			self._perform_state.exception = UnexpectedError(message["exception"]["error_code"], message["exception"]["message"])
+			if message["exception"]["error_code"] == "InputValidationError":
+				self._perform_state.exception = ValidationError(message["exception"]["message"])
+			else:
+				self._perform_state.exception = UnexpectedError(message["exception"]["error_code"], message["exception"]["message"])
 			return { "kind": "ok" }
 		elif message["kind"] == "file-open":
 			try:

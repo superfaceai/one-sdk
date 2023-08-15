@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import { OneClient, PerformError, UnexpectedError } from '../../host/javascript/node/index.js';
+import { OneClient, PerformError, UnexpectedError, ValidationError } from '../../host/javascript/node/index.js';
 
 async function startLocalhostServer() {
   const server = createServer((req, res) => {
@@ -45,6 +45,8 @@ try {
 } catch (e) {
   if (e instanceof PerformError) {
     console.log('ERROR RESULT:', e.errorResult);
+  } else if (e instanceof ValidationError) {
+    console.error('VALIDATION ERROR:', e.message);
   } else if (e instanceof UnexpectedError) {
     console.error('ERROR:', e);
   } else {
