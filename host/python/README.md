@@ -74,12 +74,10 @@ The final structure should look like this:
 Create `__main__.py` file with following content and update:
 
 ```py
-import os
-
+import sys
 from one_sdk import OneClient, PerformError, UnexpectedError
 
 client = OneClient()
-
 profile = client.get_profile("<profileName>")
 use_case = profile.get_usecase("<usecaseName>")
 try:
@@ -101,13 +99,10 @@ try:
         }
     )
     print(f"RESULT: {r}")
-except Exception as e:
-    if isinstance(e, PerformError):
-        print(f"ERROR RESULT: {e.error_result}")
-    elif isinstance(e, UnexpectedError):
-        print(f"ERROR:", e, file=sys.stderr)
-    else:
-        raise e
+except PerformError as e:
+    print(f"ERROR RESULT: {e.error_result}")
+except UnexpectedError as e:
+    print(f"ERROR:", e, file = sys.stderr)
 finally:
     client.send_metrics_to_superface()
 ```
