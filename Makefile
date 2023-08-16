@@ -4,15 +4,10 @@ OS=$(shell uname -s)
 CORE_MODE=default
 # forces the build of the core - this is the default because we let cargo decide what needs to be rebuilt, but it also runs wasm-opt needlessly if nothing has changed
 CORE_PHONY=0
-# builds the core in docker instead of on the host
-CORE_DOCKER=0
 CORE_PROFILE=debug
 
 ifeq ($(CORE_MODE),default)
 	CORE_PHONY=1
-else ifeq ($(CORE_MODE),docker)
-	CORE_PHONY=1
-	CORE_DOCKER=1
 else ifneq ($(CORE_MODE),lax)
 $(error "CORE_MODE must be one of [default, docker, lax]")
 endif
@@ -74,13 +69,6 @@ git_hooks:
 ##########
 ## CORE ##
 ##########
-ifeq ($(CORE_DOCKER),1)
-${CORE_DIST}: ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_SCHEMA_ASSETS_SECURITY_VALUES} ${CORE_SCHEMA_ASSETS_PARAMETERS_VALUES}
-	mkdir -p ${CORE_DIST}
-	docker build ./core -o ${CORE_DIST}
-${CORE_WASM}: ${CORE_DIST}
-${CORE_ASYNCIFY_WASM}: ${CORE_DIST}
-else
 deps_core: ${WASI_SDK_FOLDER}
 	rustup target add wasm32-wasi
 	curl https://wasmtime.dev/install.sh -sSf | bash
@@ -110,7 +98,6 @@ ${WASI_SDK_FOLDER}:
 
 test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_SCHEMA_ASSETS_SECURITY_VALUES} ${CORE_SCHEMA_ASSETS_PARAMETERS_VALUES}
 	cd core && cargo test -- -- --nocapture
-endif
 
 build_core: ${CORE_WASM} ${TEST_CORE_WASM} ${CORE_ASYNCIFY_WASM} ${TEST_CORE_ASYNCIFY_WASM}
 build_core_json_schemas:

@@ -1,12 +1,6 @@
 [workspace]
-members = [
-	"core",
-	"host_to_core_std",
-	"core_to_map_std",
-	"interpreter_js",
-	"json_schemas",
-	"comlink_language"
-]
+resolver = "2"
+members = ["comlink_language", "core", "core_to_map_std", "host_to_core_std", "interpreter_js", "json_schemas"]
 
 [workspace.dependencies]
 base64 = { version = "0.21" }
@@ -15,7 +9,7 @@ hex = { version = "0.4" }
 jsonschema = { version = "0.17", default-features = false } # https://github.com/Stranger6667/jsonschema-rs/issues/222
 regex = { version = "1" }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1"}
+serde_json = { version = "1" }
 serde_urlencoded = { version = "0.7" }
 thiserror = { version = "1" }
 url = { version = "2" }
@@ -24,5 +18,6 @@ tracing = { version = "0.1" }
 [profile.release]
 opt-level = "s"
 lto = true
+codegen-units = 16
 debug = false
 strip = "debuginfo"
