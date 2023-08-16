@@ -1,14 +1,16 @@
 {
+  "type": "object",
   "patternProperties": {
     "^[a-z][_\\-a-z]*$": {
+      "type": "object",
       "oneOf": [
         {
-          "additionalProperties": false,
+          "type": "object",
           "properties": {
-            "password": {
+            "username": {
               "type": "string"
             },
-            "username": {
+            "password": {
               "type": "string"
             }
           },
@@ -16,10 +18,10 @@
             "username",
             "password"
           ],
-          "type": "object"
+          "additionalProperties": false
         },
         {
-          "additionalProperties": false,
+          "type": "object",
           "properties": {
             "token": {
               "type": "string"
@@ -28,10 +30,10 @@
           "required": [
             "token"
           ],
-          "type": "object"
+          "additionalProperties": false
         },
         {
-          "additionalProperties": false,
+          "type": "object",
           "properties": {
             "apikey": {
               "type": "string"
@@ -40,11 +42,9 @@
           "required": [
             "apikey"
           ],
-          "type": "object"
+          "additionalProperties": false
         }
-      ],
-      "type": "object"
+      ]
     }
-  },
-  "type": "object"
+  }
 }
