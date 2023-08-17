@@ -1,0 +1,8 @@
+---
+oneOf:
+  - type: "null"
+  - type: "object"
+    additionalProperties: false
+    patternProperties:
+      ".+":
+        type: string
