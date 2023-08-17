@@ -43,4 +43,12 @@ fn test_security_values() {
     });
     let result = schema.validate(&instance);
     assert!(result.is_err());
+
+    let instance = json!({
+        "not&matching": {
+            "invalid": "invalid"
+        }
+    });
+    let result = schema.validate(&instance);
+    assert!(result.is_err());
 }

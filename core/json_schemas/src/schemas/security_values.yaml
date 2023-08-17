@@ -1,5 +1,6 @@
 ---
 type: object
+additionalProperties: false
 patternProperties:
   "^[a-z][_\\-a-z]*$":
     type: object
