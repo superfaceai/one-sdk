@@ -15,6 +15,10 @@ class PerformError(BaseError):
 		super().__init__("PerformError", str(error_result))
 		self.error_result = error_result
 
+class ValidationError(BaseError):
+	def __init__(self, message: str):
+		super().__init__("ValidationError", message)
+
 class UnexpectedError(BaseError):
 	def __init__(self, name: str, message: str):
 		super().__init__(name, message)

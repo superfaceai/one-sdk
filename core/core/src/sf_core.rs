@@ -55,6 +55,8 @@ pub struct OneClientCore {
 }
 impl OneClientCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
+    const SECURITY_VALUES_JSON_SCHEMA: &str =
+        include_str!("../assets/schemas/security_values.json");
 
     // TODO: Use thiserror and define specific errors
     pub fn new(config: &CoreConfiguration) -> anyhow::Result<Self> {
@@ -67,10 +69,8 @@ impl OneClientCore {
             provider_cache: DocumentCache::new(config.cache_duration, config.registry_url.clone()),
             map_cache: DocumentCache::new(config.cache_duration, config.registry_url.clone()),
             security_validator: JsonSchemaValidator::new(
-                &serde_json::Value::from_str(include_str!(
-                    "../assets/schemas/security_values.json"
-                ))
-                .expect("Valid JSON"),
+                &serde_json::Value::from_str(&OneClientCore::SECURITY_VALUES_JSON_SCHEMA)
+                    .expect("Valid JSON"),
             )
             .expect("Valid JSON Schema for security values exists"),
             mapstd_config: MapStdImplConfig {

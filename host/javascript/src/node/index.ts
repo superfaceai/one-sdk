@@ -19,7 +19,7 @@ import {
 } from '../common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 
-export { PerformError, UnexpectedError } from '../common/index.js';
+export { PerformError, UnexpectedError, ValidationError } from '../common/index.js';
 
 const CORE_PATH = process.env.CORE_PATH ?? createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 const ASSETS_FOLDER = 'superface';

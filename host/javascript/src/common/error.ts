@@ -11,6 +11,12 @@ export class PerformError extends BaseError {
   }
 }
 
+export class ValidationError extends BaseError {
+  constructor(message: string) {
+    super(ValidationError.name, message);
+  }
+}
+
 export class UnexpectedError extends BaseError {
   constructor(name: string, message: string) {
     super(name, message);

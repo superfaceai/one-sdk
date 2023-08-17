@@ -78,6 +78,7 @@ import {
   OneClient,
   PerformError,
   UnexpectedError,
+  ValidationError,
 } from '@superfaceai/one-sdk/node';
 
 const client = new OneClient();
@@ -103,9 +104,13 @@ try {
       },
     }
   );
+
+  console.log('RESULT:', result);
 } catch (e) {
   if (e instanceof PerformError) {
     console.log('ERROR RESULT:', e.errorResult);
+  } else if (e instanceof ValidationError) {
+    console.error('VALIDATION ERROR:', e.message);
   } else if (e instanceof UnexpectedError) {
     console.error('ERROR:', e);
   } else {

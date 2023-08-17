@@ -5,8 +5,8 @@ import { createRequire } from 'module';
 import { WASI } from 'wasi';
 
 import { App } from './app.js';
-import { UnexpectedError } from './error.js';
-import { FileSystem, Persistence, Network, TextCoder, Timers, WasiContext } from './interfaces.js';
+import { UnexpectedError, ValidationError } from './error.js';
+import { FileSystem, Persistence, Network, TextCoder, Timers } from './interfaces.js';
 
 
 class TestNetwork implements Network {
@@ -52,8 +52,8 @@ class TestTimers implements Timers {
 }
 
 class TestPersistence implements Persistence {
-  async persistMetrics(events: string[]): Promise<void> {}
-  async persistDeveloperDump(events: string[]): Promise<void> {}
+  async persistMetrics(events: string[]): Promise<void> { }
+  async persistDeveloperDump(events: string[]): Promise<void> { }
 }
 
 describe('App', () => {
@@ -73,7 +73,7 @@ describe('App', () => {
       await readFile(createRequire(import.meta.url).resolve('../../assets/test-core-async.wasm'))
     );
 
-    await app.init(new WASI());
+    await app.init(new WASI({ version: 'preview1' } as any));
 
     handleMessage = jest.spyOn(app, 'handleMessage');
     handleMessage.mockImplementation(async (message) => {
@@ -130,7 +130,7 @@ describe('App', () => {
       );
     } catch (e) { }
 
-    await app.init(new WASI());
+    await app.init(new WASI({ version: 'preview1' } as any));
 
     const result = await app.perform(
       '',
@@ -143,5 +143,19 @@ describe('App', () => {
     );
 
     expect(result).toBe(true);
+  });
+
+  test('invalid user input', async () => {
+    handleMessage.mockRestore();
+
+    await expect(app.perform(
+      '',
+      '',
+      '',
+      'CORE_PERFORM_INPUT_VALIDATION_ERROR',
+      null,
+      {},
+      {},
+    )).rejects.toThrowError(ValidationError);
   });
 });

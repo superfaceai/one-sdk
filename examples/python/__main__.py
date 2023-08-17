@@ -4,7 +4,7 @@ import threading
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from one_sdk import OneClient, PerformError, UnexpectedError
+from one_sdk import OneClient, PerformError, UnexpectedError, ValidationError
 
 class MyServer(BaseHTTPRequestHandler):
   def do_GET(self):
@@ -41,6 +41,8 @@ try:
     print(f"RESULT: {r}")
 except PerformError as e:
     print(f"ERROR RESULT: {e.error_result}")
+except ValidationError as e:
+    print(f"INVALID INPUT: {e.message}", file = sys.stderr)
 except UnexpectedError as e:
     print(f"ERROR:", e, file = sys.stderr)
 finally:
