@@ -48,9 +48,7 @@ Follow these steps:
 macOS:
 
 ```shell
-# Core dependencies
-brew install docker
-# or dependencies locally
+# Local dependencies
 brew install rustup-init
 brew install binaryen # for wasm-opt
 
@@ -63,11 +61,7 @@ brew install node yarn
 
 For development build with `make` from root. To create release build run `make CORE_PROFILE=release`.
 
-### Docker
-
-Core can be built in docker to avoid installing compiler dependencies. Run `make CORE_MODE=docker`.
-
-It is also possible (but not required) to build the wasi-sdk in docker `docker build -f core/Dockerfile-wasi-sdk -o core/`, but beware that this takes a really long time.
+The core can also be built using Docker - see [scripts/build-a-core](../scripts/build-a-core/README.md) for more information.
 
 ### Monorepo structure
 
