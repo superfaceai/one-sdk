@@ -74,14 +74,20 @@ WORKDIR /opt/build-a-core
 RUN git clone https://github.com/superfaceai/one-sdk.git . && git checkout {core_ref}
 RUN <<EOF
 set -e
+mkdir -p core/core/assets/js core/core/assets/schemas
+
+if [ -d core/json_schemas/src/schemas ]; then
+	cp core/json_schemas/src/schemas/*.json core/core/assets/schemas
+fi
+
 cd integration
 yarnpkg install
 yarnpkg workspace @superfaceai/map-std build
-yarnpkg workspace @superfaceai/profile-validator build
-cd -
-mkdir -p core/core/assets/js core/core/assets/schemas
-cp integration/map-std/dist/map_std.js integration/profile-validator/dist/profile_validator.js core/core/assets/js
-cp core/json_schemas/src/schemas/security_values.json core/core/assets/schemas
+cp map-std/dist/map_std.js ../core/core/assets/js
+if [ -d ./profile-validator ]; then
+	yarnpkg workspace @superfaceai/profile-validator build
+	cp profile-validator/dist/profile_validator.js ../core/core/assets/js
+fi
 EOF
 
 WORKDIR /opt/build-a-core/core
