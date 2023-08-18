@@ -3,7 +3,9 @@
   "version": "3.0.0-beta.3",
   "exports": {
     "./node": "./node/index.js",
-    "./cloudflare": "./cloudflare/index.js"
+    "./node/index.js": "./node/index.js",
+    "./cloudflare": "./cloudflare/index.js",
+    "./cloudflare/index.js": "./cloudflare/index.js"
   },
   "type": "module",
   "license": "MIT",
