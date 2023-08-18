@@ -51,12 +51,15 @@ pub struct OneClientCore {
     provider_cache: DocumentCache<ProviderJsonCacheEntry>,
     map_cache: DocumentCache<MapCacheEntry>,
     security_validator: JsonSchemaValidator,
+    parameters_validator: JsonSchemaValidator,
     mapstd_config: MapStdImplConfig,
 }
 impl OneClientCore {
     const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
     const SECURITY_VALUES_JSON_SCHEMA: &str =
         include_str!("../assets/schemas/security_values.json");
+    const PARAMETERS_VALUES_JSON_SCHEMA: &str =
+        include_str!("../assets/schemas/parameters_values.json");
 
     // TODO: Use thiserror and define specific errors
     pub fn new(config: &CoreConfiguration) -> anyhow::Result<Self> {
@@ -73,6 +76,11 @@ impl OneClientCore {
                     .expect("Valid JSON"),
             )
             .expect("Valid JSON Schema for security values exists"),
+            parameters_validator: JsonSchemaValidator::new(
+                &serde_json::Value::from_str(&OneClientCore::PARAMETERS_VALUES_JSON_SCHEMA)
+                    .expect("Valid JSON"),
+            )
+            .expect("Valid JSON Schema for parameters values exists"),
             mapstd_config: MapStdImplConfig {
                 log_http_transactions: config.user_log,
                 log_http_transactions_body_max_size: config.user_log_http_body_max_size,
@@ -203,19 +211,23 @@ impl OneClientCore {
         //     tracing::error!("Input validation error: {}", err);
         // }
 
-        // TODO: Validate Parameters
+        // Validate parameters values against json schema
+        self.parameters_validator
+            .validate(&perform_input.map_parameters)
+            .map_err(|err| {
+                PerformException::from_json_schema_validation_error(
+                    err,
+                    Some("Parameters".to_string().as_ref()),
+                )
+            })?;
+
         let mut map_parameters = match perform_input.map_parameters {
             HostValue::Object(o) => MapValueObject::from_iter(
                 o.into_iter()
                     .map(|(k, v)| (k, self.host_value_to_map_value(v))),
             ),
             HostValue::None => MapValueObject::new(),
-            _ => {
-                try_metrics!(Err(PerformException {
-                    error_code: PerformExceptionErrorCode::ParametersFormatError,
-                    message: "Parameters must be an Object or None".to_owned(),
-                }))
-            }
+            _ => unreachable!("Object or None ensured with JSON Schema validation"),
         };
 
         // Validate security values against json schema
