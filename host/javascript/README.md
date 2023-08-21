@@ -122,6 +122,12 @@ try {
 Then run the script with:
 
 ```shell
+node index.mjs
+```
+
+_Note: If you are running Node.js before version `18.17.0` you need to enable WASI by providing flag to Node.js:_
+
+```shell
 node --experimental-wasi-unstable-preview1 index.mjs
 ```
 
