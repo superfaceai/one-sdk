@@ -5,7 +5,14 @@
     "./node": "./node/index.js",
     "./node/index.js": "./node/index.js",
     "./cloudflare": "./cloudflare/index.js",
-    "./cloudflare/index.js": "./cloudflare/index.js"
+    "./cloudflare/index.js": "./cloudflare/index.js",
+    "./common": "./common/index.js",
+    "./common/index.js": "./common/index.js",
+    "./common/app": "./common/app.js",
+    "./common/app.js": "./common/app.js",
+    "./node/error": "./node/error",
+    "./node/error.js": "./node/error.js",
+    "./assets/core-async.wasm": "./assets/core-async.wasm"
   },
   "type": "module",
   "license": "MIT",
