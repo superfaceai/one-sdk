@@ -5,7 +5,9 @@
     "./node": "./node/index.js",
     "./node/index.js": "./node/index.js",
     "./cloudflare": "./cloudflare/index.js",
-    "./cloudflare/index.js": "./cloudflare/index.js"
+    "./cloudflare/index.js": "./cloudflare/index.js",
+    "./common": "./common/index.js",
+    "./assets/core-async.wasm": "./assets/core-async.wasm"
   },
   "type": "module",
   "license": "MIT",
