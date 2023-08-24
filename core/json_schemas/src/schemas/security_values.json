@@ -2,7 +2,7 @@
   "type": "object",
   "additionalProperties": false,
   "patternProperties": {
-    "^[a-z][_\\-a-z]*$": {
+    "^[a-zA-Z][_\\-a-zA-Z]*$": {
       "type": "object",
       "oneOf": [
         {
