@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- Security values properties are required
 
 ### Changed
 - Security Values are passed as HostValue
+- Security Values are validated using JSON Schema
+- Parameters are validated using JSON Schema
