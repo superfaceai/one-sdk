@@ -109,7 +109,7 @@ jobs:
         run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
       - name: Resolve release version
         id: release-version
-        run: scripts/release-version.sh ./host/javascript/VERSION ./host/javascript/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+        run: scripts/release-version.sh ./host/javascript/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
       # Build
       - uses: actions/download-artifact@v3
         with:
