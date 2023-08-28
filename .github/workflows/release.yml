@@ -95,6 +95,11 @@ jobs:
     # (see https://docs.github.com/en/actions/learn-github-actions/expressions#status-check-functions)
     if: ${{ !cancelled() && (needs.core.result == 'success') && (inputs.host == 'js' || inputs.host == 'all') }}
     runs-on: ubuntu-latest
+    outputs:
+      RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+      RELEASE_LEVEL: ${{ steps.release-level.outputs.RELEASE_LEVEL }}
+      RELEASE_TAG: ${{ steps.release-level.outputs.RELEASE_TAG }}
+      RELEASE_PREID: ${{ steps.release-level.outputs.RELEASE_PREID }}
     steps:
       # Setup
       - uses: actions/checkout@v3
@@ -208,17 +213,11 @@ jobs:
           yarn install --frozen-lockfile
           yarn build
       # Publish
-      - name: Resolve release level
-        id: release-level
-        run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
-      - name: Resolve release version
-        id: release-version
-        run: scripts/release-version.sh ./host/javascript/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
       - name: Publish to NPM registry
         working-directory: host/javascript
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
-        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ steps.release-version.outputs.RELEASE_VERSION }} --tag ${{ steps.release-level.outputs.RELEASE_TAG }}
+        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.host-javascript-prepare.outputs.RELEASE_VERSION }} --tag ${{ needs.host-javascript-prepare.outputs.RELEASE_TAG }}
 
   host-python-prepare:
     name: Prepare Python Host
