@@ -194,14 +194,14 @@ export type ClientPerformOptions = {
   security?: SecurityValuesMap;
 };
 
-class InternalClient {
+export class InternalClient {
   public readonly assetsPath: string = resolvePath(process.cwd(), ASSETS_FOLDER);
 
-  private corePath: string;
-  private app: App;
-  private readyState: AsyncMutex<{ ready: boolean }>;
+  protected corePath: string;
+  protected app: App;
+  protected readyState: AsyncMutex<{ ready: boolean }>;
 
-  constructor(readonly options: ClientOptions = {}) {
+  constructor(readonly options: ClientOptions = {}, params?: { network?: Network, fileSystem?: FileSystem, textCoder?: TextCoder, timers?: Timers, persistence?: Persistence }) {
     if (options.assetsPath !== undefined) {
       this.assetsPath = options.assetsPath;
     }
@@ -211,11 +211,11 @@ class InternalClient {
     this.readyState = new AsyncMutex({ ready: false });
 
     this.app = new App({
-      network: new NodeNetwork(),
-      fileSystem: new NodeFileSystem(),
-      textCoder: new NodeTextCoder(),
-      timers: new NodeTimers(),
-      persistence: new NodePersistence(options.token, options.superfaceApiUrl)
+      network: params?.network ?? new NodeNetwork(),
+      fileSystem: params?.fileSystem ?? new NodeFileSystem(),
+      textCoder: params?.textCoder ?? new NodeTextCoder(),
+      timers: params?.timers ?? new NodeTimers(),
+      persistence: params?.persistence ?? new NodePersistence(options.token, options.superfaceApiUrl)
     }, { metricsTimeout: 1000 });
   }
 
