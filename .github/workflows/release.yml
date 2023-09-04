@@ -122,6 +122,10 @@ jobs:
       - name: Resolve release version
         id: release-version
         run: scripts/release-version.sh ./host/javascript/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+      # Update version
+      - name: Update version in package.json
+        working-directory: host/python
+        run: yarn version --no-git-tag-version --new-version ${{ steps.release-version.outputs.RELEASE_VERSION }}
       # Build
       - uses: actions/download-artifact@v3
         with:
@@ -245,7 +249,7 @@ jobs:
       # Update version
       - name: Update version in pyproject
         working-directory: host/python
-        run: toml set --toml-path pyproject.toml project.version  ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        run: toml set --toml-path pyproject.toml project.version ${{ steps.release-version.outputs.RELEASE_VERSION }}
       # Build
       - uses: actions/download-artifact@v3
         with:
