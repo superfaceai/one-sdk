@@ -93,7 +93,7 @@ jobs:
     # when host-python is skipped this job should still run if inputs allow
     # so we need to include a status check, then manually ensure core build didn't fail
     # (see https://docs.github.com/en/actions/learn-github-actions/expressions#status-check-functions)
-    if: ${{ !cancelled() && (needs.core.result == 'success') && (inputs.host == 'js' || inputs.host == 'all') }}
+    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.host == 'js' || inputs.host == 'all') }}
     runs-on: ubuntu-latest
     outputs:
       RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
@@ -187,7 +187,7 @@ jobs:
   host-javascript-publish:
     name: Publish JavaScript Host
     needs: [core, host-javascript-prepare]
-    if: ${{ inputs.host == 'js' || inputs.host == 'all' }}
+    if: ${{ !cancelled() && needs.host-javascript-prepare.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       # Setup
@@ -307,7 +307,7 @@ jobs:
   host-python-publish:
     name: Publish Python Host
     needs: [core, host-python-prepare]
-    if: ${{ inputs.host == 'python' || inputs.host == 'all' }}
+    if: ${{ !cancelled() && needs.host-python-prepare.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       # Setup
