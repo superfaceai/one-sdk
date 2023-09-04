@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+
 import { Server, createServer as httpCreateServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath, dirname } from 'node:path';
@@ -36,7 +38,6 @@ describe('OneClient', () => {
 
     test('basic use', async () => {
       const client = new OneClient(clientOptions);
-
       const profile = await client.getProfile('wasm-sdk/example');
       const result = await profile
         .getUseCase('Example')
@@ -54,7 +55,6 @@ describe('OneClient', () => {
 
     test('concurrent requests', async () => {
       const client = new OneClient(clientOptions);
-
       const profile = await client.getProfile('wasm-sdk/example');
       const options = {
         provider: 'localhost',
@@ -78,17 +78,19 @@ describe('OneClient', () => {
     });
 
     test('panicked core', async () => {
-      const client = new OneClient(clientOptions);
-      (client as any).internal.corePath = resolvePath(__dirname, '../../assets/test-core-async.wasm');
+      const ORIGINAL_CORE_PATH = process.env.CORE_PATH;
+      process.env.CORE_PATH = resolvePath(__dirname, '../../assets/test-core-async.wasm');
 
+      const client = new OneClient(clientOptions);
       const profile = await client.getProfile('wasm-sdk/example');
       await expect(profile.getUseCase('CORE_PERFORM_PANIC').perform({}, { provider: 'localhost' })).rejects.toThrow(UnexpectedError);
       await expect(profile.getUseCase('CORE_PERFORM_TRUE').perform({}, { provider: 'localhost' })).resolves.toBe(true);
+
+      process.env.CORE_PATH = ORIGINAL_CORE_PATH;
     });
 
     test('profile file does not exist', async () => {
       const client = new OneClient(clientOptions);
-
       const profile = await client.getProfile('wasm-sdk/does-not-exist');
       const usecase = profile.getUseCase('Example');
       await expect(
