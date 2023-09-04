@@ -1,5 +1,4 @@
 import fs, { FileHandle } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { resolve as resolvePath } from 'node:path';
 import { WASI } from 'node:wasi';
 
@@ -18,11 +17,12 @@ import {
   Persistence
 } from '../common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
+import { loadCoreFile } from './wasm.js';
 
 export { PerformError, UnexpectedError, ValidationError } from '../common/index.js';
 export { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
+export { corePath, loadCoreFile } from './wasm.js';
 
-const CORE_PATH = process.env.CORE_PATH ?? createRequire(import.meta.url).resolve('../assets/core-async.wasm');
 const ASSETS_FOLDER = 'superface';
 
 class NodeTextCoder implements TextCoder {
@@ -197,7 +197,6 @@ export type ClientPerformOptions = {
 class InternalClient {
   public readonly assetsPath: string = resolvePath(process.cwd(), ASSETS_FOLDER);
 
-  private corePath: string;
   private app: App;
   private readyState: AsyncMutex<{ ready: boolean }>;
 
@@ -205,8 +204,6 @@ class InternalClient {
     if (options.assetsPath !== undefined) {
       this.assetsPath = options.assetsPath;
     }
-
-    this.corePath = CORE_PATH;
 
     this.readyState = new AsyncMutex({ ready: false });
 
@@ -226,7 +223,7 @@ class InternalClient {
       }
 
       await this.app.loadCore(
-        await fs.readFile(this.corePath)
+        await loadCoreFile()
       );
       await this.app.init(new WASI({ env: process.env, version: 'preview1' } as any)); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
 
