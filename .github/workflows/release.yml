@@ -93,7 +93,7 @@ jobs:
     # when host-python is skipped this job should still run if inputs allow
     # so we need to include a status check, then manually ensure core build didn't fail
     # (see https://docs.github.com/en/actions/learn-github-actions/expressions#status-check-functions)
-    if: ${{ !cancelled() && (needs.core.result == 'success') && (inputs.host == 'js' || inputs.host == 'all') }}
+    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.host == 'js' || inputs.host == 'all') }}
     runs-on: ubuntu-latest
     outputs:
       RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
@@ -122,6 +122,10 @@ jobs:
       - name: Resolve release version
         id: release-version
         run: scripts/release-version.sh ./host/javascript/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+      # Update version
+      - name: Update version in package.json
+        working-directory: host/python
+        run: yarn version --no-git-tag-version --new-version ${{ steps.release-version.outputs.RELEASE_VERSION }}
       # Build
       - uses: actions/download-artifact@v3
         with:
@@ -187,7 +191,7 @@ jobs:
   host-javascript-publish:
     name: Publish JavaScript Host
     needs: [core, host-javascript-prepare]
-    if: ${{ inputs.host == 'js' || inputs.host == 'all' }}
+    if: ${{ !cancelled() && needs.host-javascript-prepare.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       # Setup
@@ -245,7 +249,7 @@ jobs:
       # Update version
       - name: Update version in pyproject
         working-directory: host/python
-        run: toml set --toml-path pyproject.toml project.version  ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        run: toml set --toml-path pyproject.toml project.version ${{ steps.release-version.outputs.RELEASE_VERSION }}
       # Build
       - uses: actions/download-artifact@v3
         with:
@@ -307,7 +311,7 @@ jobs:
   host-python-publish:
     name: Publish Python Host
     needs: [core, host-python-prepare]
-    if: ${{ inputs.host == 'python' || inputs.host == 'all' }}
+    if: ${{ !cancelled() && needs.host-python-prepare.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       # Setup
