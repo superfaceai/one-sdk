@@ -17,7 +17,8 @@ import {
   Persistence
 } from '../common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
-import { corePath } from '../common/wasm.js';
+import { corePathURL } from '../common/wasm.js';
+import { fileURLToPath } from 'node:url';
 
 export { PerformError, UnexpectedError, ValidationError } from '../common/index.js';
 export { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
@@ -222,7 +223,7 @@ class InternalClient {
       }
 
       await this.app.loadCore(
-        await fs.readFile(corePath())
+        await fs.readFile(process.env.CORE_PATH ?? fileURLToPath(corePathURL()))
       );
       await this.app.init(new WASI({ env: process.env, version: 'preview1' } as any)); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
 
