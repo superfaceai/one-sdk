@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 import { Server, createServer as httpCreateServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath, dirname } from 'node:path';

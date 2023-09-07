@@ -17,11 +17,10 @@ import {
   Persistence
 } from '../common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
-import { loadCoreFile } from './wasm.js';
+import { corePath } from '../common/wasm.js';
 
 export { PerformError, UnexpectedError, ValidationError } from '../common/index.js';
 export { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
-export { corePath, loadCoreFile } from './wasm.js';
 
 const ASSETS_FOLDER = 'superface';
 
@@ -223,7 +222,7 @@ class InternalClient {
       }
 
       await this.app.loadCore(
-        await loadCoreFile()
+        await fs.readFile(corePath())
       );
       await this.app.init(new WASI({ env: process.env, version: 'preview1' } as any)); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
 
