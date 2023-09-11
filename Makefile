@@ -45,7 +45,8 @@ CORE_SCHEMA_ASSETS_PARAMETERS_VALUES=${CORE_SCHEMA_ASSETS}/parameters_values.jso
 SECURITY_VALUES_JSON_SCHEMA=core/json_schemas/src/schemas/security_values.json
 PARAMETERS_VALUES_JSON_SCHEMA=core/json_schemas/src/schemas/parameters_values.json
 # packages
-HOST_JAVASCRIPT_ASSETS=host/javascript/assets
+NODEJS_HOST_ASSETS=packages/nodejs_host/assets
+CFW_HOST_ASSETS=packages/cloudflare_worker_host/assets
 PYTHON_HOST_ASSETS=packages/python_host/src/one_sdk/assets
 
 all: clean build
@@ -58,10 +59,10 @@ ifeq ($(CORE_PHONY),1)
 .PHONY: ${CORE_DIST} ${MAP_STD} ${PROFILE_VALIDATOR}
 endif
 
-deps: git_hooks deps_core deps_host_python
-build: build_core build_integration build_hosts
-test: test_core
-clean: clean_core clean_integration clean_hosts
+deps: git_hooks deps_core deps_packages
+build: build_core build_integration build_packages
+test: test_core test_packages
+clean: clean_core clean_integration
 
 git_hooks:
 	cp .githooks/* .git/hooks
@@ -141,31 +142,35 @@ test_integration:
 clean_integration:
 	rm -rf integration/map-std/dist integration/map-std/types integration/profile-validator/dist
 
-##########
-## HOST ##
-##########
-build_hosts: build_host_javascript
-clean_hosts:
-	rm -rf ${HOST_JAVASCRIPT_ASSETS}
-	cd host/javascript && yarn clean
-	rm -rf ${PYTHON_HOST_ASSETS}
-
-# copy wasm always because cached docker artifacts can have older timestamp
-build_host_javascript: ${CORE_ASYNCIFY_WASM}
-	mkdir -p ${HOST_JAVASCRIPT_ASSETS}
-	cp ${CORE_ASYNCIFY_WASM} ${HOST_JAVASCRIPT_ASSETS}/core-async.wasm
-	cd host/javascript && yarn install && yarn build	
-
-test_host_javascript: build_host_javascript ${TEST_CORE_ASYNCIFY_WASM}
-	cp ${TEST_CORE_ASYNCIFY_WASM} ${HOST_JAVASCRIPT_ASSETS}/test-core-async.wasm
-	cd host/javascript && yarn test
-
-
 ##############
 ## PACKAGES ##
 ##############
+build_packages: build_python_host build_nodejs_host build_cloudflare_worker_host
+deps_packages: deps_python_host deps_nodejs_host deps_cfw_host
 
-build_packages: build_python_host
+# Node.js Host
+deps_nodejs_host:
+	cd packages/nodejs_host && yarn install
+build_nodejs_host: deps_nodejs_host ${CORE_ASYNCIFY_WASM}
+	mkdir -p ${NODEJS_HOST_ASSETS}
+	cp ${CORE_ASYNCIFY_WASM} ${NODEJS_HOST_ASSETS}/core-async.wasm # copy wasm always because cached docker artifacts can have older timestamp
+	cd packages/nodejs_host && yarn build	
+test_nodejs_host: build_nodejs_host ${TEST_CORE_ASYNCIFY_WASM}
+	cp ${TEST_CORE_ASYNCIFY_WASM} ${NODEJS_HOST_ASSETS}/test-core-async.wasm
+	cd packages/nodejs_host && yarn test
+
+# Cloudflare worker Host
+deps_cfw_host:
+	cd packages/cloudflare_worker_host && yarn install
+build_cfw_host: deps_cfw_host ${CORE_ASYNCIFY_WASM}
+	mkdir -p ${CFW_HOST_ASSETS}
+	cp ${CORE_ASYNCIFY_WASM} ${CFW_HOST_ASSETS}/core-async.wasm # copy wasm always because cached docker artifacts can have older timestamp
+	cd packages/cloudflare_worker_host && yarn build	
+test_cfw_host: build_cfw_host ${TEST_CORE_ASYNCIFY_WASM}
+	cp ${TEST_CORE_ASYNCIFY_WASM} ${CFW_HOST_ASSETS}/test-core-async.wasm
+	cd packages/cloudflare_worker_host && yarn test
+
+# Python Host
 deps_python_host:
 	cd packages/python_host; test -d venv || python3 -m venv venv; source venv/bin/activate; \
 	python3 -m pip install -e .
