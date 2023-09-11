@@ -32,7 +32,7 @@ case $1 in
 			make build_host_python $MAKE_FLAGS
 		fi
 		cd "$base"
-		source ../host/python/venv/bin/activate
+		source ../packages/python_host/venv/bin/activate
 		python3 ./python
 	;;
 

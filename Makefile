@@ -44,9 +44,9 @@ CORE_SCHEMA_ASSETS_SECURITY_VALUES=${CORE_SCHEMA_ASSETS}/security_values.json
 CORE_SCHEMA_ASSETS_PARAMETERS_VALUES=${CORE_SCHEMA_ASSETS}/parameters_values.json
 SECURITY_VALUES_JSON_SCHEMA=core/json_schemas/src/schemas/security_values.json
 PARAMETERS_VALUES_JSON_SCHEMA=core/json_schemas/src/schemas/parameters_values.json
-# Hosts
+# packages
 HOST_JAVASCRIPT_ASSETS=host/javascript/assets
-HOST_PYTHON_ASSETS=host/python/src/one_sdk/assets
+PYTHON_HOST_ASSETS=packages/python_host/src/one_sdk/assets
 
 all: clean build
 
@@ -144,11 +144,11 @@ clean_integration:
 ##########
 ## HOST ##
 ##########
-build_hosts: build_host_javascript build_host_python
+build_hosts: build_host_javascript
 clean_hosts:
 	rm -rf ${HOST_JAVASCRIPT_ASSETS}
 	cd host/javascript && yarn clean
-	rm -rf ${HOST_PYTHON_ASSETS}
+	rm -rf ${PYTHON_HOST_ASSETS}
 
 # copy wasm always because cached docker artifacts can have older timestamp
 build_host_javascript: ${CORE_ASYNCIFY_WASM}
@@ -160,16 +160,20 @@ test_host_javascript: build_host_javascript ${TEST_CORE_ASYNCIFY_WASM}
 	cp ${TEST_CORE_ASYNCIFY_WASM} ${HOST_JAVASCRIPT_ASSETS}/test-core-async.wasm
 	cd host/javascript && yarn test
 
-deps_host_python:
-	cd host/python; test -d venv || python3 -m venv venv; source venv/bin/activate; \
+
+##############
+## PACKAGES ##
+##############
+
+build_packages: build_python_host
+deps_python_host:
+	cd packages/python_host; test -d venv || python3 -m venv venv; source venv/bin/activate; \
 	python3 -m pip install -e .
-
-build_host_python: deps_host_python ${CORE_WASM}
-	mkdir -p ${HOST_PYTHON_ASSETS}
-	cp ${CORE_WASM} ${HOST_PYTHON_ASSETS}/core.wasm
+build_python_host: deps_python_host ${CORE_WASM}
+	mkdir -p ${PYTHON_HOST_ASSETS}
+	cp ${CORE_WASM} ${PYTHON_HOST_ASSETS}/core.wasm
 	# TODO: build?
-
-test_host_python: build_host_python ${TEST_CORE_WASM}
-	cp ${TEST_CORE_WASM} ${HOST_PYTHON_ASSETS}/test-core.wasm
-	cd host/python; source venv/bin/activate; \
+test_python_host: build_python_host ${TEST_CORE_WASM}
+	cp ${TEST_CORE_WASM} ${PYTHON_HOST_ASSETS}/test-core.wasm
+	cd packages/python_host; source venv/bin/activate; \
 	python3 -m unittest discover tests/
