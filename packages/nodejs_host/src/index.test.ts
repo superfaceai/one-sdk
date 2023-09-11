@@ -3,11 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath, dirname } from 'node:path';
 
 import { OneClient } from './index.js';
-import { UnexpectedError } from '../common/error.js';
+import { UnexpectedError } from './common/error.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const clientOptions = {
-  assetsPath: resolvePath(__dirname, '../../../../examples/comlinks/src'),
+  assetsPath: resolvePath(__dirname, '../../../examples/comlinks/src'),
   superfaceApiUrl: 'https://superface.dev'
 };
 
@@ -77,7 +77,7 @@ describe('OneClient', () => {
 
     test('panicked core', async () => {
       const ORIGINAL_CORE_PATH = process.env.CORE_PATH;
-      process.env.CORE_PATH = resolvePath(__dirname, '../../assets/test-core-async.wasm');
+      process.env.CORE_PATH = resolvePath(__dirname, '../assets/test-core-async.wasm');
 
       const client = new OneClient(clientOptions);
       const profile = await client.getProfile('wasm-sdk/example');

@@ -69,7 +69,7 @@ The final structure should look like this:
     └── mailchimp.provider.json
 ```
 
-## Use in Node.js
+## Use
 
 Create `index.mjs` file with following content and update:
 
@@ -135,88 +135,15 @@ node --experimental-wasi-unstable-preview1 index.mjs
 
 OneSDK uses [ECMAScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules). More on using ECMAScript modules is well described in [Pure ESM Package](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c) guide.
 
-## Use in Cloudflare
-
-The main difference compared to Node.js is a need to use a virtual filesystem to load the Comlink files. It is needed due to the deployment process, where all files need to be bundled together.
-
-```js
-import { OneClient, PerformError, UnexpectedError } from '@superfaceai/one-sdk/cloudflare';
-
-import profileFile from '../superface/[scope.]<name>.profile';
-import mapFile from '../superface/[scope.]<name>.<providerName>.map.js';
-import providerFile from '../superface/<providerName>.provider.json';
-
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-
-    const client = new OneClient({
-      env: {
-        ONESDK_LOG: 'off' // use `on` for debugging
-      },
-      // preopens describes the virtual filesystem whith the OneClient file convention mapped to assets
-      preopens: {
-        'superface/[scope.]<name>.profile': new Uint8Array(profileFile),
-        'superface/[scope.]<name>.<providerName>.map.js': new Uint8Array(mapFile),
-        'superface/<providerName>.provider.json': new Uint8Array(providerFile)
-      }
-    });
-    const profile = await client.getProfile('<profileName>');  // profile id as defined in *.profile
-    const usecase = profile.getUseCase('<usecaseName>'); // use case name as defined in the profile
-    const result = usecase.perform(
-      // Input parameters as defined in profile:
-      '<key>': '<value>'
-      // provider configuration
-      {
-        provider: '<providerName>', // provider name as defined in *.provider.json
-        parameters: {
-          // Provider specific integration parameters:
-          '<integrationParameterName>': '<integrationParameterValue>'
-        },
-        security: {
-          // Provider specific security values:
-          '<securityValueId>': {
-            // Security values as described in provider or on profile page
-          }
-        }
-      }
-    );
-
-    try {
-      // result as defined in the profile
-      const ok = await result;
-      return new Response(`Result: ${JSON.stringify(ok, null, 2)}`);
-    } catch (error) {
-      if (error instanceof PerformError) {
-        // error as defined in the profile
-        return new Response(`Error: ${JSON.stringify(error.errorResult, null, 2)}`, { status: 400 });
-      } else {
-        // exception - should not be part of a normal flow
-        return new Response(`${error.name}\n${error.message}`, { status: 500 });
-      }
-    }
-  }
-}
-```
-
-Check full demo with [Shopify](https://github.com/superfaceai/demo-cloudflare-shopify/tree/main) use-cases and more details.
-
 ## Todos & limitations
 
 The next-gen OneSDK is still in beta stage and several features are not yet implemented. We welcome any and all feedback. The current limitations include:
 
 - OneSDK Client can't be instantiated in the global scope
-
   - We discovered Cloudflare is not allowing synchronisation between requests. We need to make sure, that two different requests are not accessing OneSDK Core at the same time. [The problem](https://zuplo.com/blog/the-script-will-never-generate-a-response-on-cloudflare-workers).
-
 - Build-time integrations only
-
   - Currently the maps (integration glue) needs to be bundled with the worker at the build time
   - Future OneSDK will be fetching the maps at the runtime to enable dynamic healing and recovery
-
-### Cloudflare Workers specific
-
-- The compiled WASM OneSDK is hitting the 1MB limit of the Cloudflare workers free tier
 
 ## License
 
