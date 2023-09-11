@@ -103,13 +103,13 @@ jobs:
         working-directory: integration/profile-validator
         run: yarn test
 
-  host-javascript:
-    name: JavaScript Host
+  host-nodejs:
+    name: Node.js Host
     needs: [core]
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: host/javascript
+        working-directory: packages/nodejs_host
     steps:
     # checkout
     - uses: actions/checkout@v3
@@ -119,19 +119,52 @@ jobs:
         registry-url: https://registry.npmjs.org/
         node-version: "18"
         cache: yarn
-        cache-dependency-path: host/javascript/yarn.lock
+        cache-dependency-path: packages/nodejs_host/yarn.lock
     - uses: actions/download-artifact@v3
       with:
         name: core-async-wasm
-        path: host/javascript/assets
+        path: packages/nodejs_host/assets
     - uses: actions/download-artifact@v3
       with:
         name: test-core-async-wasm
-        path: host/javascript/assets
+        path: packages/nodejs_host/assets
     # test and build
     - name: Install Yarn dependencies
       run: yarn install --frozen-lockfile
-    - name: Build host/javascript
+    - name: Build
+      run: yarn build
+    - name: Run tests
+      run: yarn test
+
+  host-cfw:
+    name: Cloudflare worker Host
+    needs: [core]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cloudflare_worker_host
+    steps:
+    # checkout
+    - uses: actions/checkout@v3
+    # setup
+    - uses: actions/setup-node@v3
+      with:
+        registry-url: https://registry.npmjs.org/
+        node-version: "18"
+        cache: yarn
+        cache-dependency-path: packages/cloudflare_worker_host/yarn.lock
+    - uses: actions/download-artifact@v3
+      with:
+        name: core-async-wasm
+        path: packages/cloudflare_worker_host/assets
+    - uses: actions/download-artifact@v3
+      with:
+        name: test-core-async-wasm
+        path: packages/cloudflare_worker_host/assets
+    # test and build
+    - name: Install Yarn dependencies
+      run: yarn install --frozen-lockfile
+    - name: Build
       run: yarn build
     - name: Run tests
       run: yarn test
