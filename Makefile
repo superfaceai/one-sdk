@@ -33,12 +33,12 @@ CORE_ASYNCIFY_WASM=${CORE_DIST}/core-async.wasm
 # Test core
 TEST_CORE_WASM=${CORE_DIST}/test-core.wasm
 TEST_CORE_ASYNCIFY_WASM=${CORE_DIST}/test-core-async.wasm
-# Integration
+# Core JS
 CORE_JS_ASSETS=core/core/assets/js
 CORE_JS_ASSETS_MAP_STD=${CORE_JS_ASSETS}/map_std.js
 CORE_JS_ASSETS_PROFILE_VALIDATOR=${CORE_JS_ASSETS}/profile_validator.js
-MAP_STD=integration/map-std/dist/map_std.js
-PROFILE_VALIDATOR=integration/profile-validator/dist/profile_validator.js
+MAP_STD=core_js/map-std/dist/map_std.js
+PROFILE_VALIDATOR=core_js/profile-validator/dist/profile_validator.js
 CORE_SCHEMA_ASSETS=core/core/assets/schemas
 CORE_SCHEMA_ASSETS_SECURITY_VALUES=${CORE_SCHEMA_ASSETS}/security_values.json
 CORE_SCHEMA_ASSETS_PARAMETERS_VALUES=${CORE_SCHEMA_ASSETS}/parameters_values.json
@@ -60,9 +60,9 @@ ifeq ($(CORE_PHONY),1)
 endif
 
 deps: git_hooks deps_core deps_packages
-build: build_core build_integration build_packages
+build: build_core build_core_js build_packages
 test: test_core test_packages
-clean: clean_core clean_integration
+clean: clean_core clean_core_js
 
 git_hooks:
 	cp .githooks/* .git/hooks
@@ -123,24 +123,21 @@ ${CORE_SCHEMA_ASSETS_PARAMETERS_VALUES}:
 clean_core:
 	rm -rf ${CORE_DIST} core/target
 
-#################
-## INTEGRATION ##
-#################
-build_integration: ${MAP_STD} ${PROFILE_VALIDATOR}
+#############
+## Core JS ##
+#############
+build_core_js: ${MAP_STD} ${PROFILE_VALIDATOR}
 
 ${MAP_STD}:
-	cd integration && yarn install && yarn workspace @superfaceai/map-std build
-
+	cd core_js && yarn install && yarn workspace @superfaceai/map-std build
 ${PROFILE_VALIDATOR}:
-	cd integration && yarn install && yarn workspace @superfaceai/profile-validator build
-
-test_integration:
-	cd integration && \
+	cd core_js && yarn install && yarn workspace @superfaceai/profile-validator build
+test_core_js:
+	cd core_js && \
 	yarn workspace @superfaceai/map-std test && \
 	yarn workspace @superfaceai/profile-validator test
-
-clean_integration:
-	rm -rf integration/map-std/dist integration/map-std/types integration/profile-validator/dist
+clean_core_js:
+	rm -rf core_js/map-std/dist core_js/map-std/types core_js/profile-validator/dist
 
 ##############
 ## PACKAGES ##
