@@ -5,7 +5,7 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "@superfaceai/one-sdk": "file:../../host/javascript"
+    "@superfaceai/one-sdk-cloudflare": "file:../../packages/cloudflare_worker_host"
   },
   "devDependencies": {
     "typescript": "^5.0.2",

@@ -14,10 +14,10 @@ import {
   UnexpectedError,
   WasiErrno,
   WasiError,
-  Persistence
+  Persistence,
+  corePathURL
 } from './common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
-import { corePathURL } from './common/wasm.js';
 import { fileURLToPath } from 'node:url';
 
 export { PerformError, UnexpectedError, ValidationError } from './common/index.js';

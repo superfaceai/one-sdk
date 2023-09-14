@@ -79,7 +79,7 @@ import {
   PerformError,
   UnexpectedError,
   ValidationError,
-} from '@superfaceai/one-sdk/node';
+} from '@superfaceai/one-sdk';
 
 const client = new OneClient();
 const profile = await client.getProfile('<profileName>');
