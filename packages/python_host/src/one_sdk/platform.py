@@ -1,4 +1,4 @@
-from typing import BinaryIO, List, Mapping, Optional, cast
+from typing import BinaryIO, List, Mapping, Optional, Union, cast
 
 from datetime import datetime
 from collections import defaultdict
@@ -178,10 +178,12 @@ class PythonNetwork:
 		return DeferredHttpResponse(response, exception)
 
 class PythonPersistence:
-	def __init__(self, token: Optional[str] = None, superface_api_url: Optional[str] = None, user_agent: Optional[str] = None):
+	def __init__(self, token: Optional[str] = None, superface_api_url: Union[None, str, bool] = None, user_agent: Optional[str] = None):
 		self._token = token
 		self._user_agent = user_agent
-		if superface_api_url is not None:
+		if superface_api_url is False:
+			self._insights_url = False
+		elif superface_api_url is not None:
 			self._insights_url = f"{superface_api_url}/insights/sdk_event"
 		else:
 			self._insights_url = "https://superface.ai/insights/sdk_event"
@@ -189,6 +191,9 @@ class PythonPersistence:
 		self._network = PythonNetwork()
 
 	def persist_metrics(self, events: List[str]):
+		if self._insights_url is False:
+			return
+
 		headers = {
 			"content-type": ["application/json"]
 		}
