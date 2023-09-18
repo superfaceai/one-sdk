@@ -80,7 +80,7 @@ if [ -d core/json_schemas/src/schemas ]; then
 	cp core/json_schemas/src/schemas/*.json core/core/assets/schemas
 fi
 
-cd integration
+cd core_js
 yarnpkg install
 yarnpkg workspace @superfaceai/map-std build
 cp map-std/dist/map_std.js ../core/core/assets/js

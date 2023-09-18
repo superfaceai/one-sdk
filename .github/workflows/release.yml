@@ -47,7 +47,7 @@ jobs:
           registry-url: https://registry.npmjs.org/
           node-version: "18"
           cache: yarn
-          cache-dependency-path: integration/yarn.lock
+          cache-dependency-path: core_js/yarn.lock
       - name: Cache cargo registry and build directory
         uses: actions/cache@v3
         with:
