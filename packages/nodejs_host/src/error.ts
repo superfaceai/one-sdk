@@ -1,6 +1,6 @@
 import { getSystemErrorMap } from 'node:util';
 
-import { ErrorCode, HostError, WasiErrno, WasiError } from '../common/index.js';
+import { ErrorCode, HostError, WasiErrno, WasiError } from './common/index.js';
 
 /** Builds a map from Node errno to WasiErrno by using error codes (such as EBADF) to match them */
 function systemErrnoToWasiErrnoMap(): Record<number, WasiErrno> {

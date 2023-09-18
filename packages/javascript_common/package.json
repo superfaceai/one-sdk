@@ -1,0 +1,8 @@
+{
+  "name": "@superfaceai/one-sdk-common",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/superfaceai/one-sdk",
+  "license": "MIT"
+}

@@ -2,7 +2,7 @@ import fs, { FileHandle } from 'node:fs/promises';
 import { resolve as resolvePath } from 'node:path';
 import { WASI } from 'node:wasi';
 
-import { AsyncMutex } from '../common/app.js';
+import { AsyncMutex } from './common/app.js';
 import {
   App,
   FileSystem,
@@ -14,13 +14,13 @@ import {
   UnexpectedError,
   WasiErrno,
   WasiError,
-  Persistence
-} from '../common/index.js';
+  Persistence,
+  corePathURL
+} from './common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
-import { corePathURL } from '../common/wasm.js';
 import { fileURLToPath } from 'node:url';
 
-export { PerformError, UnexpectedError, ValidationError } from '../common/index.js';
+export { PerformError, UnexpectedError, ValidationError } from './common/index.js';
 export { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 
 const ASSETS_FOLDER = 'superface';

@@ -1,13 +1,13 @@
 import { WASI } from '@cloudflare/workers-wasi';
 
-import { App, HandleMap, UnexpectedError } from '../common/index.js';
-import type { TextCoder, FileSystem, Timers, Network, WasiContext, SecurityValuesMap } from '../common/index.js';
+import { App, HandleMap, UnexpectedError } from './common/index.js';
+import type { TextCoder, FileSystem, Timers, Network, WasiContext, SecurityValuesMap } from './common/index.js';
 
-export { PerformError, UnexpectedError } from '../common/error.js';
+export { PerformError, UnexpectedError } from './common/error.js';
 
 // @ts-ignore
 import coreModule from '../assets/core-async.wasm';
-import { ErrorCode, HostError, WasiErrno, WasiError, Persistence } from '../common/index.js';
+import { ErrorCode, HostError, WasiErrno, WasiError, Persistence } from './common/index.js';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -122,7 +122,7 @@ class CfwTextStreamDecoder {
       this.decoderBuffer = lines[lines.length - 1];
       return lines.slice(0, -1);
     }
-    
+
     return [];
   }
 }
@@ -210,7 +210,7 @@ class CfwWasiCompat implements WasiContext {
 class CfwPersistence implements Persistence {
   private readonly token: string | undefined;
   private readonly insightsUrl: string;
-  
+
   constructor(
     token: string | undefined,
     superfaceApiUrl: string | undefined
@@ -313,7 +313,7 @@ class InternalClient {
     const assetsPath = this.options.assetsPath ?? 'superface'; // TODO: path join? - not sure if we are going to stick with this VFS
 
     try {
-    return await this.app.perform(
+      return await this.app.perform(
         `file://${assetsPath}/${resolvedProfile}.profile`,
         `file://${assetsPath}/${provider}.provider.json`,
         `file://${assetsPath}/${resolvedProfile}.${provider}.map.js`,

@@ -14,7 +14,7 @@ jobs:
           registry-url: https://registry.npmjs.org/
           node-version: "18"
           cache: yarn
-          cache-dependency-path: integration/yarn.lock
+          cache-dependency-path: core_js/yarn.lock
       - name: Cache cargo registry and build directory
         uses: actions/cache@v3
         with:
@@ -72,8 +72,8 @@ jobs:
           name: test-core-wasm
           path: core/dist/test-core.wasm
 
-  integration:
-    name: Integration (Map STD)
+  core_js:
+    name: Core JS (Map STD)
     runs-on: ubuntu-latest
     steps:
       # checkout
@@ -84,32 +84,32 @@ jobs:
           registry-url: https://registry.npmjs.org/
           node-version: "18"
           cache: yarn
-          cache-dependency-path: integration/yarn.lock
+          cache-dependency-path: core_js/yarn.lock
       # test and build
       - name: Install Yarn dependencies
-        working-directory: integration
+        working-directory: core_js
         run: yarn install --frozen-lockfile
       ## first we need map-std which is used in profile-validator
       - name: Build Map STD
-        working-directory: integration/map-std
+        working-directory: core_js/map-std
         run: yarn build
       - name: Test Map STD
-        working-directory: integration/map-std
+        working-directory: core_js/map-std
         run: yarn test
       - name: Build Profile validator
-        working-directory: integration/profile-validator
+        working-directory: core_js/profile-validator
         run: yarn build
       - name: Test Profile validator
-        working-directory: integration/profile-validator
+        working-directory: core_js/profile-validator
         run: yarn test
 
-  host-javascript:
-    name: JavaScript Host
+  host-nodejs:
+    name: Node.js Host
     needs: [core]
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: host/javascript
+        working-directory: packages/nodejs_host
     steps:
     # checkout
     - uses: actions/checkout@v3
@@ -119,19 +119,52 @@ jobs:
         registry-url: https://registry.npmjs.org/
         node-version: "18"
         cache: yarn
-        cache-dependency-path: host/javascript/yarn.lock
+        cache-dependency-path: packages/nodejs_host/yarn.lock
     - uses: actions/download-artifact@v3
       with:
         name: core-async-wasm
-        path: host/javascript/assets
+        path: packages/nodejs_host/assets
     - uses: actions/download-artifact@v3
       with:
         name: test-core-async-wasm
-        path: host/javascript/assets
+        path: packages/nodejs_host/assets
     # test and build
     - name: Install Yarn dependencies
       run: yarn install --frozen-lockfile
-    - name: Build host/javascript
+    - name: Build
+      run: yarn build
+    - name: Run tests
+      run: yarn test
+
+  host-cfw:
+    name: Cloudflare worker Host
+    needs: [core]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cloudflare_worker_host
+    steps:
+    # checkout
+    - uses: actions/checkout@v3
+    # setup
+    - uses: actions/setup-node@v3
+      with:
+        registry-url: https://registry.npmjs.org/
+        node-version: "18"
+        cache: yarn
+        cache-dependency-path: packages/cloudflare_worker_host/yarn.lock
+    - uses: actions/download-artifact@v3
+      with:
+        name: core-async-wasm
+        path: packages/cloudflare_worker_host/assets
+    - uses: actions/download-artifact@v3
+      with:
+        name: test-core-async-wasm
+        path: packages/cloudflare_worker_host/assets
+    # test and build
+    - name: Install Yarn dependencies
+      run: yarn install --frozen-lockfile
+    - name: Build
       run: yarn build
     - name: Run tests
       run: yarn test
@@ -142,7 +175,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: host/python
+        working-directory: packages/python_host
     steps:
     # checkout
     - uses: actions/checkout@v3
@@ -154,11 +187,11 @@ jobs:
     - uses: actions/download-artifact@v3
       with:
         name: core-wasm
-        path: host/python/src/one_sdk/assets
+        path: packages/python_host/src/one_sdk/assets
     - uses: actions/download-artifact@v3
       with:
         name: test-core-wasm
-        path: host/python/src/one_sdk/assets
+        path: packages/python_host/src/one_sdk/assets
     # test and build
     - name: Install dependencies and package locally
       run: python -m pip install .

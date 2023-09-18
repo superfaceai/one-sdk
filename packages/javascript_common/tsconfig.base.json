@@ -15,17 +15,8 @@
     "strict": true,
     "strictPropertyInitialization": true,
     "target": "ES2020",
-    "typeRoots": [
-      "node_modules/@types"
-    ],
     "module": "ES2022",
     "moduleResolution": "bundler",
-    "rootDir": "./src",
-    "outDir": "./",
-    "declaration": true,
-  },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": []
+    "declaration": true
+  }
 }

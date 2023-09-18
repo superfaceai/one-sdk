@@ -22,14 +22,15 @@ on:
         - beta
         - rc
         - stable
-      host:
-        description: "Which host package to release"
+      package:
+        description: "Which package to release"
         required: true
         type: choice
         options:
-        - js
         - python
-        - all
+        - nodejs
+        - cloudflare_worker
+        - hosts
 
 jobs:
   core:
@@ -87,13 +88,13 @@ jobs:
           path: core/dist/core.wasm
       # TODO: Changelog update create tag and GitHub release
 
-  host-javascript-prepare:
-    name: Prepare JavaScript Host
+  host-nodejs-prepare:
+    name: Prepare Node.js Host
     needs: [core, host-python-prepare]
     # when host-python is skipped this job should still run if inputs allow
     # so we need to include a status check, then manually ensure core build didn't fail
     # (see https://docs.github.com/en/actions/learn-github-actions/expressions#status-check-functions)
-    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.host == 'js' || inputs.host == 'all') }}
+    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.package == 'nodejs' || inputs.package == 'hosts') }}
     runs-on: ubuntu-latest
     outputs:
       RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
@@ -114,27 +115,27 @@ jobs:
           registry-url: https://registry.npmjs.org/
           node-version: "18"
           cache: yarn
-          cache-dependency-path: host/javascript/yarn.lock
+          cache-dependency-path: packages/nodejs_host/yarn.lock
       # Release version
       - name: Resolve release level
         id: release-level
         run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
       - name: Resolve release version
         id: release-version
-        run: scripts/release-version.sh ./host/javascript/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+        run: scripts/release-version.sh ./packages/nodejs_host/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
       # Update version
       - name: Update version in package.json
-        working-directory: host/javascript
+        working-directory: packages/nodejs_host
         run: yarn version --no-git-tag-version --new-version ${{ steps.release-version.outputs.RELEASE_VERSION }}
       # Build
       - uses: actions/download-artifact@v3
         with:
           name: core-async-wasm
-          path: host/javascript/assets
+          path: packages/nodejs_host/assets
       - name: Copy LICENSE
-        run: cp LICENSE host/javascript/LICENSE
-      - name: Build host/javascript
-        working-directory: host/javascript
+        run: cp LICENSE packages/nodejs_host/LICENSE
+      - name: Build
+        working-directory: packages/nodejs_host
         run: |
           yarn install --frozen-lockfile
           yarn build
@@ -143,7 +144,7 @@ jobs:
         uses: superfaceai/release-changelog-action@v1
         if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
         with:
-          path-to-changelog: host/javascript/CHANGELOG.md
+          path-to-changelog: packages/nodejs_host/CHANGELOG.md
           version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
           operation: release
       # Commit release changes
@@ -152,13 +153,13 @@ jobs:
           git config --global user.email "bot@superface.ai"
           git config --global user.name "GitHub Actions release workflow"
       - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
-        working-directory: host/javascript
+        working-directory: packages/nodejs_host
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add package.json VERSION CHANGELOG.md
-          git commit -m "chore: release host/javascript ${{ steps.release-version.outputs.RELEASE_VERSION }}"
-          git tag "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          git commit -m "chore: release packages/nodejs_host ${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          git tag "nodejs-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
           git push origin
           git push origin --tags
       # Create GitHub Release
@@ -177,21 +178,21 @@ jobs:
         id: get-changelog
         uses: superfaceai/release-changelog-action@v1
         with:
-          path-to-changelog: host/javascript/CHANGELOG.md
+          path-to-changelog: packages/nodejs_host/CHANGELOG.md
           version: ${{ steps.get-changelog-version.outputs.VERSION }}
           operation: read
       - name: Update GitHub release documentation
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "js-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          tag_name: "nodejs-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
           body: ${{ steps.get-changelog.outputs.changelog }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  host-javascript-publish:
-    name: Publish JavaScript Host
-    needs: [core, host-javascript-prepare]
-    if: ${{ !cancelled() && needs.host-javascript-prepare.result == 'success' }}
+  host-nodejs-publish:
+    name: Publish Node.js Host
+    needs: [core, host-nodejs-prepare]
+    if: ${{ !cancelled() && needs.host-nodejs-prepare.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       # Setup
@@ -203,30 +204,166 @@ jobs:
           registry-url: https://registry.npmjs.org/
           node-version: "18"
           cache: yarn
-          cache-dependency-path: host/javascript/yarn.lock
+          cache-dependency-path: packages/nodejs_host/yarn.lock
       # Build
       - uses: actions/download-artifact@v3
         with:
           name: core-async-wasm
-          path: host/javascript/assets
+          path: packages/nodejs_host/assets
       - name: Copy LICENSE
-        run: cp LICENSE host/javascript/LICENSE
-      - name: Build host/javascript
-        working-directory: host/javascript
+        run: cp LICENSE packages/nodejs_host/LICENSE
+      - name: Build
+        working-directory: packages/nodejs_host
         run: |
           yarn install --frozen-lockfile
           yarn build
       # Publish
       - name: Publish to NPM registry
-        working-directory: host/javascript
+        working-directory: packages/nodejs_host
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
-        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.host-javascript-prepare.outputs.RELEASE_VERSION }} --tag ${{ needs.host-javascript-prepare.outputs.RELEASE_TAG }}
+        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.host-nodejs-prepare.outputs.RELEASE_VERSION }} --tag ${{ needs.host-nodejs-prepare.outputs.RELEASE_TAG }}
+
+  host-cfw-prepare:
+    name: Prepare Cloudflare worker Host
+    needs: [core, host-nodejs-prepare]
+    # when host-python is skipped this job should still run if inputs allow
+    # so we need to include a status check, then manually ensure core build didn't fail
+    # (see https://docs.github.com/en/actions/learn-github-actions/expressions#status-check-functions)
+    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.package == 'cloudflare_worker' || inputs.package == 'hosts') }}
+    runs-on: ubuntu-latest
+    outputs:
+      RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+      RELEASE_LEVEL: ${{ steps.release-level.outputs.RELEASE_LEVEL }}
+      RELEASE_TAG: ${{ steps.release-level.outputs.RELEASE_TAG }}
+      RELEASE_PREID: ${{ steps.release-level.outputs.RELEASE_PREID }}
+    steps:
+      # Setup
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Git configuration
+        run: |
+          git config --global user.email "bot@superface.ai"
+          git config --global user.name "GitHub Actions release workflow"
+      - uses: actions/setup-node@v3
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: packages/cloudflare_worker_host/yarn.lock
+      # Release version
+      - name: Resolve release level
+        id: release-level
+        run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
+      - name: Resolve release version
+        id: release-version
+        run: scripts/release-version.sh ./packages/cloudflare_worker_host/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+      # Update version
+      - name: Update version in package.json
+        working-directory: packages/cloudflare_worker_host
+        run: yarn version --no-git-tag-version --new-version ${{ steps.release-version.outputs.RELEASE_VERSION }}
+      # Build
+      - uses: actions/download-artifact@v3
+        with:
+          name: core-async-wasm
+          path: packages/cloudflare_worker_host/assets
+      - name: Copy LICENSE
+        run: cp LICENSE packages/cloudflare_worker_host/LICENSE
+      - name: Build
+        working-directory: packages/cloudflare_worker_host
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      # Changelog
+      - name: Update changelog
+        uses: superfaceai/release-changelog-action@v1
+        if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+        with:
+          path-to-changelog: packages/cloudflare_worker_host/CHANGELOG.md
+          version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+          operation: release
+      # Commit release changes
+      - name: Git configuration
+        run: |
+          git config --global user.email "bot@superface.ai"
+          git config --global user.name "GitHub Actions release workflow"
+      - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
+        working-directory: packages/cloudflare_worker_host
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add package.json VERSION CHANGELOG.md
+          git commit -m "chore: release packages/cloudflare_worker_host ${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          git tag "cfw-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          git push origin
+          git push origin --tags
+      # Create GitHub Release
+      - name: Version for Changelog entry
+        id: get-changelog-version
+        env:
+          RELEASE_TAG: ${{ steps.release-level.outputs.RELEASE_TAG }}
+          VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        run: |
+          if [ "$RELEASE_TAG" = "latest" ]; then
+            echo VERSION="$VERSION"
+          else
+            echo VERSION="" # refers to unreleased section
+          fi
+      - name: Get release version changelog
+        id: get-changelog
+        uses: superfaceai/release-changelog-action@v1
+        with:
+          path-to-changelog: packages/cloudflare_worker_host/CHANGELOG.md
+          version: ${{ steps.get-changelog-version.outputs.VERSION }}
+          operation: read
+      - name: Update GitHub release documentation
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "cfw-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          body: ${{ steps.get-changelog.outputs.changelog }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  host-cfw-publish:
+    name: Publish Cloudflare worker Host
+    needs: [core, host-cfw-prepare]
+    if: ${{ !cancelled() && needs.host-cfw-prepare.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      # Setup
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v3
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: packages/cloudflare_worker_host/yarn.lock
+      # Build
+      - uses: actions/download-artifact@v3
+        with:
+          name: core-async-wasm
+          path: packages/cloudflare_worker_host/assets
+      - name: Copy LICENSE
+        run: cp LICENSE packages/cloudflare_worker_host/LICENSE
+      - name: Build
+        working-directory: packages/cloudflare_worker_host
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      # Publish
+      - name: Publish to NPM registry
+        working-directory: packages/cloudflare_worker_host
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
+        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.host-cfw-prepare.outputs.RELEASE_VERSION }} --tag ${{ needs.host-cfw-prepare.outputs.RELEASE_TAG }}
 
   host-python-prepare:
     name: Prepare Python Host
     needs: [core]
-    if: ${{ inputs.host == 'python' || inputs.host == 'all' }}
+    if: ${{ inputs.package == 'python' || inputs.package == 'hosts' }}
     runs-on: ubuntu-latest
     steps:
       # Setup
@@ -245,25 +382,25 @@ jobs:
         run: scripts/release-level.sh ${{ inputs.release-level }} ${{ inputs.release-kind }} >>$GITHUB_OUTPUT
       - name: Resolve release version
         id: release-version
-        run: scripts/release-version.sh ./host/python/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+        run: scripts/release-version.sh ./packages/python_host/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
       # Update version
       - name: Update version in pyproject
-        working-directory: host/python
+        working-directory: packages/python_host
         run: toml set --toml-path pyproject.toml project.version ${{ steps.release-version.outputs.RELEASE_VERSION }}
       # Build
       - uses: actions/download-artifact@v3
         with:
           name: core-wasm
-          path: host/python/src/one_sdk/assets
-      - name: Build host/python
-        working-directory: host/python
+          path: packages/python_host/src/one_sdk/assets
+      - name: Build packages/python_host
+        working-directory: packages/python_host
         run: python -m build
       # Changelog
       - name: Update changelog
         uses: superfaceai/release-changelog-action@v1
         if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
         with:
-          path-to-changelog: host/python/CHANGELOG.md
+          path-to-changelog: packages/python_host/CHANGELOG.md
           version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
           operation: release
       # Commit release changes
@@ -272,12 +409,12 @@ jobs:
           git config --global user.email "bot@superface.ai"
           git config --global user.name "GitHub Actions release workflow"
       - name: Commit pyproject.toml, VERSION, CHANGELOG.md and create git tag
-        working-directory: host/python
+        working-directory: packages/python_host
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add pyproject.toml VERSION CHANGELOG.md
-          git commit -m "chore: release host/python ${{ steps.release-version.outputs.RELEASE_VERSION }}"
+          git commit -m "chore: release packages/python_host ${{ steps.release-version.outputs.RELEASE_VERSION }}"
           git tag "python-v${{ steps.release-version.outputs.RELEASE_VERSION }}"
           git push origin
           git push origin --tags
@@ -297,7 +434,7 @@ jobs:
         id: get-changelog
         uses: superfaceai/release-changelog-action@v1
         with:
-          path-to-changelog: host/python/CHANGELOG.md
+          path-to-changelog: packages/python_host/CHANGELOG.md
           version: ${{ steps.get-changelog-version.outputs.VERSION }}
           operation: read
       - name: Update GitHub release documentation
@@ -328,24 +465,24 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: core-wasm
-          path: host/python/src/one_sdk/assets
+          path: packages/python_host/src/one_sdk/assets
       - name: Copy LICENSE
-        run: cp LICENSE host/python/LICENSE
-      - name: Build host/python
-        working-directory: host/python
+        run: cp LICENSE packages/python_host/LICENSE
+      - name: Build packages/python_host
+        working-directory: packages/python_host
         run: python -m build
       # Publish
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: host/python/dist
+          packages-dir: packages/python_host/dist
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
  
   trigger_daily:
     name: Trigger daily build
-    needs: [host-javascript-publish, host-python-publish]
-    if: ${{ !cancelled() && (needs.host-javascript-publish.result == 'success' || needs.host-python-publish.result == 'success') }}
+    needs: [host-nodejs-publish, host-python-publish]
+    if: ${{ !cancelled() && (needs.host-nodejs-publish.result == 'success' || needs.host-python-publish.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Daily Test

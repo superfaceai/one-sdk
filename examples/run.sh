@@ -10,16 +10,16 @@ case $1 in
 	node)
 		if [ "$MAKE_FLAGS" != nomake ]; then
 			cd "$base/.."
-			make build_host_javascript $MAKE_FLAGS
+			make build_nodejs_host $MAKE_FLAGS
 		fi
 		cd "$base"
-		node --no-warnings --experimental-wasi-unstable-preview1 ./node_js/index.mjs
+		node --no-warnings --experimental-wasi-unstable-preview1 ./nodejs/index.mjs
 	;;
 
 	cloudflare)
 		if [ "$MAKE_FLAGS" != nomake ]; then
 			cd "$base/.."
-			make build_host_javascript $MAKE_FLAGS
+			make build_cfw_host $MAKE_FLAGS
 		fi
 		cd "$base/cloudflare_worker"
 		yarn install
@@ -29,10 +29,10 @@ case $1 in
 	python)
 		if [ "$MAKE_FLAGS" != nomake ]; then
 			cd "$base/.."
-			make build_host_python $MAKE_FLAGS
+			make build_python_host $MAKE_FLAGS
 		fi
 		cd "$base"
-		source ../host/python/venv/bin/activate
+		source ../packages/python_host/venv/bin/activate
 		python3 ./python
 	;;
 

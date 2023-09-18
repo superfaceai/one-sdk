@@ -1,4 +1,4 @@
-import { OneClient, PerformError } from '@superfaceai/one-sdk/cloudflare';
+import { OneClient, PerformError } from '@superfaceai/one-sdk-cloudflare';
 
 import { COMLINK_IMPORTS } from './comlinks';
 

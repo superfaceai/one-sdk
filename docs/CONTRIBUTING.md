@@ -68,24 +68,12 @@ The core can also be built using Docker - see [scripts/build-a-core](../scripts/
 ```shell
 .
   Makefile # makefile with targets for development and releases/CI
-  host/
-    python/
-      __main__.py
-      [python files]
-    js/
-      package.json
-      tsconfig.json
-      assets/ # contains core wasm
-      src/
-        common/ # common code shared between JS hosts
-          [ts files]
-        node/ # NodeJS host
-          [ts files]
-        cloudflare/ # Cloudflare workers host
-          [ts files]
+  packages/
+    python_host/ # Python host
+    nodejs/ # NodeJS host
+    cloudflare_worker_host/ # Cloudflare workers host
+    javascript_common/ # shared code for JavaScript based hosts
   core/
-    .cargo/
-      config.toml
     Cargo.toml # workspace
     wasi-sdk-*/ # not in git, needed for building quickjs
     core/ # main crate, builds into core.wasm
@@ -107,17 +95,16 @@ The core can also be built using Docker - see [scripts/build-a-core](../scripts/
       src/
         main.rs # script translating YAML to JSON
         schemas/ # actual JSON schemas
+      test/ # tests for JSON Schema
     comlink_language/ # Comlink language tooling
       Cargo.toml
       src/
         parser/
-  integration/ # any tooling for integration development
+  core_js/ # any tooling for integration development
     package.json # for yarn workspace configuration
     core-ffi/ # TypeScript declarations for core_to_map imports
     map-std/ # core_to_map stdlib wrappers TypeScript source
-      src/
     profile-validator/ # profile validator extracted from TS SDK
-      src/
   examples/
     run.sh # script to run examples
     cloudflare_worker/ # example of a cloudflare worker
@@ -125,7 +112,7 @@ The core can also be built using Docker - see [scripts/build-a-core](../scripts/
       package.json # pulls in map-std types
       src/
         [.map.js files]
-    node_js/ # example of a node.js application
+    nodejs/ # example of a node.js application
     python/ # example of a python application
 ```
 
