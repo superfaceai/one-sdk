@@ -30,7 +30,7 @@ on:
         - python
         - nodejs
         - cloudflare_worker
-        - all
+        - hosts
 
 jobs:
   core:
@@ -94,7 +94,7 @@ jobs:
     # when host-python is skipped this job should still run if inputs allow
     # so we need to include a status check, then manually ensure core build didn't fail
     # (see https://docs.github.com/en/actions/learn-github-actions/expressions#status-check-functions)
-    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.package == 'nodejs' || inputs.package == 'all') }}
+    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.package == 'nodejs' || inputs.package == 'hosts') }}
     runs-on: ubuntu-latest
     outputs:
       RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
@@ -230,7 +230,7 @@ jobs:
     # when host-python is skipped this job should still run if inputs allow
     # so we need to include a status check, then manually ensure core build didn't fail
     # (see https://docs.github.com/en/actions/learn-github-actions/expressions#status-check-functions)
-    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.package == 'cloudflare_worker' || inputs.package == 'all') }}
+    if: ${{ !cancelled() && needs.core.result == 'success' && (inputs.package == 'cloudflare_worker' || inputs.package == 'hosts') }}
     runs-on: ubuntu-latest
     outputs:
       RELEASE_VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
@@ -363,7 +363,7 @@ jobs:
   host-python-prepare:
     name: Prepare Python Host
     needs: [core]
-    if: ${{ inputs.package == 'python' || inputs.package == 'all' }}
+    if: ${{ inputs.package == 'python' || inputs.package == 'hosts' }}
     runs-on: ubuntu-latest
     steps:
       # Setup
