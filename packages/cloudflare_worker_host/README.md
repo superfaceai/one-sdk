@@ -74,11 +74,14 @@ The final structure should look like this:
 The main difference compared to Node.js is a need to use a virtual filesystem to load the Comlink files. It is needed due to the deployment process, where all files need to be bundled together.
 
 ```js
-import { OneClient, PerformError, UnexpectedError } from '@superfaceai/one-sdk-cloudflare';
+import {
+  OneClient,
+  PerformError,
+} from '@superfaceai/one-sdk-cloudflare';
 
-import profileFile from '../superface/[scope.]<name>.profile';
-import mapFile from '../superface/[scope.]<name>.<providerName>.map.js';
-import providerFile from '../superface/<providerName>.provider.json';
+import profileFile from './superface/[scope.]<name>.profile';
+import mapFile from './superface/[scope.]<name>.<providerName>.map.js';
+import providerFile from './superface/<providerName>.provider.json';
 
 export default {
   async fetch(request, env, ctx) {
@@ -99,7 +102,9 @@ export default {
     const usecase = profile.getUseCase('<usecaseName>'); // use case name as defined in the profile
     const result = usecase.perform(
       // Input parameters as defined in profile:
-      '<key>': '<value>'
+      {
+        '<key>': '<value>',
+      },
       // provider configuration
       {
         provider: '<providerName>', // provider name as defined in *.provider.json
@@ -131,6 +136,21 @@ export default {
     }
   }
 }
+```
+
+And Wrangler configuration to properly load all files:
+
+```
+name = "example"
+main = "index.ts"
+compatibility_date = "2023-04-18"
+
+workers_dev = true
+
+rules = [
+  { type = "Data", globs = ["**/*.map.js", "**/*.profile", "**/*.provider.json"], fallthrough = true }
+]
+
 ```
 
 Check full demo with [Shopify](https://github.com/superfaceai/demo-cloudflare-shopify/tree/main) use-cases and more details.
