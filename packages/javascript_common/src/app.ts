@@ -1,8 +1,7 @@
 import { Asyncify } from './asyncify.js';
-import { HandleMap } from './handle_map.js';
-
 import { PerformError, UnexpectedError, UninitializedError, ValidationError, WasiErrno, WasiError } from './error.js';
-import { AppContext, FileSystem, Network, TextCoder, Timers, WasiContext, Persistence } from './interfaces.js';
+import { HandleMap } from './handle_map.js';
+import { AppContext, FileSystem, Network, Persistence, TextCoder, Timers, WasiContext } from './interfaces.js';
 import { SecurityValuesMap } from './security.js';
 import * as sf_host from './sf_host.js';
 
@@ -164,9 +163,11 @@ export class App implements AppContext {
     handle: number; // timeout handle
   };
 
+  private readonly userAgent;
+
   constructor(
     dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers, persistence: Persistence },
-    options: { metricsTimeout?: number }
+    options: { userAgent?: string, metricsTimeout?: number }
   ) {
     this.textCoder = dependencies.textCoder;
     this.network = dependencies.network;
@@ -175,6 +176,7 @@ export class App implements AppContext {
     this.persistence = dependencies.persistence;
     this.streams = new HandleMap();
     this.requests = new HandleMap();
+    this.userAgent = options?.userAgent;
     this.metricsState = {
       timeout: options.metricsTimeout ?? 1000,
       handle: 0
