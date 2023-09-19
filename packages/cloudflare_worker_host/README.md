@@ -10,7 +10,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/superfaceai/one-sdk/ci_cd.yml)](https://github.com/superfaceai/one-sdk/actions/workflows/ci_cd.yml)
 [![license](https://img.shields.io/npm/l/@superfaceai/one-sdk)](LICENSE)
 [![GitHub Discussions](https://img.shields.io/github/discussions/superfaceai/.github?logo=github&logoColor=fff)](https://github.com/orgs/superfaceai/discussions)
-[![npm](https://img.shields.io/npm/v/@superfaceai/one-sdk/beta.svg)](https://www.npmjs.com/package/@superfaceai/one-sdk-cloudflare/v/beta)
+[![npm](https://img.shields.io/npm/v/@superfaceai/one-sdk-cloudflare/beta.svg)](https://www.npmjs.com/package/@superfaceai/one-sdk-cloudflare/v/beta)
 
 `OneClient` is a universal API client which provides an unparalleled developer experience for every HTTP API. It enhances resiliency to API changes, and comes with built-in integration monitoring and provider failover.
 
