@@ -21,12 +21,14 @@ use super::HttpRequest;
 
 mod stream;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct MapStdImplConfig {
     /// Whether to log http transactions.
     pub log_http_transactions: bool,
     /// Maximum number of bytes to peek from http transaction bodies when logging them.
     pub log_http_transactions_body_max_size: usize,
+    /// Default OneSDK user-agent
+    pub user_agent: String,
 }
 
 pub struct MapStdImpl {
@@ -90,6 +92,15 @@ impl MapStdUnstable for MapStdImpl {
     fn http_call(&mut self, mut params: MapHttpRequest) -> Result<Handle, MapHttpCallError> {
         let security_map = self.security.as_ref().unwrap();
         resolve_security(security_map, &mut params)?;
+
+        // IDEA: add profile, provider info as well?
+        params
+            .headers
+            .entry("user-agent".to_string())
+            .or_insert(vec![format!(
+                "{} MapStd/unstable",
+                self.config.user_agent.clone()
+            )]);
 
         // We want to log the transaction below together with the handle, but we want to log it even if it fails
         // in which case it doesn't get a handle, so we play around with a result here

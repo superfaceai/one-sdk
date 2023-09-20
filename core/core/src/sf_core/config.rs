@@ -16,6 +16,7 @@ pub struct CoreConfiguration {
     pub developer_dump_buffer_size: usize,
     /// URL to document registry from which to download documents.
     pub registry_url: Url,
+    pub user_agent: String,
     pub user_log: bool,
     pub user_log_http_body_max_size: usize,
     pub developer_log: String,
@@ -63,6 +64,9 @@ impl CoreConfiguration {
         if let Some(v) = get_env!("ONESDK_DEV_LOG", String "string")? {
             base.developer_log = v;
         }
+        if let Some(v) = get_env!("ONESDK_DEFAULT_USERAGENT", String "string")? {
+            base.user_agent = v;
+        }
 
         Ok(base)
     }
@@ -73,6 +77,7 @@ impl Default for CoreConfiguration {
             cache_duration: Duration::from_secs(60 * 60),
             developer_dump_buffer_size: 1024 * 1024, // 1 MiB
             registry_url: Url::parse("http://localhost:8321").unwrap(),
+            user_agent: "one-sdk/0.0.0 (WebAssembly)".to_string(), // TODO: once we version core add it here
             user_log: false,
             user_log_http_body_max_size: 1024 * 1024, // 1 MiB
             developer_log: "off".to_string(),

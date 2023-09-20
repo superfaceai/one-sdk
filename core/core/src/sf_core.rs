@@ -84,6 +84,7 @@ impl OneClientCore {
             mapstd_config: MapStdImplConfig {
                 log_http_transactions: config.user_log,
                 log_http_transactions_body_max_size: config.user_log_http_body_max_size,
+                user_agent: config.user_agent.clone(),
             },
         })
     }
@@ -272,7 +273,9 @@ impl OneClientCore {
         // start interpreting stdlib and then map code
         // TODO: should this be here or should we hold an instance of the interpreter in global state
         // and clear per-perform data each time it is called?
-        let mut interpreter = try_metrics!(JsInterpreter::new(MapStdImpl::new(self.mapstd_config)));
+        let mut interpreter = try_metrics!(JsInterpreter::new(MapStdImpl::new(
+            self.mapstd_config.to_owned()
+        )));
         // here we allow runtime stdlib replacement for development purposes
         // this might be removed in the future
         try_metrics!(match std::env::var("ONESDK_REPLACE_MAP_STDLIB").ok() {
