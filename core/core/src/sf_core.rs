@@ -68,9 +68,21 @@ impl OneClientCore {
         crate::observability::metrics::log_metric!(Init);
 
         Ok(Self {
-            profile_cache: DocumentCache::new(config.cache_duration, config.registry_url.clone()),
-            provider_cache: DocumentCache::new(config.cache_duration, config.registry_url.clone()),
-            map_cache: DocumentCache::new(config.cache_duration, config.registry_url.clone()),
+            profile_cache: DocumentCache::new(
+                config.cache_duration,
+                config.registry_url.clone(),
+                Some(config.user_agent.clone()),
+            ),
+            provider_cache: DocumentCache::new(
+                config.cache_duration,
+                config.registry_url.clone(),
+                Some(config.user_agent.clone()),
+            ),
+            map_cache: DocumentCache::new(
+                config.cache_duration,
+                config.registry_url.clone(),
+                Some(config.user_agent.clone()),
+            ),
             security_validator: JsonSchemaValidator::new(
                 &serde_json::Value::from_str(&OneClientCore::SECURITY_VALUES_JSON_SCHEMA)
                     .expect("Valid JSON"),
