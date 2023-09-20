@@ -133,14 +133,17 @@ class NodeNetwork implements Network {
 }
 
 class NodePersistence implements Persistence {
-  private readonly token: string | undefined;
   private readonly insightsUrl: string;
+  private readonly token: string | undefined;
+  private readonly userAgent: string | undefined;
 
   constructor(
     token: string | undefined,
-    superfaceApiUrl: string | undefined
+    superfaceApiUrl: string | undefined,
+    userAgent: string | undefined
   ) {
     this.token = token;
+    this.userAgent = userAgent;
     if (superfaceApiUrl !== undefined) {
       this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
     } else {
@@ -150,10 +153,13 @@ class NodePersistence implements Persistence {
 
   async persistMetrics(events: string[]): Promise<void> {
     const headers: Record<string, string> = {
-      'content-type': 'application/json'
+      'content-type': 'application/json',
     };
     if (this.token !== undefined) {
       headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
+    }
+    if (this.userAgent !== undefined) {
+      headers['user-agent'] = this.userAgent;
     }
 
     await fetch(
@@ -216,7 +222,7 @@ class InternalClient {
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers(),
-      persistence: new NodePersistence(options.token, options.superfaceApiUrl)
+      persistence: new NodePersistence(options.token, options.superfaceApiUrl, this.userAgent)
     }, { metricsTimeout: 1000, userAgent: this.userAgent });
   }
 
