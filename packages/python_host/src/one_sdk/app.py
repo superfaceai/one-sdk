@@ -1,3 +1,8 @@
+import importlib.metadata as metadata
+import os
+import platform
+import sys
+
 from typing import Any, BinaryIO, Callable, List, Mapping, Optional, cast
 
 import struct
@@ -80,11 +85,11 @@ class WasiApp:
 		sf_host_link(self._linker, self)
 
 		wasi = WasiConfig()
-		wasi.inherit_env()
 		wasi.inherit_stdout()
 		wasi.inherit_stderr()
-		self._store.set_wasi(wasi)
+		wasi.env = [*os.environ.items(), ('ONESDK_DEFAULT_USERAGENT', WasiApp.user_agent())]
 		
+		self._store.set_wasi(wasi)
 		self._streams: HandleMap[BinaryIO] = HandleMap()
 		self._requests: HandleMap[DeferredHttpResponse] = HandleMap()
 
@@ -352,3 +357,10 @@ class WasiApp:
 		
 		if len(events) > 0:
 			self._persistence.persist_developer_dump(events)
+
+	def user_agent():
+		sys_platform = platform.system()
+		sys_arch = platform.architecture()[0]
+		python_version = sys.version.split()[0]
+
+		return f"one-sdk-python/{metadata.version('one-sdk')} ({sys_platform} {sys_arch}) python/{python_version}"

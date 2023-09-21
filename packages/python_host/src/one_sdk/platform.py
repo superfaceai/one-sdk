@@ -178,8 +178,9 @@ class PythonNetwork:
 		return DeferredHttpResponse(response, exception)
 
 class PythonPersistence:
-	def __init__(self, token: Optional[str] = None, superface_api_url: Optional[str] = None):
+	def __init__(self, token: Optional[str] = None, superface_api_url: Optional[str] = None, user_agent: Optional[str] = None):
 		self._token = token
+		self._user_agent = user_agent
 		if superface_api_url is not None:
 			self._insights_url = f"{superface_api_url}/insights/sdk_event"
 		else:
@@ -193,6 +194,8 @@ class PythonPersistence:
 		}
 		if self._token is not None:
 			headers["authorization"] = [f"SUPERFACE-SDK-TOKEN {self._token}"]
+		if self._user_agent is not None:
+			headers["user-agent"] = [self._user_agent]
 		
 		response = self._network.fetch(
 			f"{self._insights_url}/batch",

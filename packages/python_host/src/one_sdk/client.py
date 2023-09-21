@@ -24,7 +24,7 @@ class InternalClient:
 		self._app = WasiApp(
 			PythonFilesystem(),
 			PythonNetwork(),
-			PythonPersistence(token, superface_api_url)
+			PythonPersistence(token, superface_api_url, WasiApp.user_agent())
 		)
 
 	def resolve_profile_url(self, profile: str) -> str:
