@@ -1,13 +1,14 @@
 import { WASI } from '@cloudflare/workers-wasi';
 
 import { App, HandleMap, UnexpectedError } from './common/index.js';
-import type { TextCoder, FileSystem, Timers, Network, WasiContext, SecurityValuesMap } from './common/index.js';
-
-export { PerformError, UnexpectedError } from './common/error.js';
-
 // @ts-ignore
 import coreModule from '../assets/core-async.wasm';
-import { ErrorCode, HostError, WasiErrno, WasiError, Persistence } from './common/index.js';
+import type { FileSystem, Network, SecurityValuesMap, TextCoder, Timers, WasiContext } from './common/index.js';
+import { ErrorCode, HostError, Persistence, WasiErrno, WasiError } from './common/index.js';
+
+const pkg = require('../package.json');
+
+export { PerformError, UnexpectedError } from './common/error.js';
 
 class CfwTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
@@ -210,12 +211,15 @@ class CfwWasiCompat implements WasiContext {
 class CfwPersistence implements Persistence {
   private readonly token: string | undefined;
   private readonly insightsUrl: string;
+  private readonly userAgent: string | undefined;
 
   constructor(
     token: string | undefined,
-    superfaceApiUrl: string | undefined
+    superfaceApiUrl: string | undefined,
+    userAgent: string | undefined
   ) {
     this.token = token;
+    this.userAgent = userAgent;
     if (superfaceApiUrl !== undefined) {
       this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
     } else {
@@ -232,6 +236,9 @@ class CfwPersistence implements Persistence {
     };
     if (this.token !== undefined) {
       headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
+    }
+    if (this.userAgent !== undefined) {
+      headers['user-agent'] = this.userAgent;
     }
 
     await fetch(
@@ -275,7 +282,7 @@ class InternalClient {
       textCoder: new CfwTextCoder(),
       timers: new CfwTimers(),
       network: new CfwNetwork(),
-      persistence: new CfwPersistence(options.token, options.superfaceApiUrl)
+      persistence: new CfwPersistence(options.token, options.superfaceApiUrl, this.userAgent)
     }, { metricsTimeout: 0 });
   }
 
@@ -285,9 +292,14 @@ class InternalClient {
       return;
     }
 
+    console.log('INIT useragent', this.userAgent);
+
     await this.app.loadCoreModule(coreModule);
     const wasi = new WASI({
-      env: this.options.env
+      env: {
+        ONESDK_DEFAULT_USERAGENT: this.userAgent,
+        ...this.options.env
+      }
     });
     await this.app.init(new CfwWasiCompat(wasi));
 
@@ -333,6 +345,10 @@ class InternalClient {
 
   public async sendMetrics(): Promise<void> {
     return this.app.sendMetrics();
+  }
+
+  private get userAgent(): string {
+    return `one-sdk-cloudflare/${pkg.version}`;
   }
 }
 
