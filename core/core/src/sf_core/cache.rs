@@ -8,7 +8,7 @@ use url::Url;
 
 use sf_std::{
     unstable::{http::HttpCallError, provider::ProviderJson},
-    HeadersMultiMap,
+    HeaderName, HeadersMultiMap,
 };
 
 use super::{digest, Fs, HttpRequest};
@@ -205,7 +205,7 @@ impl<E> DocumentCache<E> {
     ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
         let mut headers = HeadersMultiMap::new();
         if let Some(user_agent) = user_agent {
-            headers.insert("user-agent".to_string(), vec![user_agent.to_string()]);
+            headers.insert(HeaderName::from("user-agent"), vec![user_agent.to_string()]);
         }
 
         let mut response = HttpRequest::fetch("GET", url, &headers, &Default::default(), None)

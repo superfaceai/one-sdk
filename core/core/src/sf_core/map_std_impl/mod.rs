@@ -13,6 +13,7 @@ use map_std::{
 use sf_std::{
     abi::Handle,
     fmt::{HttpRequestFmt, HttpResponseFmt},
+    HeaderName,
 };
 
 use self::stream::PeekableStream;
@@ -96,7 +97,7 @@ impl MapStdUnstable for MapStdImpl {
         // IDEA: add profile, provider info as well?
         params
             .headers
-            .entry("user-agent".to_string())
+            .entry(HeaderName::from("user-agent"))
             .or_insert(vec![format!(
                 "{} MapStd/unstable",
                 self.config.user_agent.clone()

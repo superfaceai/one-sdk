@@ -2,10 +2,13 @@ use std::{collections::HashMap, fmt::Write};
 
 use base64::Engine;
 
-use sf_std::unstable::{
-    exception::{PerformException, PerformExceptionErrorCode},
-    provider::ProviderJson,
-    HostValue,
+use sf_std::{
+    unstable::{
+        exception::{PerformException, PerformExceptionErrorCode},
+        provider::ProviderJson,
+        HostValue,
+    },
+    HeaderName,
 };
 
 use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
@@ -346,7 +349,7 @@ pub fn resolve_security(
 
             params
                 .headers
-                .insert("Authorization".to_string(), basic_auth);
+                .insert(HeaderName::from("Authorization"), basic_auth);
         }
         Some(SecurityMapValue::Security(Security::Http(HttpSecurity::Bearer {
             bearer_format: _,
@@ -356,7 +359,7 @@ pub fn resolve_security(
 
             params
                 .headers
-                .insert("Authorization".to_string(), digest_auth);
+                .insert(HeaderName::from("Authorization"), digest_auth);
         }
         Some(SecurityMapValue::Security(Security::ApiKey {
             r#in,
@@ -367,7 +370,7 @@ pub fn resolve_security(
             (ApiKeyPlacement::Header, _) => {
                 params
                     .headers
-                    .insert(name.to_string(), vec![apikey.to_string()]);
+                    .insert(HeaderName::from(name.as_str()), vec![apikey.to_string()]);
             }
             (ApiKeyPlacement::Path, _) => {
                 params.url = params.url.replace(&format!("{{{}}}", name), apikey);
