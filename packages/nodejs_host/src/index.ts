@@ -1,5 +1,8 @@
 import fs, { FileHandle } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { resolve as resolvePath } from 'node:path';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { WASI } from 'node:wasi';
 
 import { AsyncMutex } from './common/app.js';
@@ -8,17 +11,18 @@ import {
   FileSystem,
   HandleMap,
   Network,
+  Persistence,
   SecurityValuesMap,
   TextCoder,
   Timers,
   UnexpectedError,
   WasiErrno,
   WasiError,
-  Persistence,
   corePathURL
 } from './common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
-import { fileURLToPath } from 'node:url';
+
+const pkg = createRequire(import.meta.url)('../package.json');
 
 export { PerformError, UnexpectedError, ValidationError } from './common/index.js';
 export { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
@@ -129,14 +133,17 @@ class NodeNetwork implements Network {
 }
 
 class NodePersistence implements Persistence {
-  private readonly token: string | undefined;
   private readonly insightsUrl: string;
+  private readonly token: string | undefined;
+  private readonly userAgent: string | undefined;
 
   constructor(
     token: string | undefined,
-    superfaceApiUrl: string | undefined
+    superfaceApiUrl: string | undefined,
+    userAgent: string | undefined
   ) {
     this.token = token;
+    this.userAgent = userAgent;
     if (superfaceApiUrl !== undefined) {
       this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
     } else {
@@ -146,10 +153,13 @@ class NodePersistence implements Persistence {
 
   async persistMetrics(events: string[]): Promise<void> {
     const headers: Record<string, string> = {
-      'content-type': 'application/json'
+      'content-type': 'application/json',
     };
     if (this.token !== undefined) {
       headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
+    }
+    if (this.userAgent !== undefined) {
+      headers['user-agent'] = this.userAgent;
     }
 
     await fetch(
@@ -212,8 +222,8 @@ class InternalClient {
       fileSystem: new NodeFileSystem(),
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers(),
-      persistence: new NodePersistence(options.token, options.superfaceApiUrl)
-    }, { metricsTimeout: 1000 });
+      persistence: new NodePersistence(options.token, options.superfaceApiUrl, this.userAgent)
+    }, { metricsTimeout: 1000, userAgent: this.userAgent });
   }
 
   public async init() {
@@ -225,7 +235,12 @@ class InternalClient {
       await this.app.loadCore(
         await fs.readFile(process.env.CORE_PATH ?? fileURLToPath(corePathURL()))
       );
-      await this.app.init(new WASI({ env: process.env, version: 'preview1' } as any)); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
+      await this.app.init(new WASI({
+        env: {
+          ONESDK_DEFAULT_USERAGENT: this.userAgent,
+          ...process.env
+        }, version: 'preview1'
+      } as any)); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
 
       this.initProcessHooks();
 
@@ -294,6 +309,15 @@ class InternalClient {
     process.on('beforeExit', async () => {
       await this.destroy();
     });
+  }
+
+  private get userAgent(): string {
+    const platform = process.platform;
+    const arch = process.arch;
+    const nodeVersion = process.version;
+    const version = pkg.version;
+
+    return `one-sdk-nodejs/${version} (${platform} ${arch}) node.js/${nodeVersion}`;
   }
 }
 

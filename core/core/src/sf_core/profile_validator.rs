@@ -38,6 +38,7 @@ impl ProfileValidator {
         let mut interpreter = JsInterpreter::new(MapStdImpl::new(MapStdImplConfig {
             log_http_transactions: false,
             log_http_transactions_body_max_size: 0,
+            user_agent: "".to_string(),
         }))?;
 
         let validator_bytecode = match std::env::var("ONESDK_REPLACE_PROFILE_VALIDATOR").ok() {

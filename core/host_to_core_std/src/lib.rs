@@ -102,13 +102,53 @@ pub mod abi;
 pub mod fmt;
 pub mod unstable;
 
-pub type MultiMap = HashMap<String, Vec<String>>;
-// TODO: consider making the key always lowercase at the type level somehow
-pub type HeadersMultiMap = MultiMap;
+pub type MultiMap<K = String, V = String> = HashMap<K, Vec<V>>;
+pub type HeadersMultiMap = MultiMap<HeaderName, HeaderValue>;
+pub type HeaderValue = String;
 
-pub fn lowercase_headers_multimap(map: MultiMap) -> MultiMap {
+#[derive(Debug, Clone, Hash)]
+pub struct HeaderName(String);
+impl HeaderName {
+    pub fn new(value: String) -> HeaderName {
+        HeaderName(value)
+    }
+    pub fn lowercase_chars(&self) -> impl Iterator<Item = char> + '_ {
+        self.0.chars().flat_map(|c| c.to_lowercase())
+    }
+}
+impl PartialEq for HeaderName {
+    fn eq(&self, other: &Self) -> bool {
+        let left = self.lowercase_chars();
+        let right = other.lowercase_chars();
+        left.eq(right)
+    }
+}
+impl Eq for HeaderName {}
+impl std::fmt::Display for HeaderName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+impl From<&str> for HeaderName {
+    fn from(value: &str) -> Self {
+        HeaderName(value.to_string())
+    }
+}
+impl serde::Serialize for HeaderName {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0.serialize(serializer)
+    }
+}
+impl<'de> serde::Deserialize<'de> for HeaderName {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        Ok(HeaderName(value))
+    }
+}
+
+pub fn lowercase_headers_multimap(map: HeadersMultiMap) -> HeadersMultiMap {
     map.into_iter()
-        .map(|(key, value)| (key.to_lowercase(), value))
+        .map(|(key, value)| (HeaderName(key.lowercase_chars().collect()), value))
         .collect()
 }
 

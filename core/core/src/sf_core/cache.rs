@@ -6,7 +6,10 @@ use std::{
 
 use url::Url;
 
-use sf_std::unstable::{http::HttpCallError, provider::ProviderJson};
+use sf_std::{
+    unstable::{http::HttpCallError, provider::ProviderJson},
+    HeaderName, HeadersMultiMap,
+};
 
 use super::{digest, Fs, HttpRequest};
 
@@ -105,6 +108,7 @@ pub struct DocumentCache<E> {
     map: HashMap<String, DocumentCacheEntry<E>>,
     cache_duration: Duration,
     registry_url: Url,
+    user_agent: Option<String>,
 }
 impl<E> DocumentCache<E> {
     const FILE_URL_PREFIX: &str = "file://";
@@ -112,11 +116,12 @@ impl<E> DocumentCache<E> {
     const HTTPS_URL_PREFIX: &str = "https://";
     const BASE64_URL_PREFIX: &str = "data:;base64,";
 
-    pub fn new(cache_duration: Duration, registry_url: Url) -> Self {
+    pub fn new(cache_duration: Duration, registry_url: Url, user_agent: Option<String>) -> Self {
         Self {
             map: HashMap::new(),
             cache_duration,
             registry_url,
+            user_agent,
         }
     }
 
@@ -149,7 +154,7 @@ impl<E> DocumentCache<E> {
             url => {
                 if url.starts_with(Self::HTTP_URL_PREFIX) || url.starts_with(Self::HTTPS_URL_PREFIX)
                 {
-                    Self::cache_http(url)
+                    Self::cache_http(url, self.user_agent.as_deref())
                 } else {
                     let file = format!("{}.js", url);
                     let full_url = self.registry_url.join(&file).map_err(|_e| {
@@ -159,7 +164,7 @@ impl<E> DocumentCache<E> {
                         )
                     })?;
 
-                    Self::cache_http(full_url.as_str())
+                    Self::cache_http(full_url.as_str(), self.user_agent.as_deref())
                 }
             }
         }?;
@@ -196,11 +201,16 @@ impl<E> DocumentCache<E> {
 
     fn cache_http<PostProcessError: std::error::Error>(
         url: &str,
+        user_agent: Option<&str>,
     ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
-        let mut response =
-            HttpRequest::fetch("GET", url, &Default::default(), &Default::default(), None)
-                .and_then(|v| v.into_response())
-                .map_err(|err| DocumentCacheError::HttpLoadFailed(url.to_string(), err))?;
+        let mut headers = HeadersMultiMap::new();
+        if let Some(user_agent) = user_agent {
+            headers.insert(HeaderName::from("user-agent"), vec![user_agent.to_string()]);
+        }
+
+        let mut response = HttpRequest::fetch("GET", url, &headers, &Default::default(), None)
+            .and_then(|v| v.into_response())
+            .map_err(|err| DocumentCacheError::HttpLoadFailed(url.to_string(), err))?;
 
         let mut data = Vec::new();
         response
