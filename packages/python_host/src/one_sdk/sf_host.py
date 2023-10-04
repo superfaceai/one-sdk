@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Tuple
+from weakref import ReferenceType
 if TYPE_CHECKING:
 	from one_sdk.app import WasiApp
 
@@ -39,10 +40,19 @@ def _abi_ok(value: int) -> AbiResult:
 def _abi_err(value: int) -> AbiResult:
 	return _join_abi_result(int(value), 1)
 
-def link(linker: Linker, app: "WasiApp"):
+def _get_app(app_ref: ReferenceType["WasiApp"]) -> "WasiApp":
+	app = app_ref()
+	if app is None:
+		raise RuntimeError("WasiApp already destroyed")
+	
+	return app
+
+def link(linker: Linker, app_ref: ReferenceType["WasiApp"]):
 	message_store: HandleMap[bytes] = HandleMap()
 
 	def __export_message_exchange(msg_ptr: Ptr, msg_len: Size, out_ptr: Ptr, out_len: Size, ret_handle: Ptr) -> Size:
+		app = _get_app(app_ref)
+
 		memory = app.memory
 		message = json.loads(
 			memory.read_bytes(msg_ptr, msg_len).decode("utf-8")
@@ -59,6 +69,8 @@ def link(linker: Linker, app: "WasiApp"):
 		return _abi_ok(len(response_bytes))
 
 	def __export_message_exchange_retrieve(handle: int, out_ptr: Ptr, out_len: Size) -> AbiResult:
+		app = _get_app(app_ref)
+		
 		response_bytes = message_store.remove(handle)
 		if response_bytes is None:
 			return _abi_err(WasiErrno.EBADF)
@@ -69,6 +81,8 @@ def link(linker: Linker, app: "WasiApp"):
 		return _abi_ok(count)
 
 	def __export_stream_read(handle: int, out_ptr: Ptr, out_len: Size) -> AbiResult:
+		app = _get_app(app_ref)
+		
 		try:
 			read_count = app.memory.write_bytes(out_ptr, out_len, app.stream_read(handle, out_len))
 		except WasiError as e:
@@ -77,6 +91,8 @@ def link(linker: Linker, app: "WasiApp"):
 		return _abi_ok(read_count)
 	
 	def __export_stream_write(handle: int, in_ptr: Ptr, in_len: Size) -> AbiResult:
+		app = _get_app(app_ref)
+		
 		try:
 			write_count = app.stream_write(handle, app.memory.read_bytes(in_ptr, in_len))
 		except WasiError as e:
@@ -85,6 +101,8 @@ def link(linker: Linker, app: "WasiApp"):
 		return _abi_ok(write_count)
 
 	def __export_stream_close(handle: int) -> AbiResult:
+		app = _get_app(app_ref)
+		
 		try:
 			app.stream_close(handle)
 		except WasiError as e:
