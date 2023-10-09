@@ -5,7 +5,7 @@ const manifest = {
 
 function ColdStart({ input, parameters, services }) {
   let x = input.i
-  for (let i = 0; i < 40_000; i += 1) {
+  for (let i = 0; i < input.runs; i += 1) {
     x = x + i * x
   }
   return x

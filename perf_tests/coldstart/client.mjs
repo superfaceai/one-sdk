@@ -4,6 +4,8 @@ import v8 from 'v8'
 import { OneClient } from '../../packages/nodejs_host/dist/index.js'
 
 async function flushMetrics() {
+  const heap = v8.getHeapStatistics()
+
   let id = ''
   for (const entry of performance.getEntries()) {
     if (entry.entryType === 'mark' && Array.isArray(entry.detail)) {
@@ -16,7 +18,6 @@ async function flushMetrics() {
   performance.clearMarks()
   performance.clearMeasures()
 
-  const heap = v8.getHeapStatistics()
   console.log(`${performance.now()},${id},__heap_size,${heap.total_heap_size}`)
   // process.stderr.write(JSON.stringify(heap, undefined, 2))
 }
@@ -41,7 +42,7 @@ async function outerIteration(outerIteration, innerIterations) {
     let result = await profile
       .getUseCase('ColdStart')
       .perform(
-        { i: i % 256 },
+        { i: i % 256, runs: 40000 },
         { provider: 'coldstart' }
       )
     // if (result !== i) {
