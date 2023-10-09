@@ -40,14 +40,17 @@ def _abi_ok(value: int) -> AbiResult:
 def _abi_err(value: int) -> AbiResult:
 	return _join_abi_result(int(value), 1)
 
-def _get_app(app_ref: ReferenceType["WasiApp"]) -> "WasiApp":
+# We need to use a weak reference because otherwise we cause a reference cycle with wasmtime runtime
+# and leak the whole instance
+# TODO: from 3.9 we can do ReferenceType["WasiApp"]
+def _get_app(app_ref: ReferenceType) -> "WasiApp":
 	app = app_ref()
 	if app is None:
 		raise RuntimeError("WasiApp already destroyed")
 	
 	return app
 
-def link(linker: Linker, app_ref: ReferenceType["WasiApp"]):
+def link(linker: Linker, app_ref: ReferenceType):
 	message_store: HandleMap[bytes] = HandleMap()
 
 	def __export_message_exchange(msg_ptr: Ptr, msg_len: Size, out_ptr: Ptr, out_len: Size, ret_handle: Ptr) -> Size:
