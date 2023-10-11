@@ -6,10 +6,11 @@ cd "$base"
 
 MAKE_FLAGS=${1}
 
-# cd "$base/../.."
-# make build_nodejs_host CORE_PROFILE=release $MAKE_FLAGS
-# cd "$base"
-# node --no-warnings --experimental-wasi-unstable-preview1 ./client.mjs >data/node_data.csv
+cd "$base/../.."
+make build_nodejs_host CORE_PROFILE=release $MAKE_FLAGS
+cd "$base"
+node --no-warnings --experimental-wasi-unstable-preview1 ./client.mjs 40000 >data/node_data_40k.csv
+node --no-warnings --experimental-wasi-unstable-preview1 ./client.mjs 10000 >data/node_data_10k.csv
 
 cd "$base/../.."
 make build_python_host CORE_PROFILE=release $MAKE_FLAGS
