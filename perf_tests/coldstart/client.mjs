@@ -106,6 +106,6 @@ class Coldstart extends TestBase {
 // v8.setFlagsFromString('--trace-gc')
 const test = new Coldstart(
   m => console.log(m),
-  parseInt(process.argv[1])
+  parseInt(process.argv[2])
 )
 test.run(100, 1_000)
