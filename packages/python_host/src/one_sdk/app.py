@@ -3,12 +3,13 @@ import os
 import platform
 import sys
 
-from typing import Any, BinaryIO, Callable, List, Mapping, Optional, cast
+from typing import Any, BinaryIO, Callable, List, Mapping, Optional, cast, Union
 
 import struct
 from types import SimpleNamespace
 from dataclasses import dataclass
 import functools
+import weakref
 
 from wasmtime import Engine, Instance, Memory, Store, Module, Linker, WasiConfig
 import wasmtime
@@ -68,7 +69,7 @@ class WasiApp:
 		security: SecurityValuesMap
 		result: Optional[Any] = None
 		error: Optional[PerformError] = None
-		exception: Optional[UnexpectedError] = None
+		exception: Union[None, UnexpectedError, ValidationError] = None
 
 	def __init__(
 		self,
@@ -82,7 +83,7 @@ class WasiApp:
 
 		# linked modules and state
 		self._linker.define_wasi()
-		sf_host_link(self._linker, self)
+		sf_host_link(self._linker, weakref.ref(self))
 
 		wasi = WasiConfig()
 		wasi.inherit_stdout()
@@ -358,6 +359,7 @@ class WasiApp:
 		if len(events) > 0:
 			self._persistence.persist_developer_dump(events)
 
+	@staticmethod
 	def user_agent():
 		sys_platform = platform.system()
 		sys_arch = platform.architecture()[0]
