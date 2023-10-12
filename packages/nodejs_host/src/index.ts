@@ -133,25 +133,31 @@ class NodeNetwork implements Network {
 }
 
 class NodePersistence implements Persistence {
-  private readonly insightsUrl: string;
+  private readonly insightsUrl: string | false;
   private readonly token: string | undefined;
   private readonly userAgent: string | undefined;
 
   constructor(
     token: string | undefined,
-    superfaceApiUrl: string | undefined,
+    superfaceApiUrl: string | undefined | false,
     userAgent: string | undefined
   ) {
     this.token = token;
     this.userAgent = userAgent;
-    if (superfaceApiUrl !== undefined) {
-      this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
-    } else {
+    if (superfaceApiUrl === false) {
+      this.insightsUrl = false;
+    } else if (superfaceApiUrl === undefined) {
       this.insightsUrl = 'https://superface.ai/insights/sdk_event';
+    } else {
+      this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
     }
   }
 
   async persistMetrics(events: string[]): Promise<void> {
+    if (this.insightsUrl === false) {
+      return;
+    }
+
     const headers: Record<string, string> = {
       'content-type': 'application/json',
     };
@@ -169,6 +175,8 @@ class NodePersistence implements Persistence {
         body: '[' + events.join(',') + ']',
         headers
       }
+    ).catch(
+      err => console.error("Failed to send metrics", err)
     );
   }
 
@@ -195,7 +203,13 @@ export type ClientOptions = {
   /**
    * URL where the Superface API can be reached.
    */
-  superfaceApiUrl?: string;
+  superfaceApiUrl?: string | false;
+  /**
+   * Whether to register `beforeExit` hook to call `OneClient.destroy()`.
+   * 
+   * Default: `true`
+   */
+  onBeforeExitHook?: boolean;
 };
 
 export type ClientPerformOptions = {
@@ -224,6 +238,12 @@ class InternalClient {
       timers: new NodeTimers(),
       persistence: new NodePersistence(options.token, options.superfaceApiUrl, this.userAgent)
     }, { metricsTimeout: 1000, userAgent: this.userAgent });
+
+    if (options.onBeforeExitHook !== false) {
+      process.once('beforeExit', async () => {
+        await this.destroy();
+      });
+    }
   }
 
   public async init() {
@@ -241,8 +261,6 @@ class InternalClient {
           ...process.env
         }, version: 'preview1'
       } as any)); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
-
-      this.initProcessHooks();
 
       readyState.ready = true;
     });
@@ -305,10 +323,8 @@ class InternalClient {
     return `file://${path}`;
   }
 
-  private initProcessHooks() {
-    process.on('beforeExit', async () => {
-      await this.destroy();
-    });
+  public async sendMetrics() {
+    await this.app.sendMetrics()
   }
 
   private get userAgent(): string {
@@ -338,6 +354,10 @@ export class OneClient {
 
   public async getProfile(name: string): Promise<Profile> {
     return await Profile.loadLocal(this.internal, name);
+  }
+
+  public async sendMetricsToSuperface() {
+    await this.internal.sendMetrics()
   }
 }
 

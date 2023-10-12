@@ -4,7 +4,7 @@ base=$(dirname "$0")
 base=$(realpath "$base")
 cd "$base"
 
-MAKE_FLAGS=${2:-MODE=debug}
+MAKE_FLAGS=${2}
 
 case $1 in
 	node)

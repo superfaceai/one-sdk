@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Union
 
 import os
 import os.path
@@ -16,7 +16,7 @@ class InternalClient:
 		self,
 		assets_path: str,
 		token: Optional[str],
-		superface_api_url: str
+		superface_api_url: Union[None, str, bool]
 	):
 		self._assets_path = assets_path
 		self._core_path = CORE_PATH
@@ -139,7 +139,7 @@ class OneClient:
 		self,
 		assets_path: str = "superface",
 		token: Optional[str] = None,
-		superface_api_url: str = "https://superface.ai"
+		superface_api_url: Union[None, str, bool] = None
 	):
 		self._internal = InternalClient(
 			assets_path = assets_path,
