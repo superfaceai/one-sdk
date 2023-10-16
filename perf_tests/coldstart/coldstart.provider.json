@@ -1,0 +1,12 @@
+{
+  "name": "coldstart",
+  "services": [
+    {
+      "id": "default",
+      "baseUrl": "http://localhost:8000"
+    }
+  ],
+  "defaultService": "default",
+  "parameters": [],
+  "securitySchemes": []
+}
