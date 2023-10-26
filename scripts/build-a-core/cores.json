@@ -1,8 +1,8 @@
 {
 	"current": {
 		"dependencies": {
-			"toolchain-version": "1.71",
-			"core-ref": "2a72df7",
+			"toolchain-version": "1.72",
+			"core-ref": "b5b2c03",
 			"wasi-sdk-ref": "wasi-sdk-20",
 			"binaryen-ref": "version_105"
 		},

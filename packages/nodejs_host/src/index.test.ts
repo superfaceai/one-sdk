@@ -17,6 +17,12 @@ describe('OneClient', () => {
 
     beforeAll(async () => {
       server = httpCreateServer((req, res) => {
+        if (req.headers["x-custom-header"] === 'test-no-body') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           url: req.url,
@@ -94,6 +100,23 @@ describe('OneClient', () => {
       await expect(
         () => usecase.perform({}, { provider: 'localhost' })
       ).rejects.toThrow(UnexpectedError)
+    });
+
+    test('empty http body', async () => {
+      const client = new OneClient(clientOptions);
+      const profile = await client.getProfile('wasm-sdk/example');
+      await expect(
+        () => profile
+          .getUseCase('Example')
+          .perform<unknown, { url: string }>(
+            { id: 1 },
+            {
+              provider: 'localhost',
+              parameters: { PARAM: 'test-no-body' },
+              security: { basic_auth: { username: 'username', password: 'password' } }
+            }
+          )
+      ).rejects.toThrow('Error response 204')
     });
   });
 });

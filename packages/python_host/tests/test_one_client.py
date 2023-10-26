@@ -2,7 +2,7 @@ import unittest
 import os.path
 
 # host.python.src.one_sdk.client
-from one_sdk import OneClient, UnexpectedError
+from one_sdk import OneClient, UnexpectedError, PerformError
 
 from echo_server import EchoHttpServer
 
@@ -63,6 +63,19 @@ class TestOneClient(unittest.TestCase):
 		with self.assertRaises(UnexpectedError) as cm:
 			use_case.perform({}, provider = "does-not-exist")
 		self.assertTrue("No such file or directory" in cm.exception.message)
+	
+	def test_empty_http_body(self):
+		client = OneClient(assets_path = ASSETS_PATH, superface_api_url = "superface.localhost")
+		profile = client.get_profile("wasm-sdk/example")
+		use_case = profile.get_usecase("Example")
+		with self.assertRaises(PerformError) as cm:
+			use_case.perform(
+				{ "id": 1 },
+				provider = "localhost",
+				parameters = { "PARAM": "test-no-body" },
+				security = { "basic_auth": { "username": "username", "password": "password" } }
+			)
+		self.assertEqual(cm.exception.error_result["title"], "Error response 204")
 
 if __name__ == '__main__':
 	unittest.main()
