@@ -34,7 +34,7 @@ EOF
 
 WORKDIR /opt/wasi-sdk
 ARG WASI_SDK_REF={wasi_sdk_ref}
-RUN git clone https://github.com/WebAssembly/wasi-sdk.git . && git checkout $WASI_SDK_REF && git submodule update --init --depth 10
+RUN git clone https://github.com/WebAssembly/wasi-sdk.git . && git checkout $WASI_SDK_REF && git submodule update --init --depth 50
 
 RUN CC=clang CXX=clang++ NINJA_FLAGS='-j 6' make build strip
 # /opt/wasi-sdk/build/install/opt/wasi-sdk

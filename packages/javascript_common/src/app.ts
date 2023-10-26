@@ -7,12 +7,16 @@ import * as sf_host from './sf_host.js';
 
 class ReadableStreamAdapter implements Stream {
   private chunks: Uint8Array[];
-  private readonly reader: ReadableStreamDefaultReader<Uint8Array>;
-  constructor(stream: ReadableStream<Uint8Array>) {
-    this.reader = stream.getReader();
+  private readonly reader?: ReadableStreamDefaultReader<Uint8Array>;
+  constructor(stream: ReadableStream<Uint8Array> | null) {
+    this.reader = stream?.getReader();
     this.chunks = [];
   }
   async read(out: Uint8Array): Promise<number> {
+    if (this.reader === undefined) {
+      return 0;
+    }
+
     if (this.chunks.length === 0) {
       const readResult = await this.reader.read();
       if (readResult.value === undefined) {
@@ -346,7 +350,7 @@ export class App implements AppContext {
       case 'http-call-head': {
         try {
           const response = await this.requests.remove(message.handle)!;
-          const bodyStream = new ReadableStreamAdapter(response.body!); // TODO: handle when they are missing
+          const bodyStream = new ReadableStreamAdapter(response.body);
           return { kind: 'ok', status: response.status, headers: headersToMultimap(response.headers), body_stream: this.streams.insert(bodyStream) };
         } catch (error: any) {
           return { kind: 'err', error_code: error.name, message: error.message };

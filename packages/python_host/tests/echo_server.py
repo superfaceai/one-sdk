@@ -29,6 +29,11 @@ class EchoHttpServerHandler(BaseHTTPRequestHandler):
 			return
 	
 	def do_any(self):
+		if self.headers.get("x-custom-header", "") == "test-no-body":
+			self.send_response(HTTPStatus.NO_CONTENT)
+			self.end_headers()
+			return
+
 		body = json.dumps({
 			"url": self.path,
 			"method": self.command,
