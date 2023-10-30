@@ -61,6 +61,22 @@ export default {
         );
         break;
 
+      case '/example':
+        result = (await client.getProfile('wasm-sdk/example')).getUseCase('Example').perform(
+          { id: encodeURIComponent(text) },
+          {
+            provider: 'localhost',
+            parameters: { PARAM: to },
+            security: {
+              basic_auth: {
+                username: "beep",
+                password: "boop"
+              }
+            }
+          }
+        );
+        break;
+
       default:
         ctx.waitUntil(client.sendMetricsToSuperface());
         return new Response(`Path ${url.pathname} not found`, { status: 404 });

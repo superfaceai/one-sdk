@@ -102,7 +102,7 @@ test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE
 
 build_core: ${CORE_WASM} ${TEST_CORE_WASM} ${CORE_ASYNCIFY_WASM} ${TEST_CORE_ASYNCIFY_WASM}
 build_core_json_schemas:
-	cd core/json_schemas && cargo run -- --dir=.
+	cd core/json_schemas && cargo build && wasmtime run --dir=. ../target/wasm32-wasi/debug/json_schemas.wasm
 
 ${CORE_JS_ASSETS_MAP_STD}: ${MAP_STD}
 	mkdir -p ${CORE_JS_ASSETS}
