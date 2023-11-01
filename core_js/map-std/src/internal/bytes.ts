@@ -18,6 +18,14 @@ export class Bytes {
     return new Bytes(new Uint8Array(array), array.length);
   }
 
+  static isBytes(value: unknown): value is Bytes {
+    if (value === undefined || value === null) {
+      return false;
+    }
+
+    return value instanceof Bytes;
+  }
+
   toArray(): number[] {
     return Array.from(this.data);
   }
