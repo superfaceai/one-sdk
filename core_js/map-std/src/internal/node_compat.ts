@@ -8,6 +8,10 @@ export class Buffer {
       return new Buffer(Bytes.encode(value, encoding));
     }
 
+    if (Bytes.isBytes(value)) {
+      return new Buffer(value);
+    }
+
     if (Buffer.isBuffer(value)) {
       return value;
     }
@@ -24,11 +28,7 @@ export class Buffer {
       return false;
     }
 
-    if (value instanceof Buffer) {
-      return true;
-    }
-
-    return false;
+    return value instanceof Buffer;
   }
 
   #inner: Bytes;

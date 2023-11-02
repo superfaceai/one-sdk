@@ -1,13 +1,14 @@
 /// <reference types="@superface/map-std" />
+// @ts-check
 
-/** @type {UsecaseFn} */
+/** @type {UsecaseFn<{ from: AnyValue, to: AnyValue, subject: AnyValue, text?: AnyValue, html?: AnyValue, attachments?: [{ content: AnyValue, type: AnyValue, filename?: AnyValue }] }, { messageId: AnyValue }>} */
 function SendEmail({ input, services }) {
   const url = `${services.mandrill}/api/1.0/messages/send`;
   const options = {
     method: 'POST',
     headers: {
-      'content-type': 'application/json',
-      'accept': 'application/json'
+      'content-type': ['application/json'],
+      'accept': ['application/json']
     },
     body: {
       key: 'key-will-go-here',
@@ -18,19 +19,20 @@ function SendEmail({ input, services }) {
           type: 'to'
         }],
         subject: input.subject,
-        text: input.text ?? undefined,
-        html: input.html ?? undefined,
+        text: input.text ?? null,
+        html: input.html ?? null,
         attachments: input.attachments?.map(attachment => ({
           content: attachment.content,
-          name: attachment.filename,
+          name: attachment.filename ?? null,
           type: attachment.type,
-        })) ?? undefined
+        })) ?? null
       }
     },
     security: 'api_key'
   };
 
   const response = std.unstable.fetch(url, options).response();
+  /** @type {any} */
   const body = response.bodyAuto() ?? {};
 
   if (response.status === 500) {

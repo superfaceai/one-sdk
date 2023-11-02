@@ -10,7 +10,7 @@ export type FetchOptions = {
   method?: string,
   headers?: MultiMap,
   query?: MultiMap,
-  body?: string | number[] | Buffer,
+  body?: AnyValue,
   security?: string,
 };
 
@@ -68,18 +68,18 @@ export class HttpResponse {
     return bytes.decode();
   }
 
-  public bodyJson(): unknown {
+  public bodyJson(): AnyValue {
     const text = this.bodyText();
-    if (text === undefined || text === '') {
-      return undefined;
+    if (text == null || text === '') {
+      return null;
     }
 
     return JSON.parse(text);
   }
 
-  public bodyAuto(): unknown {
+  public bodyAuto(): AnyValue | Buffer {
     if (this.status === 204) {
-      return undefined;
+      return null;
     }
 
     if (this.headers['content-type']?.some(ct => ct.indexOf(CONTENT_TYPE.JSON) >= 0) ?? false) {
@@ -87,15 +87,15 @@ export class HttpResponse {
     }
 
     if (this.headers['content-type']?.some(ct => CONTENT_TYPE.RE_BINARY.test(ct)) ?? false) {
-      return this.bodyBytes();
+      return Buffer.from(this.bodyBytes());
     }
 
     return this.bodyText();
   }
 }
 
-export class MapError {
-  constructor(public readonly errorResult: AnyValue) { }
+export class MapError<R extends AnyValue = AnyValue> {
+  constructor(public readonly errorResult: R) { }
 }
 
 // env
