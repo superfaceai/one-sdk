@@ -150,7 +150,8 @@ export const CONTENT_TYPE = {
   JSON: 'application/json',
   URLENCODED: 'application/x-www-form-urlencoded',
   FORMDATA: 'multipart/form-data',
-  RE_BINARY: /application\/octet-stream|video\/.*|audio\/.*|image\/.*/
+  RE_BINARY: /application\/octet-stream|video\/.*|audio\/.*|image\/.*/,
+  TEXT: 'text/plain'
 };
 
 export function resolveRequestUrl(url: string, options: { parameters: any, security: any, serviceId?: string }): string {
@@ -175,22 +176,24 @@ export function fetch(url: string, options: FetchOptions): HttpRequest {
   if (body !== undefined && body !== null) {
     const contentType = headers['content-type']?.[0] ?? 'application/json';
 
-    let bodyBytes: Bytes;
+    let bodyBuffer: Buffer;
     if (contentType.startsWith(CONTENT_TYPE.JSON)) {
-      bodyBytes = Bytes.encode(JSON.stringify(body));
+      bodyBuffer = Buffer.from(JSON.stringify(body));
     } else if (contentType.startsWith(CONTENT_TYPE.URLENCODED)) {
-      bodyBytes = Bytes.encode(
+      bodyBuffer = Buffer.from(
         __ffi.unstable.record_to_urlencoded(ensureMultimap(body))
       );
-    } else if (CONTENT_TYPE.RE_BINARY.test(contentType)) {
-      bodyBytes = Buffer.from(body).inner;
+    } else if (CONTENT_TYPE.RE_BINARY.test(contentType) || contentType.startsWith(CONTENT_TYPE.TEXT)) {
+      bodyBuffer = Buffer.from(body);
+    } else if (Buffer.isBuffer(body)) {
+      // escape hatch for when the user passes an unknown content type - if body is already a Buffer we assume they encoded it themselves correctly
+      bodyBuffer = body;
     } else {
-      throw new Error(`Content type not supported: ${contentType}`);
+      throw new Error(`Content type "${contentType}" not supported, pass a Buffer as body and it will be used as-is.`);
     }
-    // TODO: support formdata
 
     // turn Bytes into number[] to serialize correctly
-    finalBody = Array.from(bodyBytes.data);
+    finalBody = Array.from(bodyBuffer.inner.data);
   }
 
   const response = messageExchange({
