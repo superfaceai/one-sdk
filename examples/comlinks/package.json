@@ -2,6 +2,6 @@
   "name": "comlinks",
   "private": true,
   "devDependencies": {
-    "@types/superface__map-std": "../../core_js/map-std"
+    "@superface/map-std": "../../packages/map_std"
   }
 }

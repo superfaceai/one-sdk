@@ -1,8 +1,8 @@
 /// <reference types="@superface/map-std" />
 // @ts-check
 
-/** @type {UsecaseFn<{ to?: AnyValue, from?: AnyValue, text?: AnyValue }, { messageId: AnyValue }>} */
-function SendMessage({ input, parameters, services }) {
+/** @type {Usecase<{ safety: 'unsafe', input: { to?: AnyValue, from?: AnyValue, text?: AnyValue }, result: { messageId: AnyValue }, error: { title: string, detail: string } }>} */
+var SendMessage = ({ input, parameters, services }) => {
   const url = `${services.default}/2010-04-01/Accounts/${parameters.TWILIO_ACCOUNT_SID}/Messages.json`;
   const options = {
     method: 'POST',

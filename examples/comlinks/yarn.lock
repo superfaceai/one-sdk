@@ -2,5 +2,5 @@
 # yarn lockfile v1
 
 
-"@types/superface__map-std@../../core_js/map-std":
-  version "0.1.0"
+"@superface/map-std@../../packages/map_std":
+  version "0.1.0-alpha.0"

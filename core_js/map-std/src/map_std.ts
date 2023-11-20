@@ -9,8 +9,27 @@ declare global {
     parameters: Record<string, string>,
     services: Record<string, string>
   };
-  type UsecaseFn<I extends AnyValue = AnyValue, R extends AnyValue = AnyValue> = (context: UsecaseContext<I>) => R;
   type MapError<R extends AnyValue = AnyValue> = unstable.MapError<R>;
+  type Safety = 'safe' | 'unsafe' | 'idempotent';
+  type UsecaseOptions = {
+    safety: Safety;
+    input: Record<string, AnyValue>;
+    result: AnyValue;
+    error: AnyValue;
+  };
+  type Usecase<O extends UsecaseOptions> = {
+    (context: UsecaseContext<O['input']>): O['result']
+    examples?: UsecaseExample<O>[]
+  }
+  type UsecaseExample<O extends UsecaseOptions> = {
+    name?: string;
+    input: O['input'];
+    result: O['result'];
+  } | {
+    name?: string;
+    input: O['input'];
+    error: O['error'];
+  };
   // globals
   var std: {
     unstable: typeof unstable
@@ -35,11 +54,11 @@ globalThis._start = function _start(usecaseName: string): void {
     throw new Error(`Usecase ${usecaseName} not defined, usecases: ${usecases.join(', ')}`);
   }
 
-  const usecase: UsecaseFn = (globalThis as any)[usecaseName];
+  const usecase: Usecase<UsecaseOptions> = (globalThis as any)[usecaseName];
 
   try {
     const result = usecase({
-      input: context.input,
+      input: context.input as Record<string, AnyValue>,
       parameters: context.parameters as Record<string, string>,
       services: context.services as Record<string, string>
     });
