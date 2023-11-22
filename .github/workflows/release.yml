@@ -176,7 +176,7 @@ jobs:
         working-directory: ${{ env.PACKAGE_PATH }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
-        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.map-std-publish.outputs.RELEASE_VERSION }} --tag ${{ needs.map-std-publish.outputs.RELEASE_TAG }}
+        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.map-std-prepare.outputs.RELEASE_VERSION }} --tag ${{ needs.map-std-prepare.outputs.RELEASE_TAG }}
 
   host-nodejs-prepare:
     name: Prepare Node.js Host
