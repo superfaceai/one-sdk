@@ -179,3 +179,6 @@ test_python_host: build_python_host ${TEST_CORE_WASM}
 	cp ${TEST_CORE_WASM} ${PYTHON_HOST_ASSETS}/test-core.wasm
 	cd packages/python_host; source venv/bin/activate; \
 	python3 -m unittest discover tests/
+
+build_map_std_package: ${MAP_STD}
+	cp -r core_js/map-std/types packages/map_std/

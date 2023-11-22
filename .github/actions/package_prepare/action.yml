@@ -1,0 +1,70 @@
+name: "Prepare package"
+description: "Prepare package before release, this action is only relevant when run in one-sdk repository"
+
+inputs:
+  RELEASE_LEVEL:
+    description: "Release level input, oneOf `prerelease, path, minor, major`"
+    required: true
+  RELEASE_KIND:
+    description: "Release kind input, oneOf `alpha, beta, rc, stable`"
+    required: true
+  PACKAGE_PATH:
+    description: "Base path to the package, e.g. `packages/nodejs_host`"
+    required: true
+
+outputs:
+  RELEASE_VERSION:
+    description: "Release version computed from inputs"
+    value: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+  RELEASE_LEVEL:
+    description: "Release level computed from inputs"
+    value: ${{ steps.release-level.outputs.RELEASE_LEVEL }}
+  RELEASE_TAG:
+    description: "Release tag computed from inputs"
+    value: ${{ steps.release-level.outputs.RELEASE_TAG }}
+  RELEASE_PREID:
+    description: "Release pre-id computed from inputs"
+    value: ${{ steps.release-level.outputs.RELEASE_PREID }}
+  CHANGELOG:
+    description: "Release changelog"
+    value: ${{ steps.get-changelog.outputs.changelog }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Git configuration
+      run: |
+        git config --global user.email "bot@superface.ai"
+        git config --global user.name "GitHub Actions release workflow"
+    # Versions and changelog
+    - name: Resolve release level
+      id: release-level
+      run: scripts/release-level.sh ${{ inputs.RELEASE_LEVEL }} ${{ inputs.RELEASE_KIND }} >>$GITHUB_OUTPUT
+    - name: Resolve release version
+      id: release-version
+      run: scripts/release-version.sh ${{ inputs.PACKAGE_PATH }}/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
+    - name: Update changelog
+      uses: superfaceai/release-changelog-action@v1
+      if: ${{ steps.release-level.outputs.RELEASE_TAG == 'latest' }}
+      with:
+        path-to-changelog: ${{ inputs.PACKAGE_PATH }}/CHANGELOG.md
+        version: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+        operation: release
+    - name: Version for Changelog entry
+      id: get-changelog-version
+      env:
+        RELEASE_TAG: ${{ steps.release-level.outputs.RELEASE_TAG }}
+        VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+      run: |
+        if [ "$RELEASE_TAG" = "latest" ]; then
+          echo VERSION="$VERSION"
+        else
+          echo VERSION="" # refers to unreleased section
+        fi
+    - name: Get release version changelog
+      id: get-changelog
+      uses: superfaceai/release-changelog-action@v1
+      with:
+        path-to-changelog: ${{ inputs.PACKAGE_PATH }}/CHANGELOG.md
+        version: ${{ steps.get-changelog-version.outputs.VERSION }}
+        operation: read

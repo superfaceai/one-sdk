@@ -1,8 +1,8 @@
 /// <reference types="@superface/map-std" />
 // @ts-check
 
-/** @type {UsecaseFn<{ from: AnyValue, to: AnyValue, subject: AnyValue, text?: AnyValue, html?: AnyValue, attachments?: [{ content: AnyValue, type: AnyValue, filename?: AnyValue }] }, { messageId: AnyValue }>} */
-function SendEmail({ input, services }) {
+/** @type {Usecase<{ safety: 'unsafe', input: { from: AnyValue, to: AnyValue, subject: AnyValue, text?: AnyValue, html?: AnyValue, attachments?: [{ content: AnyValue, type: AnyValue, filename?: AnyValue }] }, result: { messageId: AnyValue }, error: { title: string, detail: string } }>} */
+var SendEmail = ({ input, services }) => {
   const url = `${services.mandrill}/api/1.0/messages/send`;
   const options = {
     method: 'POST',

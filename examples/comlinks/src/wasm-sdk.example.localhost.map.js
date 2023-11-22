@@ -6,8 +6,10 @@ const manifest = {
   provider: 'localhost'
 };
 
-/** @type {UsecaseFn<{ id: AnyValue }, { url: AnyValue, method: AnyValue, query: AnyValue, headers: AnyValue }>} */
-function Example({ input, parameters, services }) {
+// var to hoist it like a function would be
+// can't be a function because then the type annotation doesn't work
+/** @type {Usecase<{ safety: 'safe', input: { id: AnyValue }, result: { url: AnyValue, method: AnyValue, query: AnyValue, headers: AnyValue }, error: { title: string, detail: string } }>} */
+var Example = ({ input, parameters, services }) => {
   // @ts-ignore
   __ffi.unstable.printDebug('Input:', input);
   // @ts-ignore
