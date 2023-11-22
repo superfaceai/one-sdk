@@ -33,15 +33,18 @@ runs:
   using: "composite"
   steps:
     - name: Git configuration
+      shell: bash
       run: |
         git config --global user.email "bot@superface.ai"
         git config --global user.name "GitHub Actions release workflow"
     # Versions and changelog
     - name: Resolve release level
       id: release-level
+      shell: bash
       run: scripts/release-level.sh ${{ inputs.RELEASE_LEVEL }} ${{ inputs.RELEASE_KIND }} >>$GITHUB_OUTPUT
     - name: Resolve release version
       id: release-version
+      shell: bash
       run: scripts/release-version.sh ${{ inputs.PACKAGE_PATH }}/VERSION ${{ steps.release-level.outputs.RELEASE_LEVEL }} ${{ steps.release-level.outputs.RELEASE_PREID }} >>$GITHUB_OUTPUT
     - name: Update changelog
       uses: superfaceai/release-changelog-action@v1
@@ -55,6 +58,7 @@ runs:
       env:
         RELEASE_TAG: ${{ steps.release-level.outputs.RELEASE_TAG }}
         VERSION: ${{ steps.release-version.outputs.RELEASE_VERSION }}
+      shell: bash
       run: |
         if [ "$RELEASE_TAG" = "latest" ]; then
           echo VERSION="$VERSION"
