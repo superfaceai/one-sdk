@@ -108,8 +108,8 @@ jobs:
       - uses: ./.github/actions/package_prepare
         id: prepare_package
         with:
-          RELEASE_LEVEL: ${{ inputs.RELEASE_LEVEL }}
-          RELEASE_KIND: ${{ inputs.RELEASE_KIND }}
+          RELEASE_LEVEL: ${{ inputs.release-level }}
+          RELEASE_KIND: ${{ inputs.release-kind }}
           PACKAGE_PATH: ${{ env.PACKAGE_PATH }}
       - uses: actions/setup-node@v3
         with:
@@ -201,8 +201,8 @@ jobs:
       - uses: ./.github/actions/package_prepare
         id: prepare_package
         with:
-          RELEASE_LEVEL: ${{ inputs.RELEASE_LEVEL }}
-          RELEASE_KIND: ${{ inputs.RELEASE_KIND }}
+          RELEASE_LEVEL: ${{ inputs.release-level }}
+          RELEASE_KIND: ${{ inputs.release-kind }}
           PACKAGE_PATH: ${{ env.PACKAGE_PATH }}
       - uses: actions/setup-node@v3
         with:
@@ -300,8 +300,8 @@ jobs:
       - uses: ./.github/actions/package_prepare
         id: prepare_package
         with:
-          RELEASE_LEVEL: ${{ inputs.RELEASE_LEVEL }}
-          RELEASE_KIND: ${{ inputs.RELEASE_KIND }}
+          RELEASE_LEVEL: ${{ inputs.release-level }}
+          RELEASE_KIND: ${{ inputs.release-kind }}
           PACKAGE_PATH: ${{ env.PACKAGE_PATH }}
       - uses: actions/setup-node@v3
         with:
@@ -391,8 +391,8 @@ jobs:
       - uses: ./.github/actions/package_prepare
         id: prepare_package
         with:
-          RELEASE_LEVEL: ${{ inputs.RELEASE_LEVEL }}
-          RELEASE_KIND: ${{ inputs.RELEASE_KIND }}
+          RELEASE_LEVEL: ${{ inputs.release-level }}
+          RELEASE_KIND: ${{ inputs.release-kind }}
           PACKAGE_PATH: ${{ env.PACKAGE_PATH }}
       - name: Set up Python
         uses: actions/setup-python@v4
