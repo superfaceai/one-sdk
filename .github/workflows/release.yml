@@ -125,7 +125,7 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           yarn workspace @superfaceai/map-std build
-          cp -r types ../${{ env.PACKAGE_PATH }}/
+          cp -r map-std/types ../${{ env.PACKAGE_PATH }}/
       - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
         working-directory: ${{ env.PACKAGE_PATH }}
         env:
@@ -170,7 +170,7 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           yarn workspace @superfaceai/map-std build
-          cp -r types ../${{ env.PACKAGE_PATH }}/
+          cp -r map-std/types ../${{ env.PACKAGE_PATH }}/
       # Publish
       - name: Publish to NPM registry
         working-directory: ${{ env.PACKAGE_PATH }}
