@@ -15,7 +15,10 @@ export type FetchOptions = {
 };
 
 // Can't use Record<string, AnyValue> but can use { [s in string]: AnyValue }. Typescript go brr.
-// The types here have defined message_exchange format and can safely be serialized and deserialized across the core<->map boundary.
+/** Any value that can be safely passed in and out of a map.
+ * 
+ * The types here have a defined `message_exchange` format and can safely be serialized and deserialized across the core<->map boundary (and subsequently the host<->core as well).
+*/
 export type AnyValue = null | string | number | boolean | AnyValue[] | { [s in string]: AnyValue };
 
 export class HttpRequest {

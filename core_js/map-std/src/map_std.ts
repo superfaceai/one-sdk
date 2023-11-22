@@ -3,13 +3,17 @@ import * as unstable from './unstable';
 
 declare global {
   // types
+  /** Any value that can be safely passed in and out of a map. */
   type AnyValue = unstable.AnyValue;
+  /** The first argument of a usecase. */
   type UsecaseContext<I extends AnyValue = AnyValue> = {
     input: I,
     parameters: Record<string, string>,
     services: Record<string, string>
   };
+  /** The error thrown to return a defined error. */
   type MapError<R extends AnyValue = AnyValue> = unstable.MapError<R>;
+  /** Safety of a usecase. */
   type Safety = 'safe' | 'unsafe' | 'idempotent';
   type UsecaseOptions = {
     safety: Safety;
@@ -17,6 +21,7 @@ declare global {
     result: AnyValue;
     error: AnyValue;
   };
+  /** Type for defining a usecase. */
   type Usecase<O extends UsecaseOptions> = {
     (context: UsecaseContext<O['input']>): O['result']
     examples?: UsecaseExample<O>[]
