@@ -1,6 +1,5 @@
 import type { TextCoder, AppContext } from './interfaces';
-import { HandleMap } from './handle_map.js';
-import { Asyncify, AsyncifyState } from './asyncify.js';
+import { Asyncify, AsyncifyState, HandleMap } from './lib/index.js';
 import { WasiErrno } from './error.js';
 
 type AbiResult = number;

@@ -144,13 +144,14 @@ clean_core_js:
 ##############
 build_packages: build_python_host build_nodejs_host build_cloudflare_worker_host
 deps_packages: deps_python_host deps_nodejs_host deps_cfw_host
+test_packages: test_nodejs_host test_cfw_host test_python_host
 
 # Node.js Host
 deps_nodejs_host:
 	cd packages/nodejs_host && yarn install
 build_nodejs_host: deps_nodejs_host ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${NODEJS_HOST_ASSETS}
-	cp ${CORE_ASYNCIFY_WASM} ${NODEJS_HOST_ASSETS}/core-async.wasm # copy wasm always because cached docker artifacts can have older timestamp
+	cp ${CORE_ASYNCIFY_WASM} ${NODEJS_HOST_ASSETS}/core-async.wasm
 	cd packages/nodejs_host && yarn build	
 test_nodejs_host: build_nodejs_host ${TEST_CORE_ASYNCIFY_WASM}
 	cp ${TEST_CORE_ASYNCIFY_WASM} ${NODEJS_HOST_ASSETS}/test-core-async.wasm
@@ -161,7 +162,7 @@ deps_cfw_host:
 	cd packages/cloudflare_worker_host && yarn install
 build_cfw_host: deps_cfw_host ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${CFW_HOST_ASSETS}
-	cp ${CORE_ASYNCIFY_WASM} ${CFW_HOST_ASSETS}/core-async.wasm # copy wasm always because cached docker artifacts can have older timestamp
+	cp ${CORE_ASYNCIFY_WASM} ${CFW_HOST_ASSETS}/core-async.wasm
 	cd packages/cloudflare_worker_host && yarn build	
 test_cfw_host: build_cfw_host ${TEST_CORE_ASYNCIFY_WASM}
 	cp ${TEST_CORE_ASYNCIFY_WASM} ${CFW_HOST_ASSETS}/test-core-async.wasm

@@ -21,15 +21,20 @@ class InternalClient:
 		self._assets_path = assets_path
 		self._core_path = CORE_PATH
 		self._ready = False
+		self._file_system = PythonFilesystem()
 		self._app = WasiApp(
-			PythonFilesystem(),
+			self._file_system,
 			PythonNetwork(),
 			PythonPersistence(token, superface_api_url, WasiApp.user_agent())
 		)
 
 	def resolve_profile_url(self, profile: str) -> str:
 		resolved_profile = profile.replace('/', '.')
-		path = os.path.abspath(os.path.join(self._assets_path, f"{resolved_profile}.profile"))
+		path = os.path.abspath(os.path.join(self._assets_path, f"{resolved_profile}.profile.ts"))
+		# migration from Comlink to TypeScript profiles
+		path_comlink = os.path.abspath(os.path.join(self._assets_path, f"{resolved_profile}.profile"))
+		if not self._file_system.exists(path) and self._file_system.exists(path_comlink):
+			path = path_comlink
 
 		return f"file://{path}"
 

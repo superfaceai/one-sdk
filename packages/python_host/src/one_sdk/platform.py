@@ -1,5 +1,6 @@
 from typing import BinaryIO, List, Mapping, Optional, Union, cast
 
+import os.path
 from datetime import datetime
 from collections import defaultdict
 
@@ -82,7 +83,6 @@ class PythonFilesystem:
 			# TODO: map system exception to wasi
 			raise WasiError(WasiErrno.EINVAL) from e
 
-	
 	def close(self, handle: int):
 		file = self._files.get(handle)
 		if file is None:
@@ -93,6 +93,9 @@ class PythonFilesystem:
 		except Exception as e:
 			# TODO: map system exception to wasi
 			raise WasiError(WasiErrno.EINVAL) from e
+
+	def exists(self, path: str) -> bool:
+		return os.path.exists(path)
 
 class HttpResponse(BinaryIO):
 	def __init__(self, response):

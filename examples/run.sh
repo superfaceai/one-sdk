@@ -22,7 +22,7 @@ case $1 in
 			make build_cfw_host $MAKE_FLAGS
 		fi
 		cd "$base/cloudflare_worker"
-		yarn install
+		yarn install --force
 		yarn dev
 	;;
 

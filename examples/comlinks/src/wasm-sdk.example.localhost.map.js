@@ -1,4 +1,5 @@
 /// <reference types="@superface/map-std" />
+/// <reference path="./wasm-sdk.example.profile.ts" />
 // @ts-check
 
 const manifest = {
@@ -6,9 +7,8 @@ const manifest = {
   provider: 'localhost'
 };
 
-// var to hoist it like a function would be
-// can't be a function because then the type annotation doesn't work
-/** @type {Usecase<{ safety: 'safe', input: { id: AnyValue }, result: { url: AnyValue, method: AnyValue, query: AnyValue, headers: AnyValue }, error: { title: string, detail: string } }>} */
+// var to hoist it like a function would be - can't be a function because then the type annotation doesn't work
+/** @type {Example} */
 var Example = ({ input, parameters, services }) => {
   // @ts-ignore
   __ffi.unstable.printDebug('Input:', input);

@@ -8,6 +8,8 @@ export interface AppContext {
   closeStream(handle: number): Promise<void>;
 }
 export interface FileSystem {
+  /** Return true if the file exists (can be `stat`ed). */
+  exists(path: string): Promise<boolean>;
   open(path: string, options: { createNew?: boolean, create?: boolean, truncate?: boolean, append?: boolean, write?: boolean, read?: boolean }): Promise<number>;
   /** Read bytes and write them to `out`. Returns number of bytes read. */
   read(handle: number, out: Uint8Array): Promise<number>;
