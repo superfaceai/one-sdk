@@ -15,7 +15,7 @@ import mapSendSms from '../superface/communication.send-sms.twilio.map.js';
 import providerTwilio from '../superface/twilio.provider.json';
 
 // @ts-ignore
-import profileExample from '../superface/wasm-sdk.example.profile';
+import profileExample from '../superface/wasm-sdk.example.profile.ts';
 // @ts-ignore
 import mapExample from '../superface/wasm-sdk.example.localhost.map.js';
 // @ts-ignore
@@ -28,7 +28,7 @@ export const COMLINK_IMPORTS = {
   'superface/communication.send-sms.profile': new Uint8Array(profileSendSms),
   'superface/communication.send-sms.twilio.map.js': new Uint8Array(mapSendSms),
   'superface/twilio.provider.json': new Uint8Array(providerTwilio as any),
-  'superface/wasm-sdk.example.profile': new Uint8Array(profileExample),
+  'superface/wasm-sdk.example.profile.ts': new Uint8Array(profileExample),
   'superface/wasm-sdk.example.localhost.map.js': new Uint8Array(mapExample),
   'superface/localhost.provider.json': new Uint8Array(providerLocalhost as any)
 };

@@ -5,7 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { WASI } from 'node:wasi';
 
-import { AsyncMutex } from './common/app.js';
+import { AsyncMutex } from './common/lib/index.js';
 import {
   App,
   FileSystem,
@@ -44,6 +44,15 @@ class NodeTextCoder implements TextCoder {
 
 class NodeFileSystem implements FileSystem {
   private readonly files: HandleMap<FileHandle> = new HandleMap();
+
+  async exists(path: string): Promise<boolean> {
+    try {
+      await fs.stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   async open(path: string, options: { createNew?: boolean, create?: boolean, truncate?: boolean, append?: boolean, write?: boolean, read?: boolean }): Promise<number> {
     let flags = '';
@@ -223,6 +232,7 @@ class InternalClient {
 
   private app: App;
   private readyState: AsyncMutex<{ ready: boolean }>;
+  private readonly fileSystem: NodeFileSystem;
 
   constructor(readonly options: ClientOptions = {}) {
     if (options.assetsPath !== undefined) {
@@ -230,10 +240,11 @@ class InternalClient {
     }
 
     this.readyState = new AsyncMutex({ ready: false });
+    this.fileSystem = new NodeFileSystem();
 
     this.app = new App({
       network: new NodeNetwork(),
-      fileSystem: new NodeFileSystem(),
+      fileSystem: this.fileSystem,
       textCoder: new NodeTextCoder(),
       timers: new NodeTimers(),
       persistence: new NodePersistence(options.token, options.superfaceApiUrl, this.userAgent)
@@ -305,7 +316,15 @@ class InternalClient {
 
   public async resolveProfileUrl(profile: string): Promise<string> {
     const resolvedProfile = profile.replace(/\//g, '.');
-    const path = resolvePath(this.assetsPath, `${resolvedProfile}.profile`);
+    let path = resolvePath(this.assetsPath, `${resolvedProfile}.profile.ts`);
+    // migration from Comlink to TypeScript profiles
+    const pathComlink = resolvePath(this.assetsPath, `${resolvedProfile}.profile`);
+    if (
+      !(await this.fileSystem.exists(path))
+      && (await this.fileSystem.exists(pathComlink))
+    ) {
+      path = pathComlink;
+    }
 
     return `file://${path}`;
   }

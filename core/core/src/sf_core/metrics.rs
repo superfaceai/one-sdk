@@ -28,26 +28,29 @@ impl<'a> PerformMetricsData<'a> {
     pub fn get_profile(&self) -> Cow<'_, str> {
         match self.profile {
             Some(profile) => Cow::Borrowed(profile),
-            None => Cow::Owned(
-                self.profile_url
-                    .split('/')
-                    .last()
-                    .and_then(|b| b.strip_suffix(".profile"))
-                    .unwrap()
-                    .replace('.', "/"),
-            ),
+            None => match self.profile_url.split('/').last() {
+                // treat anything from .profile until the end of the url as an extension
+                // this works for both .profile and .profile.ts extensions
+                Some(last_segment) => match last_segment.rfind(".profile") {
+                    Some(ext_start) => Cow::Owned(last_segment[..ext_start].replace('.', "/")),
+                    None => Cow::Borrowed("unknown"),
+                },
+                None => Cow::Borrowed("unknown"),
+            },
         }
     }
 
     pub fn get_provider(&self) -> &str {
         match self.provider {
             Some(provider) => provider,
-            None => self
-                .provider_url
-                .split('/')
-                .last()
-                .and_then(|b| b.strip_suffix(".provider.json"))
-                .unwrap(),
+            None => match self.profile_url.split('/').last() {
+                // treat anything from .provider until the end of the url as an extension
+                Some(last_segment) => match last_segment.rfind(".provider") {
+                    Some(ext_start) => &last_segment[..ext_start],
+                    None => "unknown",
+                },
+                None => "unknown",
+            },
         }
     }
 }

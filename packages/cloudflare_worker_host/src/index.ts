@@ -31,6 +31,10 @@ class CfwFileSystem implements FileSystem {
     this.files = new HandleMap();
   }
 
+  async exists(path: string): Promise<boolean> {
+    return this.preopens[path] !== undefined;
+  }
+
   async open(path: string, options: { createNew?: boolean, create?: boolean, truncate?: boolean, append?: boolean, write?: boolean, read?: boolean }): Promise<number> {
     if (options.read !== true) {
       throw new WasiError(WasiErrno.EROFS);
@@ -88,7 +92,11 @@ class CfwNetwork implements Network {
     try {
       response = await fetch(input, init);
     } catch (err: unknown) {
-      throw err; // TODO: are there any errors that we need to handle here?
+      if (typeof err === 'object' && err !== null && 'message' in err) {
+        // found a `Error: Network connection lost` caused by `kj/async-io-unix.c++:186: disconnected` in the wild
+        throw new HostError(ErrorCode.NetworkError, `${err.message}`);
+      }
+      throw err;
     }
 
     if (response.status === 530) {
@@ -275,10 +283,12 @@ export type ClientPerformOptions = {
 class InternalClient {
   private readonly app: App;
   private ready = false;
+  private readonly fileSystem: CfwFileSystem;
 
   constructor(readonly options: ClientOptions = {}) {
+    this.fileSystem = new CfwFileSystem(options.preopens ?? {});
     this.app = new App({
-      fileSystem: new CfwFileSystem(options.preopens ?? {}),
+      fileSystem: this.fileSystem,
       textCoder: new CfwTextCoder(),
       timers: new CfwTimers(),
       network: new CfwNetwork(),
@@ -324,9 +334,20 @@ class InternalClient {
     const resolvedProfile = profile.replace(/\//g, '.'); // TODO: be smarter about this
     const assetsPath = this.options.assetsPath ?? 'superface'; // TODO: path join? - not sure if we are going to stick with this VFS
 
+    let profilePath = `${assetsPath}/${resolvedProfile}.profile.ts`;
+    // migration from Comlink to TypeScript profiles
+    const profilePathComlink = `${assetsPath}/${resolvedProfile}.profile`;
+    if (
+      !(await this.fileSystem.exists(profilePath))
+      && (await this.fileSystem.exists(profilePathComlink))
+    ) {
+      profilePath = profilePathComlink;
+    }
+    profilePath = `file://${profilePath}`;
+
     try {
       return await this.app.perform(
-        `file://${assetsPath}/${resolvedProfile}.profile`,
+        profilePath,
         `file://${assetsPath}/${provider}.provider.json`,
         `file://${assetsPath}/${resolvedProfile}.${provider}.map.js`,
         usecase,
