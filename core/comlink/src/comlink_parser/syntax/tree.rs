@@ -2,7 +2,7 @@ use std::iter::FilterMap;
 
 use rowan::TextRange;
 
-use crate::parser::syntax::{SyntaxKind, SyntaxKindSet, SyntaxNode, SyntaxToken};
+use crate::comlink_parser::syntax::{SyntaxKind, SyntaxKindSet, SyntaxNode, SyntaxToken};
 
 use super::SyntaxElement;
 

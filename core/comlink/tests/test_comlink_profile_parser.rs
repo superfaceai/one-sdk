@@ -29,7 +29,7 @@ macro_rules! prepare_test {
         let mut expected: JsonValue = serde_json::from_str(include_str!($expected)).unwrap();
         clean_json_ast(&mut expected);
 
-        let (profile, errors) = comlink_language::parser::parse_profile(source);
+        let (profile, errors) = comlink::comlink_parser::parse_profile(source);
         if !errors.is_empty() {
             eprintln!("errors:{:#?}", errors);
         }
@@ -43,20 +43,20 @@ macro_rules! prepare_test {
 
 #[test]
 fn test_p1() {
-    prepare_test!(source: "fixtures/p1.profile", expected: "fixtures/p1.json");
+    prepare_test!(source: "fixtures/comlink_language/p1.profile", expected: "fixtures/comlink_language/p1.json");
 }
 
 #[test]
 fn test_p2() {
-    prepare_test!(source: "fixtures/p2.profile", expected: "fixtures/p2.json");
+    prepare_test!(source: "fixtures/comlink_language/p2.profile", expected: "fixtures/comlink_language/p2.json");
 }
 
 #[test]
 fn test_p3() {
-    prepare_test!(source: "fixtures/p3.profile", expected: "fixtures/p3.json");
+    prepare_test!(source: "fixtures/comlink_language/p3.profile", expected: "fixtures/comlink_language/p3.json");
 }
 
 #[test]
 fn test_p4() {
-    prepare_test!(source: "fixtures/p4.profile", expected: "fixtures/p4.json");
+    prepare_test!(source: "fixtures/comlink_language/p4.profile", expected: "fixtures/comlink_language/p4.json");
 }

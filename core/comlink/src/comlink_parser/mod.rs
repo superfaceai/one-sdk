@@ -1,3 +1,5 @@
+//! Parser for the Comlink language.
+
 mod lexer;
 mod syntax;
 

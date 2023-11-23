@@ -212,7 +212,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "comlink_language"
+name = "comlink"
 version = "0.1.0"
 dependencies = [
  "hex",

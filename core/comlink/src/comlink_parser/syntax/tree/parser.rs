@@ -1,4 +1,4 @@
-use crate::parser::{
+use crate::comlink_parser::{
     lexer::{tokenize, LexerToken, LexerTokenData},
     syntax::{SyntaxKind, SyntaxKindSet},
 };
