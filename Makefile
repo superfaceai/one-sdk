@@ -142,7 +142,7 @@ clean_core_js:
 ##############
 ## PACKAGES ##
 ##############
-build_packages: build_python_host build_nodejs_host build_cloudflare_worker_host
+build_packages: build_python_host build_nodejs_host build_cfw_host
 deps_packages: deps_python_host deps_nodejs_host deps_cfw_host
 
 # Node.js Host
