@@ -13,5 +13,11 @@ hex = { workspace = true }
 
 rowan = { version = "0.15" }
 
+biome_js_parser = { version = "0.1" }
+biome_js_syntax = { version = "0.1" }
+biome_rowan = { version = "0.1" }
+
+jsonschema = { version = "0.17", default-features = false } # https://github.com/Stranger6667/jsonschema-rs/issues/222
+
 [dev-dependencies]
 pretty_assertions = "1"

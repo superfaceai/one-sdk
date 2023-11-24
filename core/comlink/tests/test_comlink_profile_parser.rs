@@ -1,6 +1,6 @@
 use pretty_assertions::assert_eq;
 
-use serde_json::Value as JsonValue;
+use comlink::json::JsonValue;
 
 fn clean_json_ast(value: &mut JsonValue) {
     match value {

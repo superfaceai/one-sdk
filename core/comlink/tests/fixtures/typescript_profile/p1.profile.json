@@ -1,0 +1,201 @@
+{
+  "documentation": {
+    "description": null,
+    "title": null
+  },
+  "name": "",
+  "scope": null,
+  "usecases": [
+    {
+      "documentation": {
+        "description": "The usecase description is anything following the title.",
+        "title": "The usecase title"
+      },
+      "error": {
+        "$defs": {
+          "AnyValue": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/AnyValue"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/AnyValue"
+                },
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "codes": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "codes"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "examples": [
+        {
+          "input": {
+            "id": 1.0
+          },
+          "result": {
+            "title": "example title",
+            "value": true
+          }
+        },
+        {
+          "error": {
+            "message": "invalid id"
+          },
+          "input": {
+            "id": -1.0
+          },
+          "name": "second example"
+        }
+      ],
+      "input": {
+        "$defs": {
+          "AnyValue": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/AnyValue"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/AnyValue"
+                },
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "This is a numeric ID of the item to fetch.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "Title of input",
+        "type": "object"
+      },
+      "name": "UseCaseName",
+      "result": {
+        "$defs": {
+          "AnyValue": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "$ref": "#/$defs/AnyValue"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "$ref": "#/$defs/AnyValue"
+                },
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "description": "Description of result\nOn multiple lines",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value": {
+            "$ref": "#/$defs/AnyValue"
+          }
+        },
+        "required": [
+          "title",
+          "value"
+        ],
+        "title": "Title of result",
+        "type": "object"
+      },
+      "safety": "safe"
+    }
+  ]
+}

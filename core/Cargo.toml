@@ -21,3 +21,7 @@ lto = true
 codegen-units = 16
 debug = false
 strip = "debuginfo"
+
+[profile.test]
+# sometimes the debug test build is just too big
+opt-level = 1
