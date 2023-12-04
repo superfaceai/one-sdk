@@ -10,7 +10,7 @@ case $1 in
 	node)
 		if [ "$MAKE_FLAGS" != nomake ]; then
 			cd "$base/.."
-			make build_nodejs_host $MAKE_FLAGS
+			#make build_nodejs_host $MAKE_FLAGS
 		fi
 		cd "$base"
 		node --no-warnings --experimental-wasi-unstable-preview1 ./nodejs/index.mjs
