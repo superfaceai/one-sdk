@@ -11,7 +11,7 @@ thiserror = { workspace = true }
 sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
 map_std = { path = "../core_to_map_std", package = "core_to_map_std" }
 
-quickjs-wasm-rs = "1.0.0"
+quickjs-wasm-rs = "2.0.1"
 
 serde = { workspace = true }
 serde_json = { workspace = true }

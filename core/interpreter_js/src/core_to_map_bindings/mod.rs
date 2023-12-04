@@ -28,10 +28,6 @@ macro_rules! link_into {
 
                 let __span = tracing::trace_span!(concat!("map/", $key)).entered();
 
-                // SAFETY: this is safe because JSValueRef now contains a lifetime of the context, but the authors of the crate forgot to update `inner_value`
-                let this = unsafe { this.inner_value() };
-                let args: Vec<_> = unsafe { args.into_iter().map(|a| a.inner_value()).collect() };
-
                 let result = $fn_impl(state.borrow_mut().deref_mut(), this, &args).map_err(anyhow::Error::from);
 
                 if tracing::enabled!(tracing::Level::TRACE) {
@@ -40,7 +36,7 @@ macro_rules! link_into {
                     let mut buffer = String::new();
                     write!(&mut buffer, "{}(this: {:?}", $key, JSValueDebug::Ref(this)).unwrap();
                     for arg in args {
-                        write!(&mut buffer, ", {:?}", JSValueDebug::Ref(arg)).unwrap();
+                        write!(&mut buffer, ", {:?}", JSValueDebug::Ref(*arg)).unwrap();
                     }
                     write!(&mut buffer, ") -> {:?}", result.as_ref().map(JSValueDebug::Owned)).unwrap();
 
@@ -145,7 +141,7 @@ impl<'a> JSValueDebug<'a> {
             return map.finish();
         }
 
-        match quickjs_wasm_rs::from_qjs_value(&rf) {
+        match quickjs_wasm_rs::from_qjs_value(rf) {
             Err(err) => write!(f, "conversion error: {}", err),
             Ok(v) => Self::fmt_owned(&v, f),
         }

@@ -23,8 +23,8 @@ To define a usecase define a new type in a TypeScript `example.profile.ts` file:
 type Example = Usecase<{
   safety: 'safe'
   input: {
-	/** Id of the thing to fetch. */
-	id: AnyValue
+    /** Id of the thing to fetch. */
+    id: AnyValue
   }
   result: { name: string }
   error: { title: AnyValue, detail?: AnyValue }
@@ -40,7 +40,7 @@ Then develop a map with type support:
 
 /** @type {Example} */
 var Example = ({ input, parameters, services }) => {
-	return { name: "hardcoded example" }
+  return { name: "hardcoded example" }
 }
 ```
 

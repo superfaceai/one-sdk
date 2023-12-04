@@ -1007,9 +1007,9 @@ dependencies = [
 
 [[package]]
 name = "quickjs-wasm-rs"
-version = "1.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a318ed47e42082c11771620a1235231f34c10f775f4972dbc7753d4b07d8d568"
+checksum = "174a4fb51c14dcb82f1f98ec1ec3c2f26f2cd6e40f200d86c5f6eecacf40b409"
 dependencies = [
  "anyhow",
  "once_cell",
