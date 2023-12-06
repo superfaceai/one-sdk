@@ -11,7 +11,9 @@ thiserror = { workspace = true }
 sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
 map_std = { path = "../core_to_map_std", package = "core_to_map_std" }
 
-quickjs-wasm-rs = "2.0.1"
+# quickjs-wasm-rs = "2.0.1"
+quickjs-wasm-rs = { git = "https://github.com/TheEdward162/javy.git", ref = "main", features = [] }
+# quickjs-wasm-rs = { path = "../../../javy/crates/quickjs-wasm-rs", features = [] }
 
 serde = { workspace = true }
 serde_json = { workspace = true }

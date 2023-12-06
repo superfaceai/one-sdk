@@ -298,7 +298,7 @@ export class App implements AppContext {
         let errMessage = `${err}`;
         if (err instanceof WebAssembly.RuntimeError) {
           errName = 'WebAssemblyRuntimeError';
-          errMessage = err.message;
+          errMessage = err.stack ?? err.message;
         }
 
         // in case we got here while already attempting to dump during an error, this condition prevents recursion

@@ -36,7 +36,7 @@ macro_rules! link_into {
                     let mut buffer = String::new();
                     write!(&mut buffer, "{}(this: {:?}", $key, JSValueDebug::Ref(this)).unwrap();
                     for arg in args {
-                        write!(&mut buffer, ", {:?}", JSValueDebug::Ref(*arg)).unwrap();
+                        write!(&mut buffer, ", {:?}", JSValueDebug::Ref(arg)).unwrap();
                     }
                     write!(&mut buffer, ") -> {:?}", result.as_ref().map(JSValueDebug::Owned)).unwrap();
 
@@ -45,6 +45,7 @@ macro_rules! link_into {
 
                 result
             }).context(concat!("Failed to define ", $key, " callback"))?;
+            eprintln!("Linking {:?} into {:?}.{}", fun, $parent, $key);
             $parent.set_property($key, fun).context(concat!("Failed to set .", $key))?;
         })+
     };
@@ -97,7 +98,7 @@ fn traverse_object<'ctx>(
                     .object_value()
                     .context("Failed to create property")?;
                 current
-                    .set_property(key, property)
+                    .set_property(key, property.clone())
                     .context("Failed to set newly created property")?;
 
                 property
@@ -110,11 +111,11 @@ fn traverse_object<'ctx>(
 
 /// Enum for formatting JsValues in a format suitable for debugging.
 enum JSValueDebug<'a> {
-    Ref(JSValueRef<'a>),
+    Ref(&'a JSValueRef<'a>),
     Owned(&'a JSValue),
 }
 impl<'a> JSValueDebug<'a> {
-    fn fmt_ref(rf: JSValueRef<'a>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt_ref(rf: &JSValueRef<'a>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if rf.is_function() {
             return write!(f, "<Function>");
         }
@@ -136,7 +137,7 @@ impl<'a> JSValueDebug<'a> {
                     continue;
                 }
 
-                map.entry(&Self::Ref(key), &Self::Ref(value));
+                map.entry(&JSValueDebug::Ref(&key), &JSValueDebug::Ref(&value));
             }
             return map.finish();
         }
@@ -195,7 +196,7 @@ impl<'a> JSValueDebug<'a> {
 impl std::fmt::Debug for JSValueDebug<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ref(rf) => Self::fmt_ref(*rf, f),
+            Self::Ref(rf) => Self::fmt_ref(rf, f),
             Self::Owned(v) => Self::fmt_owned(v, f),
         }
     }
