@@ -1075,7 +1075,7 @@ dependencies = [
 [[package]]
 name = "quickjs-wasm-rs"
 version = "3.0.0-alpha.1"
-source = "git+https://github.com/TheEdward162/javy.git#fa96b2f9108b42358e91bed6bae2ba521643702f"
+source = "git+https://github.com/TheEdward162/javy.git#2d3f56831d4d08ea3bb747b49e679674f9927393"
 dependencies = [
  "anyhow",
  "once_cell",
@@ -1086,7 +1086,7 @@ dependencies = [
 [[package]]
 name = "quickjs-wasm-sys"
 version = "1.1.2-alpha.1"
-source = "git+https://github.com/TheEdward162/javy.git#fa96b2f9108b42358e91bed6bae2ba521643702f"
+source = "git+https://github.com/TheEdward162/javy.git#2d3f56831d4d08ea3bb747b49e679674f9927393"
 dependencies = [
  "anyhow",
  "bindgen",
