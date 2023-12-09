@@ -55,10 +55,10 @@ pub struct OneClientCore {
     mapstd_config: MapStdImplConfig,
 }
 impl OneClientCore {
-    const MAP_STDLIB_JS: &str = include_str!("../assets/js/map_std.js");
-    const SECURITY_VALUES_JSON_SCHEMA: &str =
+    const MAP_STDLIB_JS: &'static str = include_str!("../assets/js/map_std.js");
+    const SECURITY_VALUES_JSON_SCHEMA: &'static str =
         include_str!("../assets/schemas/security_values.json");
-    const PARAMETERS_VALUES_JSON_SCHEMA: &str =
+    const PARAMETERS_VALUES_JSON_SCHEMA: &'static str =
         include_str!("../assets/schemas/parameters_values.json");
 
     // TODO: Use thiserror and define specific errors
