@@ -45,7 +45,6 @@ macro_rules! link_into {
 
                 result
             }).context(concat!("Failed to define ", $key, " callback"))?;
-            eprintln!("Linking {:?} into {:?}.{}", fun, $parent, $key);
             $parent.set_property($key, fun).context(concat!("Failed to set .", $key))?;
         })+
     };
