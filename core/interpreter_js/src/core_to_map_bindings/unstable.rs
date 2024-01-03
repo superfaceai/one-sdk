@@ -45,7 +45,7 @@ pub fn link<H: MapStdUnstable + 'static>(
 
 fn __export_message_exchange<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let message = ensure_arguments!("message_exchange" args; 0: str);
@@ -56,7 +56,7 @@ fn __export_message_exchange<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_stream_read<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let (handle, buf) = ensure_arguments!("stream_read" args; 0: i32, 1: mut_bytes);
@@ -69,7 +69,7 @@ fn __export_stream_read<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_stream_write<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let (handle, buf) = ensure_arguments!("stream_write" args; 0: i32, 1: bytes);
@@ -82,7 +82,7 @@ fn __export_stream_write<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_stream_close<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let handle = ensure_arguments!("stream_close" args; 0: i32);
@@ -95,7 +95,7 @@ fn __export_stream_close<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_print<'ctx, H: MapStdUnstable + 'static>(
     state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let message = ensure_arguments!("print" args; 0: str);
@@ -106,14 +106,14 @@ fn __export_print<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_print_debug<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     use std::fmt::Write;
 
     let mut buffer = String::new();
     for arg in args {
-        write!(&mut buffer, "{:#?} ", JSValueDebug::Ref(*arg)).unwrap();
+        write!(&mut buffer, "{:#?} ", JSValueDebug::Ref(arg)).unwrap();
     }
     tracing::debug!("{}", buffer);
 
@@ -122,7 +122,7 @@ fn __export_print_debug<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_bytes_to_utf8<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let bytes = ensure_arguments!("bytes_to_utf8" args; 0: bytes);
@@ -138,7 +138,7 @@ fn __export_bytes_to_utf8<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_utf8_to_bytes<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let string = ensure_arguments!("utf8_to_bytes" args; 0: str);
@@ -148,7 +148,7 @@ fn __export_utf8_to_bytes<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_bytes_to_base64<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let bytes = ensure_arguments!("bytes_to_base64" args; 0: bytes);
@@ -160,7 +160,7 @@ fn __export_bytes_to_base64<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_base64_to_bytes<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let string = ensure_arguments!("base64_to_bytes" args; 0: str);
@@ -176,7 +176,7 @@ fn __export_base64_to_bytes<'ctx, H: MapStdUnstable + 'static>(
 
 fn __export_record_to_urlencoded<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
-    _this: JSValueRef<'ctx>,
+    _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
     let value = ensure_arguments!("record_to_urlencoded" args; 0: value);

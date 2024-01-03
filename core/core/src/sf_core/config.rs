@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 
 use url::Url;
 
@@ -8,7 +8,6 @@ pub enum CoreConfigurationEnvError {
     InvalidVariableFormat(String, String),
 }
 
-#[derive(Debug)]
 pub struct CoreConfiguration {
     /// Duration to cache documents for.
     pub cache_duration: Duration,
@@ -82,5 +81,24 @@ impl Default for CoreConfiguration {
             user_log_http_body_max_size: 1024 * 1024, // 1 MiB
             developer_log: "off".to_string(),
         }
+    }
+}
+impl Debug for CoreConfiguration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CoreConfiguration")
+            .field("cache_duration", &self.cache_duration)
+            .field(
+                "developer_dump_buffer_size",
+                &self.developer_dump_buffer_size,
+            )
+            .field("registry_url", &self.registry_url.as_str())
+            .field("user_agent", &self.user_agent)
+            .field("user_log", &self.user_log)
+            .field(
+                "user_log_http_body_max_size",
+                &self.user_log_http_body_max_size,
+            )
+            .field("developer_log", &self.developer_log)
+            .finish()
     }
 }

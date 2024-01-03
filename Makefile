@@ -15,6 +15,9 @@ endif
 ifeq ($(CORE_PROFILE),release)
 	CORE_FLAGS=--release
 	WASM_OPT_FLAGS=--strip-debug --strip-producers
+else
+# need this to preserve stracktrace function names into wasm
+	WASM_OPT_FLAGS=--debuginfo
 endif
 
 # WASI SDK
