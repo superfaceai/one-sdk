@@ -1,6 +1,6 @@
 {
   "name": "@superfaceai/one-sdk-cloudflare",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "exports": {
     ".": "./dist/index.js",
     "./common": "./dist/common/index.js",
