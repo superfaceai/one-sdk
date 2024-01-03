@@ -32,7 +32,7 @@ pub struct ProfileValidator {
     usecase: String,
 }
 impl ProfileValidator {
-    const PROFILE_VALIDATOR_JS: &str = include_str!("../../assets/js/profile_validator.js");
+    const PROFILE_VALIDATOR_JS: &'static str = include_str!("../../assets/js/profile_validator.js");
 
     pub fn new(profile: String, usecase: String) -> Result<Self, ProfileValidatorError> {
         let mut interpreter = JsInterpreter::new(MapStdImpl::new(MapStdImplConfig {

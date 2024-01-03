@@ -111,10 +111,10 @@ pub struct DocumentCache<E> {
     user_agent: Option<String>,
 }
 impl<E> DocumentCache<E> {
-    const FILE_URL_PREFIX: &str = "file://";
-    const HTTP_URL_PREFIX: &str = "http://";
-    const HTTPS_URL_PREFIX: &str = "https://";
-    const BASE64_URL_PREFIX: &str = "data:;base64,";
+    const FILE_URL_PREFIX: &'static str = "file://";
+    const HTTP_URL_PREFIX: &'static str = "http://";
+    const HTTPS_URL_PREFIX: &'static str = "https://";
+    const BASE64_URL_PREFIX: &'static str = "data:;base64,";
 
     pub fn new(cache_duration: Duration, registry_url: Url, user_agent: Option<String>) -> Self {
         Self {
