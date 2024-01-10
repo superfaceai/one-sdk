@@ -1,8 +1,7 @@
 import type { SecurityValuesMap } from './security.js';
-import type { AppContext, FileSystem, Network, Persistence, TextCoder, Timers, WasiContext } from './interfaces.js';
+import { AppContext, FileSystem, Network, Persistence, TextCoder, Timers, WasiContext } from './interfaces.js';
 import { PerformError, UnexpectedError, UninitializedError, ValidationError, WasiErrno, WasiError } from './error.js';
-import { AsyncMutex, Asyncify, HandleMap, ReadableStreamAdapter, Stream } from './lib/index.js';
-import * as sf_host from './sf_host.js';
+import { AsyncMutex, Asyncify, HandleMap, ReadableStreamAdapter, Stream, sf_host } from './lib/index.js';
 
 function headersToMultimap(headers: Headers): Record<string, string[]> {
   const result: Record<string, string[]> = {};
@@ -29,7 +28,7 @@ type AppCore = {
   clearMetricsFn: () => Promise<void>;
   getDeveloperDumpFn: () => Promise<number>;
 };
-export class App implements AppContext {
+export class App extends AppContext {
   private readonly textCoder: TextCoder;
   private readonly network: Network;
   private readonly fileSystem: FileSystem;
@@ -66,6 +65,8 @@ export class App implements AppContext {
     dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers, persistence: Persistence },
     options: { userAgent?: string, metricsTimeout?: number }
   ) {
+    super()
+
     this.textCoder = dependencies.textCoder;
     this.network = dependencies.network;
     this.fileSystem = dependencies.fileSystem;
@@ -88,19 +89,11 @@ export class App implements AppContext {
     this.module = module;
   }
 
-  private get memory(): WebAssembly.Memory {
+  override get memory(): WebAssembly.Memory {
     if (this.core === undefined) {
       throw new UninitializedError();
     }
     return this.core.unsafeValue.instance.exports.memory as WebAssembly.Memory;
-  }
-
-  public get memoryBytes(): Uint8Array {
-    return new Uint8Array(this.memory.buffer);
-  }
-
-  public get memoryView(): DataView {
-    return new DataView(this.memory.buffer);
   }
 
   public async init(wasi: WasiContext): Promise<void> {

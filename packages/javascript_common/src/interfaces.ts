@@ -1,12 +1,4 @@
-export interface AppContext {
-  memoryBytes: Uint8Array;
-  memoryView: DataView;
-
-  handleMessage(message: any): Promise<any>;
-  readStream(handle: number, out: Uint8Array): Promise<number>;
-  writeStream(handle: number, data: Uint8Array): Promise<number>;
-  closeStream(handle: number): Promise<void>;
-}
+export * from './lib/interfaces';
 export interface FileSystem {
   /** Return true if the file exists (can be `stat`ed). */
   exists(path: string): Promise<boolean>;
@@ -22,10 +14,6 @@ export interface Network {
     input: RequestInfo,
     init?: RequestInit
   ): Promise<Response>
-}
-export interface TextCoder {
-  decodeUtf8(buffer: ArrayBufferLike): string;
-  encodeUtf8(string: string): ArrayBuffer;
 }
 export interface Timers {
   setTimeout(callback: () => void, ms: number): number;
