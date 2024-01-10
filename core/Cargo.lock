@@ -1150,6 +1150,7 @@ dependencies = [
  "anyhow",
  "base64",
  "chrono",
+ "comlink",
  "core_to_map_std",
  "hex",
  "host_to_core_std",

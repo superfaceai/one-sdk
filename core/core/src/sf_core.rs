@@ -12,11 +12,12 @@ use map_std::unstable::{
     services::prepare_services_map,
     MapValue, MapValueObject,
 };
+use comlink::json_schema_validator::JsonSchemaValidator;
 
 use crate::{
     bindings::{MessageExchangeFfi, StreamExchangeFfi},
     sf_core::{
-        exception::FromJsonSchemaValidationError, json_schema_validator::JsonSchemaValidator,
+        exception::FromJsonSchemaValidationError,
         metrics::PerformMetricsData,
     },
 };
@@ -25,7 +26,6 @@ mod cache;
 mod config;
 mod digest;
 mod exception;
-mod json_schema_validator;
 mod map_std_impl;
 mod metrics;
 mod profile_validator;
@@ -226,7 +226,7 @@ impl OneClientCore {
 
         // Validate parameters values against json schema
         self.parameters_validator
-            .validate(&perform_input.map_parameters)
+            .validate(&(&perform_input.map_parameters).into())
             .map_err(|err| {
                 PerformException::from_json_schema_validation_error(
                     err,
@@ -245,7 +245,7 @@ impl OneClientCore {
 
         // Validate security values against json schema
         self.security_validator
-            .validate(&perform_input.map_security)
+            .validate(&(&perform_input.map_security).into())
             .map_err(|err| {
                 PerformException::from_json_schema_validation_error(
                     err,
