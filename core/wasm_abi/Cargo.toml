@@ -1,20 +1,12 @@
 [package]
-name = "host_to_core_std"
+name = "wasm_abi"
 version = "0.1.0"
 edition = "2021"
 publish = false
 
-[features]
-default = []
-
 [dependencies]
 thiserror = { workspace = true }
-
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_urlencoded = { workspace = true }
-url = { workspace = true }
 
 tracing = { workspace = true }
-
-wasm_abi = { path = "../wasm_abi" }

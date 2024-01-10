@@ -1,6 +1,5 @@
 use std::io::Read;
 
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
@@ -14,7 +13,7 @@ use crate::{
     lowercase_headers_multimap, HeadersMultiMap, MultiMap,
 };
 
-define_exchange_core_to_host! {
+crate::abi::define_exchange! {
     struct HttpCallRequest<'a> {
         kind: "http-call",
         /// HTTP method - will be used as-is.
@@ -38,7 +37,7 @@ define_exchange_core_to_host! {
         }
     }
 }
-define_exchange_core_to_host! {
+crate::abi::define_exchange! {
     struct HttpCallHeadRequest {
         kind: "http-call-head",
         /// Handle previously returned by `http-call`.

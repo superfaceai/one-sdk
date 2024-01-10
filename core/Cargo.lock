@@ -424,6 +424,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "comlink_wasm"
+version = "0.1.0"
+dependencies = [
+ "comlink",
+ "wasm_abi",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -697,6 +705,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "url",
+ "wasm_abi",
 ]
 
 [[package]]
@@ -2068,6 +2077,16 @@ name = "wasm-bindgen-shared"
 version = "0.2.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca6ad05a4870b2bf5fe995117d3728437bd27d7cd5f06f13c17443ef369775a1"
+
+[[package]]
+name = "wasm_abi"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
 
 [[package]]
 name = "which"

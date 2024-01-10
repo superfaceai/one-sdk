@@ -1,19 +1,19 @@
 OS=$(shell uname -s)
 
-# mode to use to build the core - can be "default", "docker" or "lax"
+# mode to use to build the core - can be "default" or "lax"
 CORE_MODE=default
 # forces the build of the core - this is the default because we let cargo decide what needs to be rebuilt, but it also runs wasm-opt needlessly if nothing has changed
 CORE_PHONY=0
-CORE_PROFILE=debug
+CARGO_PROFILE=debug
 
 ifeq ($(CORE_MODE),default)
 	CORE_PHONY=1
 else ifneq ($(CORE_MODE),lax)
-$(error "CORE_MODE must be one of [default, docker, lax]")
+$(error "CORE_MODE must be one of [default, lax]")
 endif
 
-ifeq ($(CORE_PROFILE),release)
-	CORE_FLAGS=--release
+ifeq ($(CARGO_PROFILE),release)
+	CARGO_FLAGS=--release
 	WASM_OPT_FLAGS=--strip-debug --strip-producers
 else
 # need this to preserve stracktrace function names into wasm
@@ -82,9 +82,9 @@ ${CORE_DIST}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROF
 	touch ${CORE_DIST}
 
 ${CORE_WASM}: ${CORE_DIST}
-	cd core; cargo build --package oneclient_core --target wasm32-wasi ${CORE_FLAGS}
+	cd core; cargo build --package oneclient_core --target wasm32-wasi ${CARGO_FLAGS}
 	@echo 'Optimizing wasm...'
-	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CORE_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
+	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
 
 ${TEST_CORE_WASM}: ${CORE_DIST}
 	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock"

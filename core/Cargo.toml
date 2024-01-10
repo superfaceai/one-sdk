@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["comlink", "core", "core_to_map_std", "host_to_core_std", "interpreter_js", "json_schemas"]
+members = ["comlink", "comlink_wasm", "core", "core_to_map_std", "host_to_core_std", "interpreter_js", "json_schemas", "wasm_abi"]
 
 [workspace.dependencies]
 base64 = { version = "0.21" }

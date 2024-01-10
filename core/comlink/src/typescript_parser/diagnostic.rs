@@ -1,4 +1,5 @@
 #[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum DiagnosticSeverity {
     Error,
     Warning,
@@ -10,7 +11,7 @@ pub struct Diagnostic {
     pub severity: DiagnosticSeverity,
     pub code: u16,
     pub message: String,
-    pub text_range: [usize; 2],
+    pub range: [usize; 2],
 }
 
 #[repr(u16)]

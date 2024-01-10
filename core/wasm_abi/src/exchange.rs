@@ -248,7 +248,6 @@ impl StreamExchange for StreamExchangeFfiFn {
     }
 }
 
-#[cfg(test)]
 pub mod testing {
     //! Here we export implementation of MessageExchange and StreamExchange for testing.
 

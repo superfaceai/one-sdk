@@ -42,7 +42,7 @@ impl Diagnostics {
             severity,
             message: part.0.description().into(),
             code: part.0 as u16,
-            text_range: Self::map_text_range(part.1),
+            range: Self::map_text_range(part.1),
         });
     }
     fn error(&mut self, part: PartialDiagnostic) {
@@ -61,7 +61,7 @@ impl Diagnostics {
             severity,
             message: format!("{}: {}", part.0.description(), detail),
             code: part.0 as u16,
-            text_range: Self::map_text_range(part.1),
+            range: Self::map_text_range(part.1),
         });
     }
     fn error_detail(&mut self, part: PartialDiagnostic, detail: impl Display) {

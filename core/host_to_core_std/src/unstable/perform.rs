@@ -1,9 +1,7 @@
-use serde::{Deserialize, Serialize};
-
 use super::{exception::PerformException, ErrorCode, HostValue};
 use crate::abi::{JsonMessageError, MessageExchange};
 
-define_exchange_core_to_host! {
+crate::abi::define_exchange! {
     struct PerformInputRequest {
         kind: "perform-input"
     } -> enum PerformInputResponse {
@@ -30,7 +28,7 @@ define_exchange_core_to_host! {
     }
 }
 
-define_exchange_core_to_host! {
+crate::abi::define_exchange! {
     struct PerformOutputResultRequest {
         kind: "perform-output-result",
         /// Result of the map.
@@ -44,7 +42,7 @@ define_exchange_core_to_host! {
     }
 }
 
-define_exchange_core_to_host! {
+crate::abi::define_exchange! {
     struct PerformOutputErrorRequest {
         kind: "perform-output-error",
         /// Only errors defined in the profile are returned here.
@@ -58,7 +56,7 @@ define_exchange_core_to_host! {
     }
 }
 
-define_exchange_core_to_host! {
+crate::abi::define_exchange! {
     struct PerformOutputExceptionRequest {
         kind: "perform-output-exception",
         /// All other unexpected errors are returned here.

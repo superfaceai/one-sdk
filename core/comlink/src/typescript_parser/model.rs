@@ -2,13 +2,13 @@ use serde::Serialize;
 
 use crate::json::{JsonSchema, JsonValue};
 
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct Documentation {
     pub title: Option<String>,
     pub description: Option<String>,
 }
 
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct Profile {
     /// Scope part of `scope/name`.
     pub scope: Option<String>,
@@ -20,7 +20,7 @@ pub struct Profile {
     pub usecases: Vec<UseCase>,
 }
 
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum UseCaseSafety {
     Safe,
@@ -29,7 +29,7 @@ pub enum UseCaseSafety {
     Unsafe,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum UseCaseExample {
     Success {
@@ -55,7 +55,7 @@ impl Default for UseCaseExample {
     }
 }
 
-#[derive(Default, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct UseCase {
     /// Name of the usecase as specified in the type alias.
     pub name: String,
