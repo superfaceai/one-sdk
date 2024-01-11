@@ -366,13 +366,13 @@ impl<'a> ProfileParser<'a> {
     fn parse_usecase_top_schema(&mut self, root: TsPropertySignatureTypeMember) -> JsonSchema {
         if let Some(token) = root.optional_token() {
             self.diag.warn_detail(
-                PartialDiagnostic(DiagnosticCode::UsecaseMemberInvalid, token.text_range()),
+                PartialDiagnostic(DiagnosticCode::UsecaseMemberInvalid, token.text_trimmed_range()),
                 "optional is not allowed here",
             );
         }
         if let Some(token) = root.readonly_token() {
             self.diag.warn_detail(
-                PartialDiagnostic(DiagnosticCode::UsecaseMemberInvalid, token.text_range()),
+                PartialDiagnostic(DiagnosticCode::UsecaseMemberInvalid, token.text_trimmed_range()),
                 "readonly is not allowed here",
             );
         }
@@ -411,8 +411,18 @@ impl<'a> ProfileParser<'a> {
             AnyTsType::TsReferenceType(r) => self.parse_type_schema_reference(r),
             AnyTsType::TsNumberType(_) => json_map!({ "type": "number" }),
             AnyTsType::TsStringType(_) => json_map!({ "type": "string" }),
-            AnyTsType::TsNullLiteralType(_) => json_map!({ "type": "null" }),
-            _ => todo!("{:?}", ty),
+            AnyTsType::TsBooleanType(_) => json_map!({ "type": "bool" }),
+            AnyTsType::TsNullLiteralType(_)
+            | AnyTsType::TsBooleanLiteralType(_)
+            | AnyTsType::TsNumberLiteralType(_)
+            | AnyTsType::TsStringLiteralType(_)
+            | AnyTsType::TsBigintLiteralType(_)
+            | AnyTsType::TsTemplateLiteralType(_)
+                => self.parse_type_schema_literal(ty),
+            _ => {
+                self.diag.error_detail(PartialDiagnostic(DiagnosticCode::Unknown, ty.range()), format_args!("type {:?} not implemented", ty));
+                json_map!({})
+            }
         }
     }
     /// ```json
@@ -463,7 +473,9 @@ impl<'a> ProfileParser<'a> {
                     properties.insert(name.deref().into(), prop_schema.into());
                 }
                 // TODO: TsIndexSignatureTypeMember and additional_properties
-                _ => todo!(),
+                member => {
+                    self.diag.error_detail(PartialDiagnostic(DiagnosticCode::Unknown, member.range()), format_args!("member {:?} not implemented", member));
+                }
             }
         }
 
@@ -520,7 +532,8 @@ impl<'a> ProfileParser<'a> {
                 })
             }
             1 if name[0] == "Record" => {
-                todo!()
+                self.diag.error_detail(PartialDiagnostic(DiagnosticCode::Unknown, r.range()), format_args!("reference {:?} not implemented", r));
+                json_map!({})
             }
             _ => {
                 self.diag.error_detail(
@@ -550,6 +563,53 @@ impl<'a> ProfileParser<'a> {
         json_map!({
             "oneOf": JsonValue::Array(variants)
         })
+    }
+
+    fn parse_type_schema_literal(&mut self, v: AnyTsType) -> JsonMap {
+        let result = match v {
+            AnyTsType::TsNullLiteralType(_) => Ok(json_map!({ "type": "null" })),
+            AnyTsType::TsBooleanLiteralType(lit) => {
+                ast_do!(err(UsecaseMemberInvalid, &lit, .literal)).map(
+                    |t| json_map!({ "const": JsonValue::Bool(t.kind() == JsSyntaxKind::TRUE_KW) })
+                )
+            }
+            AnyTsType::TsNumberLiteralType(lit) => {
+                let minus = lit.minus_token().is_some();
+                ast_do!(UsecaseMemberInvalid, &lit; [
+                    err(.literal_token),
+                    or(|v: JsSyntaxToken| {
+                        let num = parse_js_number(v.text_trimmed());
+                        if minus {
+                            num.map(|v| -v)
+                        } else {
+                            num
+                        }
+                    }, &lit),
+                    or(serde_json::Number::from_f64, &lit)
+                ]).map(
+                    |v| json_map!({ "const": JsonValue::Number(v) })
+                )
+            }
+            AnyTsType::TsStringLiteralType(lit) => {
+                ast_do!(err(UsecaseMemberInvalid, &lit, .literal_token)).map(
+                    |token| json_map!({ "const": trim_type_string_literal(token.text_trimmed()) })
+                )
+            }
+            // TsBigintLiteralType
+            // TsTemplateLiteralType
+            l => {
+                self.diag.error_detail(PartialDiagnostic(DiagnosticCode::Unknown, l.range()), format_args!("type literal {:?} not implemented", l));
+                return json_map!({})
+            }
+        };
+
+        match result {
+            Ok(v) => v,
+            Err(err) => {
+                self.diag.error(err);
+                json_map!({})
+            }
+        }
     }
 
     fn parse_examples(&mut self, root: JsVariableDeclarator) -> StandaloneUsecaseExamples {
@@ -708,7 +768,10 @@ impl<'a> ProfileParser<'a> {
 
                 const_eval::eval_unary(operator, argument)
             }
-            expr => todo!("{:#?}", expr),
+            expr => {
+                self.diag.error_detail(PartialDiagnostic(DiagnosticCode::Unknown, expr.range()), format_args!("expression {:?} not implemented", expr));
+                JsonValue::Null
+            }
         }
     }
 
@@ -768,7 +831,10 @@ impl<'a> ProfileParser<'a> {
                 ast_do!(err(UsecaseExampleMemberInvalid, &l, .value_token))
                     .map(|s| JsonValue::String(inner_string_text(&s).text().into()))
             }
-            lit => todo!("{:#?}", lit),
+            lit => {
+                self.diag.error_detail(PartialDiagnostic(DiagnosticCode::Unknown, lit.range()), format_args!("literal {:?} not implemented", lit));
+                Ok(JsonValue::Null)
+            }
         };
         match result {
             Ok(r) => r,
@@ -834,7 +900,7 @@ fn is_usecase_example_root(v: &JsVariableDeclarator) -> bool {
         mtch(AnyTsType::TsStringLiteralType),
         err(.literal_token),
     ])
-    .map(|token| trim_type_string_literal(token.text()) == "examples")
+    .map(|token| trim_type_string_literal(token.text_trimmed()) == "examples")
     .unwrap_or(false)
 }
 
@@ -879,7 +945,7 @@ fn extract_usecase_safety(
         err(.literal_token),
     ])?;
 
-    match trim_type_string_literal(token.text()) {
+    match trim_type_string_literal(token.text_trimmed()) {
         "safe" => Ok(UseCaseSafety::Safe),
         "idempotent" => Ok(UseCaseSafety::Idempotent),
         "unsafe" => Ok(UseCaseSafety::Unsafe),

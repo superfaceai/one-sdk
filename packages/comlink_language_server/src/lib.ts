@@ -33,14 +33,14 @@ export class Logger {
     return `${minutesStr}:${secondsStr}.${millisStr}`;
   }
 
-  private fmt(...values: unknown[]): string {
+  private fmt(opts: { depth?: number }, ...values: unknown[]): string {
     const processed = values
       .map(value => {
         let message: string;
         if (typeof value === 'object') {
           message = util.inspect(value, {
             showHidden: false,
-            depth: 5,
+            depth: opts.depth ?? 5,
             colors: false,
           });
         } else {
@@ -56,17 +56,17 @@ export class Logger {
 
   logTrace(...values: unknown[]) {
     if (this.level === 'trace') {
-      this.console.debug(this.fmt(...values))
+      this.console.debug(this.fmt({ depth: 10 }, ...values))
     }
   }
   logDebug(...values: unknown[]) {
     if (this.level === 'trace' || this.level === 'debug') {
-      this.console.log(this.fmt(...values))
+      this.console.log(this.fmt({ depth: 10 }, ...values))
     }
   }
   logInfo(...values: unknown[]) {
     if (this.level !== 'off') {
-      this.console.info(this.fmt(...values))
+      this.console.info(this.fmt({}, ...values))
     }
   }
 }
