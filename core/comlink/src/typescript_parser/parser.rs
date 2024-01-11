@@ -21,7 +21,7 @@ use crate::{
 
 use super::{
     const_eval::{self, UnaryOperator},
-    UseCaseExample, UseCaseSafety,
+    UseCaseExample, UseCaseSafety, model::TextSpan,
 };
 
 struct PartialDiagnostic(pub DiagnosticCode, pub TextRange);
@@ -31,7 +31,7 @@ impl Diagnostics {
         Self(Vec::new())
     }
 
-    fn map_text_range(range: TextRange) -> [usize; 2] {
+    fn map_text_range(range: TextRange) -> TextSpan {
         [
             u32::from(range.start()) as usize,
             u32::from(range.end()) as usize,
@@ -137,7 +137,7 @@ macro_rules! ast_do {
     };
 }
 
-struct StandaloneUsecaseExamples {
+struct StandaloneUseCaseExamples {
     pub usecase_name: String,
     pub node_range: TextRange,
     pub examples: Vec<UseCaseExample>,
@@ -174,7 +174,7 @@ impl<'a> ProfileParser<'a> {
             }
         };
 
-        let mut all_examples = Vec::<StandaloneUsecaseExamples>::new();
+        let mut all_examples = Vec::<StandaloneUseCaseExamples>::new();
 
         // usecases: find all `type $usecase_name = UseCase<$usecase_ty>` nodes
         // examples: find all `const ..: $usecase_name['examples'] = [$usecase_examples]`
@@ -214,7 +214,7 @@ impl<'a> ProfileParser<'a> {
                     usecase.examples.extend(e.examples.into_iter());
                 }
                 None => self.diag.warn_detail(
-                    PartialDiagnostic(DiagnosticCode::UsecaseExampleInvalid, e.node_range),
+                    PartialDiagnostic(DiagnosticCode::UseCaseExampleInvalid, e.node_range),
                     format_args!(
                         "Use case \"{}\" is not defined, these examples will be ignored",
                         e.usecase_name
@@ -230,7 +230,7 @@ impl<'a> ProfileParser<'a> {
         let mut usecase = UseCase::default();
         let mut required_members = HashSet::from(["safety", "input", "result", "error"]);
 
-        usecase.name = ast_do!(UsecaseNameInvalid, &root; [
+        usecase.name = ast_do!(UseCaseNameInvalid, &root; [
             err(.binding_identifier),
             err(.name_token)
         ] catch(err) {
@@ -253,7 +253,7 @@ impl<'a> ProfileParser<'a> {
         for member in usecase_options.members() {
             match member {
                 AnyTsTypeMember::TsPropertySignatureTypeMember(p) => {
-                    let name_text = ast_do!(UsecaseMemberUnknown, &p; [
+                    let name_text = ast_do!(UseCaseMemberUnknown, &p; [
                         err(.name),
                         or(.name),
                     ] catch(err) {
@@ -275,14 +275,14 @@ impl<'a> ProfileParser<'a> {
                         "result" => usecase.result = self.parse_usecase_top_schema(p),
                         "error" => usecase.error = self.parse_usecase_top_schema(p),
                         _ => self.diag.warn(PartialDiagnostic(
-                            DiagnosticCode::UsecaseMemberUnknown,
+                            DiagnosticCode::UseCaseMemberUnknown,
                             p.range(),
                         )),
                     }
                 }
                 m => {
                     self.diag.warn(PartialDiagnostic(
-                        DiagnosticCode::UsecaseMemberUnknown,
+                        DiagnosticCode::UseCaseMemberUnknown,
                         m.range(),
                     ));
                 }
@@ -291,7 +291,7 @@ impl<'a> ProfileParser<'a> {
         for missing_member in required_members {
             self.diag.error_detail(
                 PartialDiagnostic(
-                    DiagnosticCode::UsecaseMemberInvalid,
+                    DiagnosticCode::UseCaseMemberInvalid,
                     usecase_options.range(),
                 ),
                 missing_member,
@@ -366,18 +366,18 @@ impl<'a> ProfileParser<'a> {
     fn parse_usecase_top_schema(&mut self, root: TsPropertySignatureTypeMember) -> JsonSchema {
         if let Some(token) = root.optional_token() {
             self.diag.warn_detail(
-                PartialDiagnostic(DiagnosticCode::UsecaseMemberInvalid, token.text_trimmed_range()),
+                PartialDiagnostic(DiagnosticCode::UseCaseMemberInvalid, token.text_trimmed_range()),
                 "optional is not allowed here",
             );
         }
         if let Some(token) = root.readonly_token() {
             self.diag.warn_detail(
-                PartialDiagnostic(DiagnosticCode::UsecaseMemberInvalid, token.text_trimmed_range()),
+                PartialDiagnostic(DiagnosticCode::UseCaseMemberInvalid, token.text_trimmed_range()),
                 "readonly is not allowed here",
             );
         }
 
-        let ty = ast_do!(UsecaseMemberInvalid, &root; [
+        let ty = ast_do!(UseCaseMemberInvalid, &root; [
             or(.type_annotation),
             err(.ty)
         ] catch(err) {
@@ -442,14 +442,14 @@ impl<'a> ProfileParser<'a> {
         for prop in obj.members().into_iter() {
             match prop {
                 AnyTsTypeMember::TsPropertySignatureTypeMember(p) => {
-                    let name = ast_do!(UsecaseMemberInvalid, &p; [
+                    let name = ast_do!(UseCaseMemberInvalid, &p; [
                         err(.name),
                         or(.name)
                     ] catch(err) {
                         self.diag.error(err);
                         continue;
                     });
-                    let ty = ast_do!(UsecaseMemberInvalid, &p; [
+                    let ty = ast_do!(UseCaseMemberInvalid, &p; [
                         or(.type_annotation),
                         err(.ty)
                     ] catch(err) {
@@ -502,7 +502,7 @@ impl<'a> ProfileParser<'a> {
     /// ```
     fn parse_type_schema_reference(&mut self, r: TsReferenceType) -> JsonMap {
         let name = ast_do!(
-            UsecaseMemberInvalid, &r; [
+            UseCaseMemberInvalid, &r; [
                 err(.name),
                 and_then(extract_type_name)
             ] catch(err) {
@@ -551,7 +551,7 @@ impl<'a> ProfileParser<'a> {
         // TODO: optimize union of primitive types to `"type": []`
         let mut variants = Vec::<JsonValue>::new();
         for ty in u.types() {
-            let v = ast_do!(UsecaseMemberInvalid, ty; [
+            let v = ast_do!(UseCaseMemberInvalid, ty; [
                 mtch(Ok, u)
             ] catch(err) {
                 self.diag.error(err);
@@ -569,13 +569,13 @@ impl<'a> ProfileParser<'a> {
         let result = match v {
             AnyTsType::TsNullLiteralType(_) => Ok(json_map!({ "type": "null" })),
             AnyTsType::TsBooleanLiteralType(lit) => {
-                ast_do!(err(UsecaseMemberInvalid, &lit, .literal)).map(
+                ast_do!(err(UseCaseMemberInvalid, &lit, .literal)).map(
                     |t| json_map!({ "const": JsonValue::Bool(t.kind() == JsSyntaxKind::TRUE_KW) })
                 )
             }
             AnyTsType::TsNumberLiteralType(lit) => {
                 let minus = lit.minus_token().is_some();
-                ast_do!(UsecaseMemberInvalid, &lit; [
+                ast_do!(UseCaseMemberInvalid, &lit; [
                     err(.literal_token),
                     or(|v: JsSyntaxToken| {
                         let num = parse_js_number(v.text_trimmed());
@@ -591,7 +591,7 @@ impl<'a> ProfileParser<'a> {
                 )
             }
             AnyTsType::TsStringLiteralType(lit) => {
-                ast_do!(err(UsecaseMemberInvalid, &lit, .literal_token)).map(
+                ast_do!(err(UseCaseMemberInvalid, &lit, .literal_token)).map(
                     |token| json_map!({ "const": trim_type_string_literal(token.text_trimmed()) })
                 )
             }
@@ -612,8 +612,8 @@ impl<'a> ProfileParser<'a> {
         }
     }
 
-    fn parse_examples(&mut self, root: JsVariableDeclarator) -> StandaloneUsecaseExamples {
-        let mut result = StandaloneUsecaseExamples {
+    fn parse_examples(&mut self, root: JsVariableDeclarator) -> StandaloneUseCaseExamples {
+        let mut result = StandaloneUseCaseExamples {
             usecase_name: "<error>".into(),
             node_range: root.range(),
             examples: Vec::new(),
@@ -627,7 +627,7 @@ impl<'a> ProfileParser<'a> {
             }
         };
 
-        let initializer = ast_do!(UsecaseExamplesArrayInvalid, root; [
+        let initializer = ast_do!(UseCaseExamplesArrayInvalid, root; [
             or(.initializer),
             err(.expression),
             mtch(AnyJsExpression::JsArrayExpression)
@@ -636,7 +636,7 @@ impl<'a> ProfileParser<'a> {
             return result;
         });
         for element in initializer.elements() {
-            let element = ast_do!(UsecaseExampleInvalid, element; [
+            let element = ast_do!(UseCaseExampleInvalid, element; [
                 mtch(Ok, initializer),
                 mtch(AnyJsArrayElement::AnyJsExpression),
                 mtch(AnyJsExpression::JsObjectExpression),
@@ -658,7 +658,7 @@ impl<'a> ProfileParser<'a> {
         let mut output = JsonValue::Null;
 
         for member in root.members() {
-            let member = ast_do!(UsecaseExampleInvalid, member; [
+            let member = ast_do!(UseCaseExampleInvalid, member; [
                 mtch(Ok, root),
                 mtch(AnyJsObjectMember::JsPropertyObjectMember),
             ] catch(err) {
@@ -666,7 +666,7 @@ impl<'a> ProfileParser<'a> {
                 return None;
             });
 
-            let member_name = ast_do!(UsecaseExampleInvalid, &member; [
+            let member_name = ast_do!(UseCaseExampleInvalid, &member; [
                 err(.name),
                 or(.name),
             ] catch(err) {
@@ -674,7 +674,7 @@ impl<'a> ProfileParser<'a> {
                 return None;
             });
 
-            let member_value = ast_do!(UsecaseExampleInvalid, &member; [
+            let member_value = ast_do!(UseCaseExampleInvalid, &member; [
                 err(.value)
             ] catch(err) {
                 self.diag.error(err);
@@ -691,7 +691,7 @@ impl<'a> ProfileParser<'a> {
                     is_error = true;
                     output = self.parse_example_element_value(member_value);
                 }
-                "name" => match ast_do!(UsecaseExampleInvalid, member_value; [
+                "name" => match ast_do!(UseCaseExampleInvalid, member_value; [
                     mtch(AnyJsExpression::AnyJsLiteralExpression),
                     mtch(AnyJsLiteralExpression::JsStringLiteralExpression),
                     err(.value_token),
@@ -705,7 +705,7 @@ impl<'a> ProfileParser<'a> {
                     }
                 },
                 _ => self.diag.warn(PartialDiagnostic(
-                    DiagnosticCode::UsecaseExampleMemberUnknown,
+                    DiagnosticCode::UseCaseExampleMemberUnknown,
                     member.range(),
                 )),
             }
@@ -735,7 +735,7 @@ impl<'a> ProfileParser<'a> {
                 self.parse_example_element_value_object(obj)
             }
             AnyJsExpression::JsUnaryExpression(expr) => {
-                let operator = ast_do!(UsecaseExampleMemberInvalid, &expr; [
+                let operator = ast_do!(UseCaseExampleMemberInvalid, &expr; [
                     err(.operator)
                 ] catch(err) {
                     self.diag.error(err);
@@ -749,7 +749,7 @@ impl<'a> ProfileParser<'a> {
                     _ => {
                         self.diag.error_detail(
                             PartialDiagnostic(
-                                DiagnosticCode::UsecaseExampleMemberInvalid,
+                                DiagnosticCode::UseCaseExampleMemberInvalid,
                                 expr.range(),
                             ),
                             "expected one of `+ - ~ !`",
@@ -758,7 +758,7 @@ impl<'a> ProfileParser<'a> {
                     }
                 };
 
-                let argument = ast_do!(UsecaseExampleMemberInvalid, &expr; [
+                let argument = ast_do!(UseCaseExampleMemberInvalid, &expr; [
                     err(.argument)
                 ] catch(err) {
                     self.diag.error(err);
@@ -778,7 +778,7 @@ impl<'a> ProfileParser<'a> {
     fn parse_example_element_value_object(&mut self, obj: JsObjectExpression) -> JsonValue {
         let mut map = JsonMap::default();
         for member in obj.members() {
-            let member = ast_do!(UsecaseExampleMemberInvalid, member; [
+            let member = ast_do!(UseCaseExampleMemberInvalid, member; [
                 mtch(Ok, obj),
                 mtch(AnyJsObjectMember::JsPropertyObjectMember)
             ] catch(err) {
@@ -786,7 +786,7 @@ impl<'a> ProfileParser<'a> {
                 continue;
             });
 
-            let member_name = ast_do!(UsecaseExampleMemberInvalid, &member; [
+            let member_name = ast_do!(UseCaseExampleMemberInvalid, &member; [
                 err(.name),
                 mtch(AnyJsObjectMemberName::JsLiteralMemberName),
                 err(.name)
@@ -795,7 +795,7 @@ impl<'a> ProfileParser<'a> {
                 continue;
             });
 
-            let member_value = ast_do!(UsecaseExampleMemberInvalid, &member; [
+            let member_value = ast_do!(UseCaseExampleMemberInvalid, &member; [
                 err(.value)
             ] catch(err) {
                 self.diag.error(err);
@@ -815,11 +815,11 @@ impl<'a> ProfileParser<'a> {
         let result = match lit {
             AnyJsLiteralExpression::JsNullLiteralExpression(_) => Ok(JsonValue::Null),
             AnyJsLiteralExpression::JsBooleanLiteralExpression(l) => {
-                ast_do!(err(UsecaseExampleMemberInvalid, &l, .value_token))
+                ast_do!(err(UseCaseExampleMemberInvalid, &l, .value_token))
                     .map(|v| JsonValue::Bool(v.kind() == JsSyntaxKind::TRUE_KW))
             }
             AnyJsLiteralExpression::JsNumberLiteralExpression(l) => {
-                ast_do!(UsecaseExampleMemberInvalid, &l; [
+                ast_do!(UseCaseExampleMemberInvalid, &l; [
                     // TODO: would use as_number but https://github.com/biomejs/biome/pull/1447
                     err(.value_token),
                     or(|v: JsSyntaxToken| parse_js_number(v.text_trimmed()), &l),
@@ -828,7 +828,7 @@ impl<'a> ProfileParser<'a> {
                 .map(JsonValue::Number)
             }
             AnyJsLiteralExpression::JsStringLiteralExpression(l) => {
-                ast_do!(err(UsecaseExampleMemberInvalid, &l, .value_token))
+                ast_do!(err(UseCaseExampleMemberInvalid, &l, .value_token))
                     .map(|s| JsonValue::String(inner_string_text(&s).text().into()))
             }
             lit => {
@@ -861,7 +861,7 @@ fn is_usecase_root(v: &TsTypeAliasDeclaration) -> bool {
         _ => return false,
     };
 
-    return name.len() == 1 && name[0] == "Usecase";
+    return name.len() == 1 && name[0] == "UseCase";
 }
 fn is_usecase_example_root(v: &JsVariableDeclarator) -> bool {
     // const X: Y = |Z|
@@ -895,7 +895,7 @@ fn is_usecase_example_root(v: &JsVariableDeclarator) -> bool {
     };
 
     // const X: Y|[W]| = Z
-    ast_do!(UsecaseMemberInvalid, index_access; [
+    ast_do!(UseCaseMemberInvalid, index_access; [
         err(.index_type),
         mtch(AnyTsType::TsStringLiteralType),
         err(.literal_token),
@@ -938,7 +938,7 @@ fn extract_type_arguments<const N: usize>(
 fn extract_usecase_safety(
     v: &TsPropertySignatureTypeMember,
 ) -> Result<UseCaseSafety, PartialDiagnostic> {
-    let token = ast_do!(UsecaseMemberInvalid, v; [
+    let token = ast_do!(UseCaseMemberInvalid, v; [
         or(.type_annotation),
         err(.ty),
         mtch(AnyTsType::TsStringLiteralType),
@@ -950,31 +950,31 @@ fn extract_usecase_safety(
         "idempotent" => Ok(UseCaseSafety::Idempotent),
         "unsafe" => Ok(UseCaseSafety::Unsafe),
         _ => Err(PartialDiagnostic(
-            DiagnosticCode::UsecaseMemberInvalid,
+            DiagnosticCode::UseCaseMemberInvalid,
             token.text_range(),
         )),
     }
 }
 /// Extracts the first type argument of a type reference (named type), as expected for `type UseCaseName = UseCase<X>`.
 fn extract_usecase_options(v: &AnyTsType) -> Result<TsObjectType, PartialDiagnostic> {
-    let [first_arg] = ast_do!(UsecaseInvalid, v; [
+    let [first_arg] = ast_do!(UseCaseInvalid, v; [
         mtch(AnyTsType::TsReferenceType),
         or(.type_arguments),
     ])
     .and_then(extract_type_arguments::<1>)?;
-    let obj = ast_do!(mtch(UsecaseInvalid, first_arg, AnyTsType::TsObjectType))?;
+    let obj = ast_do!(mtch(UseCaseInvalid, first_arg, AnyTsType::TsObjectType))?;
 
     Ok(obj)
 }
 fn extract_usecase_example_usecase_name(
     v: &JsVariableDeclarator,
 ) -> Result<String, PartialDiagnostic> {
-    let type_annotation = ast_do!(UsecaseExampleInvalid, v; [
+    let type_annotation = ast_do!(UseCaseExampleInvalid, v; [
         or(.variable_annotation),
         err(.type_annotation),
     ])?
     .unwrap(); // the implementation always returns Some
-    let name = ast_do!(UsecaseExampleInvalid, type_annotation; [
+    let name = ast_do!(UseCaseExampleInvalid, type_annotation; [
         err(.ty),
         mtch(AnyTsType::TsIndexedAccessType),
         err(.object_type),
@@ -986,7 +986,7 @@ fn extract_usecase_example_usecase_name(
     match extract_type_name(name) {
         Ok(name) if name.len() == 1 => Ok(name.into_iter().next().unwrap()),
         _ => Err(PartialDiagnostic(
-            DiagnosticCode::UsecaseExampleInvalid,
+            DiagnosticCode::UseCaseExampleInvalid,
             name_range,
         )),
     }

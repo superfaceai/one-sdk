@@ -2,6 +2,8 @@ use serde::Serialize;
 
 use crate::json::{JsonSchema, JsonValue};
 
+pub type TextSpan = [usize; 2];
+
 #[derive(Debug, Default, Serialize)]
 pub struct Documentation {
     pub title: Option<String>,
@@ -16,7 +18,7 @@ pub struct Profile {
     pub name: String,
     /// Documentation of the profile.
     pub documentation: Documentation,
-    /// List of usecases.
+    /// List of use cases.
     pub usecases: Vec<UseCase>,
 }
 
@@ -57,11 +59,11 @@ impl Default for UseCaseExample {
 
 #[derive(Debug, Default, Serialize)]
 pub struct UseCase {
-    /// Name of the usecase as specified in the type alias.
+    /// Name of the use case as specified in the type alias.
     pub name: String,
-    /// Safety of the usecase.
+    /// Safety of the use case.
     pub safety: UseCaseSafety,
-    /// Documentation attached directly to the usecase.
+    /// Documentation attached directly to the use case.
     pub documentation: Documentation,
     /// Input value schema.
     pub input: JsonSchema,
@@ -69,6 +71,11 @@ pub struct UseCase {
     pub result: JsonSchema,
     /// Error value schema.
     pub error: JsonSchema,
-    /// Examples of the usecase.
+    /// Examples of the use case.
     pub examples: Vec<UseCaseExample>,
+}
+
+pub struct ProfileSpans {
+    /// Span of the whole profile document
+    pub document: TextSpan
 }

@@ -12,7 +12,7 @@ crate::abi::define_exchange! {
             provider_url: String,
             /// Url of the map (e.g. `file://<path>`).
             map_url: String,
-            /// Usecase defined in the profile.
+            /// UseCase defined in the profile.
             usecase: String,
             /// Input passed into the map.
             map_input: HostValue,
