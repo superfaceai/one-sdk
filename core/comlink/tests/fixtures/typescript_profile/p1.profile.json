@@ -14,7 +14,7 @@
       "error": {
         "$defs": {
           "AnyValue": {
-            "anyOf": [
+            "oneOf": [
               {
                 "type": "null"
               },
@@ -95,7 +95,7 @@
       "input": {
         "$defs": {
           "AnyValue": {
-            "anyOf": [
+            "oneOf": [
               {
                 "type": "null"
               },
@@ -140,7 +140,7 @@
       "result": {
         "$defs": {
           "AnyValue": {
-            "anyOf": [
+            "oneOf": [
               {
                 "type": "null"
               },

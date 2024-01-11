@@ -10,7 +10,7 @@ macro_rules! prepare_test {
         let source = include_str!($source);
         let expected: JsonValue = serde_json::from_str(include_str!($expected)).unwrap();
 
-        let (profile, errors) = comlink::typescript_parser::parse_profile(source);
+        let (profile, _spans, errors) = comlink::typescript_parser::parse_profile(source);
         if !errors.is_empty() {
             eprintln!("errors:{:#?}", errors);
         }
