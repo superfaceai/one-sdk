@@ -34,5 +34,27 @@ export type Diagnostic = {
 	severity: 'error' | 'warning',
 	code: number,
 	message: string,
-	range: [number, number]
+	span: [number, number]
+}
+
+export type TextSpan = [number, number]
+export type ProfileSpans = {
+	entire: TextSpan,
+	usecases: UseCaseSpans[]
+}
+export type UseCaseSpans = {
+	entire: TextSpan,
+	name: TextSpan,
+	safety: TextSpan,
+	documentation: TextSpan,
+	input: TextSpan,
+	result: TextSpan,
+	error: TextSpan,
+	examples: UseCaseExampleSpans[]
+}
+export type UseCaseExampleSpans = {
+	entire: TextSpan,
+	name: TextSpan,
+	input: TextSpan,
+	output: TextSpan
 }

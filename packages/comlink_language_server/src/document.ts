@@ -129,8 +129,11 @@ export class ComlinkDocument implements TextDocument {
           undefined,
           false
         );
-        const { profile, diagnostics } = parser.parseProfile(source)
-        result = { kind: 'profile', profile, diagnostics }
+        const { profile, spans, diagnostics } = parser.parseProfile(source)
+        const profileId = ComlinkParser.parseProfileFileName(this.uri)
+        profile.scope = profileId.scope
+        profile.name = profileId.name
+        result = { kind: 'profile', profile, spans, diagnostics }
         ctx.work?.workDoneProgress.done();
 
         break
@@ -176,7 +179,7 @@ export class ComlinkDocument implements TextDocument {
         }
 
         result.push(Diagnostic.create(
-          this.rangeFromSpan(d.range[0], d.range[1]),
+          this.rangeFromSpan(d.span[0], d.span[1]),
           d.message,
           severity,
           d.code
@@ -200,7 +203,7 @@ export class ComlinkDocument implements TextDocument {
 
     let symbols: DocumentSymbol[] = [];
     if (document.kind === 'profile') {
-      symbols = listProfileSymbols(this, document.profile, ctx);
+      symbols = listProfileSymbols(this, document, ctx);
     }
 
     this.symbolCache = symbols;

@@ -6,11 +6,12 @@ import {
 
 import { ComlinkDocument } from './document';
 import { stripUriPrefix } from './lib';
-import { Diagnostic, Profile } from './parser/model';
+import { Diagnostic, Profile, ProfileSpans } from './parser/model';
 
 export type ProfileDocument = {
   kind: 'profile',
-  profile: Profile
+  profile: Profile,
+  spans: ProfileSpans,
   diagnostics: Diagnostic[]
 }
 export type MapDocument = {

@@ -13,7 +13,7 @@ pub struct Diagnostic {
     pub severity: DiagnosticSeverity,
     pub code: u16,
     pub message: String,
-    pub range: TextSpan,
+    pub span: TextSpan,
 }
 
 #[repr(u16)]
@@ -37,16 +37,16 @@ impl DiagnosticCode {
     pub fn description(&self) -> &'static str {
         match self {
             Self::Unknown => "Unknown",
-            Self::GlobalTypeUnknown => "Global type is unknown",
-            Self::GlobalTypeInvalid => "Global type is invalid or missing",
-            Self::UseCaseInvalid => "Use case options are invalid or missing",
-            Self::UseCaseNameInvalid => "Use case name is invalid or missing",
-            Self::UseCaseMemberUnknown => "Use case member is unknown",
-            Self::UseCaseMemberInvalid => "Use case member is invalid or missing",
-            Self::UseCaseExamplesArrayInvalid => "Use case examples array is invalid",
-            Self::UseCaseExampleInvalid => "Use case example is invalid",
-            Self::UseCaseExampleMemberUnknown => "Use case example member is unknown",
-            Self::UseCaseExampleMemberInvalid => "Use case example member is invalid or missing",
+            Self::GlobalTypeUnknown => "Global type unknown",
+            Self::GlobalTypeInvalid => "Global type error",
+            Self::UseCaseInvalid => "Use case options error",
+            Self::UseCaseNameInvalid => "Use case name error",
+            Self::UseCaseMemberUnknown => "Use case member unknown",
+            Self::UseCaseMemberInvalid => "Use case member error",
+            Self::UseCaseExamplesArrayInvalid => "Use case examples array error",
+            Self::UseCaseExampleInvalid => "Use case example error",
+            Self::UseCaseExampleMemberUnknown => "Use case example member unknown",
+            Self::UseCaseExampleMemberInvalid => "Use case example member error",
         }
     }
 }

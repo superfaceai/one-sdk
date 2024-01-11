@@ -1,9 +1,11 @@
 import { WASI, WASIOptions } from 'node:wasi';
 import fs from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import path from 'node:path';
 
 import { AppContextSync, TextCoder, sf_host } from './common_lib'
-import type { Profile, Diagnostic } from './model'
+import type { Profile, Diagnostic, ProfileSpans } from './model'
+import { DocumentUri } from 'vscode-languageserver';
 
 class TextCoderImpl implements TextCoder {
   private readonly encoder: TextEncoder
@@ -22,7 +24,17 @@ class TextCoderImpl implements TextCoder {
 }
 
 export class ComlinkParser extends AppContextSync {
-	public static async create(): Promise<ComlinkParser> {    
+	public static parseProfileFileName(uri: DocumentUri): { scope?: string, name: string } {
+    const baseName = path.basename(uri, '.profile.ts')
+    const parts = baseName.split('.')
+    if (parts.length === 1) {
+      return { name: parts[0] }
+    } else {
+      return { scope: parts[0], name: parts[1] }
+    }
+  }
+
+  public static async create(): Promise<ComlinkParser> {    
     const fileUrl = new URL('../../assets/comlink.wasm', pathToFileURL(__filename))
     const buffer = await fs.readFile(process.env.COMLINK_WASM_PATH ?? fileURLToPath(fileUrl))
     const module = await WebAssembly.compile(buffer)
@@ -41,7 +53,7 @@ export class ComlinkParser extends AppContextSync {
     instance: WebAssembly.Instance,
     parseTsProfile: () => void
   }
-  private parserState: undefined | { profile: string } | { profile: Profile, diagnostics: Diagnostic[] }
+  private parserState: undefined | { profile: string } | { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] }
 
 	private constructor(module: WebAssembly.Module) {
     super()
@@ -80,7 +92,7 @@ export class ComlinkParser extends AppContextSync {
           profile: this.parserState!.profile
         }
       case 'parse-ts-profile-output':
-        this.parserState = { profile: message.profile, diagnostics: message.diagnostics }
+        this.parserState = { profile: message.profile, spans: message.spans, diagnostics: message.diagnostics }
         return { kind: 'ok' }
     }
   }
@@ -88,7 +100,7 @@ export class ComlinkParser extends AppContextSync {
   writeStream(_handle: number, _data: Uint8Array): number { throw new Error('not implemented') }
   closeStream(_handle: number): void { throw new Error('not implemented') }
 
-	public parseProfile(profile: string): { profile: Profile, diagnostics: Diagnostic[] } {
+	public parseProfile(profile: string): { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] } {
 		this.parserState = { profile }
     this.instance!.parseTsProfile()
     

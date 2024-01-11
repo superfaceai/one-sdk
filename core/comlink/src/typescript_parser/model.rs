@@ -2,7 +2,9 @@ use serde::Serialize;
 
 use crate::json::{JsonSchema, JsonValue};
 
-pub type TextSpan = [usize; 2];
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+#[serde(transparent)]
+pub struct TextSpan(pub [usize; 2]);
 
 #[derive(Debug, Default, Serialize)]
 pub struct Documentation {
@@ -75,7 +77,40 @@ pub struct UseCase {
     pub examples: Vec<UseCaseExample>,
 }
 
+#[derive(Debug, Default, Serialize)]
 pub struct ProfileSpans {
-    /// Span of the whole profile document
-    pub document: TextSpan
+    /// Span of the entire profile document
+    pub entire: TextSpan,
+    /// Spans for individual use cases, same order as [Profile::usecases] vec
+    pub usecases: Vec<UseCaseSpans>
+}
+#[derive(Debug, Default, Serialize)]
+pub struct UseCaseSpans {
+    /// Span of the entire use case
+    pub entire: TextSpan,
+    /// Span of the name text
+    pub name: TextSpan,
+    /// Span of the safety value
+    pub safety: TextSpan,
+    /// Span of the documentation
+    pub documentation: TextSpan,
+    /// Span of the input schema value
+    pub input: TextSpan,
+    /// Span of the result schema value
+    pub result: TextSpan,
+    /// Span of the error schema value
+    pub error: TextSpan,
+    /// Spans of examples, same order as [UseCase::examples]
+    pub examples: Vec<UseCaseExampleSpans>
+}
+#[derive(Debug, Default, Serialize)]
+pub struct UseCaseExampleSpans {
+    /// Span of the entire exmaple
+    pub entire: TextSpan,
+    /// Span of the name value
+    pub name: TextSpan,
+    /// Span of the input value
+    pub input: TextSpan,
+    /// Span of the output value
+    pub output: TextSpan
 }

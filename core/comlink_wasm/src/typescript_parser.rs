@@ -1,5 +1,5 @@
 
-use comlink::typescript_parser::{parse_profile, Diagnostic, Profile};
+use comlink::typescript_parser::{parse_profile, Diagnostic, Profile, ProfileSpans};
 
 use crate::MessageExchangeFfi;
 
@@ -15,6 +15,7 @@ wasm_abi::define_exchange! {
     struct ParseTsProfileOutputRequest {
         kind: "parse-ts-profile-output",
         profile: Profile,
+        spans: ProfileSpans,
         diagnostics: Vec<Diagnostic>
     } -> enum ParseTsProfileOutputResponse {
         Ok,
@@ -35,9 +36,9 @@ pub extern "C" fn __export_parse_ts_profile() {
         }
     };
 
-    let (profile, diagnostics) = parse_profile(&profile);
+    let (profile, spans, diagnostics) = parse_profile(&profile);
 
-    match ParseTsProfileOutputRequest::new(profile, diagnostics)
+    match ParseTsProfileOutputRequest::new(profile, spans, diagnostics)
         .send_json_in(MessageExchangeFfi)
         .unwrap()
     {

@@ -21,8 +21,17 @@ use crate::{
 
 use super::{
     const_eval::{self, UnaryOperator},
-    UseCaseExample, UseCaseSafety, model::TextSpan,
+    UseCaseExample, UseCaseSafety, model::{TextSpan, ProfileSpans, UseCaseSpans, UseCaseExampleSpans},
 };
+
+impl From<TextRange> for TextSpan {
+    fn from(range: TextRange) -> Self {
+        Self([
+            u32::from(range.start()) as usize,
+            u32::from(range.end()) as usize,
+        ])
+    }
+}
 
 struct PartialDiagnostic(pub DiagnosticCode, pub TextRange);
 struct Diagnostics(pub Vec<Diagnostic>);
@@ -31,18 +40,12 @@ impl Diagnostics {
         Self(Vec::new())
     }
 
-    fn map_text_range(range: TextRange) -> TextSpan {
-        [
-            u32::from(range.start()) as usize,
-            u32::from(range.end()) as usize,
-        ]
-    }
     fn diagnostic(&mut self, part: PartialDiagnostic, severity: DiagnosticSeverity) {
         self.0.push(Diagnostic {
             severity,
             message: part.0.description().into(),
             code: part.0 as u16,
-            range: Self::map_text_range(part.1),
+            span: part.1.into(),
         });
     }
     fn error(&mut self, part: PartialDiagnostic) {
@@ -61,7 +64,7 @@ impl Diagnostics {
             severity,
             message: format!("{}: {}", part.0.description(), detail),
             code: part.0 as u16,
-            range: Self::map_text_range(part.1),
+            span: part.1.into(),
         });
     }
     fn error_detail(&mut self, part: PartialDiagnostic, detail: impl Display) {
@@ -141,6 +144,7 @@ struct StandaloneUseCaseExamples {
     pub usecase_name: String,
     pub node_range: TextRange,
     pub examples: Vec<UseCaseExample>,
+    pub spans: Vec<UseCaseExampleSpans>
 }
 
 pub struct ProfileParser<'a> {
@@ -148,19 +152,20 @@ pub struct ProfileParser<'a> {
     diag: Diagnostics,
 }
 impl<'a> ProfileParser<'a> {
-    pub fn parse(source: &'a str) -> (Profile, Vec<Diagnostic>) {
+    pub fn parse(source: &'a str) -> (Profile, ProfileSpans, Vec<Diagnostic>) {
         let mut context = Self {
             source,
             diag: Diagnostics::new(),
         };
 
-        let profile = context.parse_profile();
+        let (profile, spans) = context.parse_profile();
 
-        (profile, context.diag.0)
+        (profile, spans, context.diag.0)
     }
 
-    fn parse_profile(&mut self) -> Profile {
+    fn parse_profile(&mut self) -> (Profile, ProfileSpans) {
         let mut profile = Profile::default();
+        let mut spans = ProfileSpans::default();
 
         let parsed = parse(self.source, JsFileSource::ts(), JsParserOptions::default());
         let script = match parsed.tree() {
@@ -170,9 +175,10 @@ impl<'a> ProfileParser<'a> {
                     PartialDiagnostic(DiagnosticCode::Unknown, parsed.syntax().text_range()),
                     "expected TypeScript module",
                 );
-                return profile;
+                return (profile, spans);
             }
         };
+        spans.entire = script.range().into();
 
         let mut all_examples = Vec::<StandaloneUseCaseExamples>::new();
 
@@ -187,7 +193,9 @@ impl<'a> ProfileParser<'a> {
             match statement {
                 // [type X = Y<Z>]
                 AnyJsStatement::TsTypeAliasDeclaration(dec) if is_usecase_root(&dec) => {
-                    profile.usecases.push(self.parse_usecase(dec));
+                    let (usecase, usecase_spans) = self.parse_usecase(dec);
+                    profile.usecases.push(usecase);
+                    spans.usecases.push(usecase_spans);
                 }
                 AnyJsStatement::JsVariableStatement(stmt) => {
                     if let Ok(declaration) = stmt.declaration() {
@@ -207,11 +215,12 @@ impl<'a> ProfileParser<'a> {
         for e in all_examples {
             let usecase = profile
                 .usecases
-                .iter_mut()
-                .find(|u| u.name == e.usecase_name);
+                .iter_mut().zip(spans.usecases.iter_mut())
+                .find(|(u, _s)| u.name == e.usecase_name);
             match usecase {
-                Some(usecase) => {
+                Some((usecase, spans)) => {
                     usecase.examples.extend(e.examples.into_iter());
+                    spans.examples.extend(e.spans.into_iter());
                 }
                 None => self.diag.warn_detail(
                     PartialDiagnostic(DiagnosticCode::UseCaseExampleInvalid, e.node_range),
@@ -223,30 +232,32 @@ impl<'a> ProfileParser<'a> {
             }
         }
 
-        profile
+        (profile, spans)
     }
 
-    fn parse_usecase(&mut self, root: TsTypeAliasDeclaration) -> UseCase {
+    fn parse_usecase(&mut self, root: TsTypeAliasDeclaration) -> (UseCase, UseCaseSpans) {
         let mut usecase = UseCase::default();
         let mut required_members = HashSet::from(["safety", "input", "result", "error"]);
+        let mut spans = UseCaseSpans::default();
+        spans.entire = root.range().into();
 
-        usecase.name = ast_do!(UseCaseNameInvalid, &root; [
+        let usecase_name = ast_do!(UseCaseNameInvalid, &root; [
             err(.binding_identifier),
             err(.name_token)
         ] catch(err) {
             self.diag.error(err);
-            return usecase;
-        })
-        .text_trimmed()
-        .into();
+            return (usecase, spans);
+        });
+        usecase.name = usecase_name.text_trimmed().into();
+        spans.name = usecase_name.text_trimmed_range().into();
 
-        usecase.documentation = self.parse_documentation(root.syntax());
+        (usecase.documentation, spans.documentation) = self.parse_documentation(root.syntax());
 
         let usecase_options = match extract_usecase_options(&root.ty().unwrap()) {
             Ok(v) => v,
             Err(err) => {
                 self.diag.error(err);
-                return usecase;
+                return (usecase, spans);
             }
         };
 
@@ -263,17 +274,34 @@ impl<'a> ProfileParser<'a> {
 
                     required_members.remove(name_text.deref());
                     match name_text.deref() {
-                        "safety" => match extract_usecase_safety(&p) {
-                            Ok(safety) => {
-                                usecase.safety = safety;
+                        "safety" => {
+                            let res = ast_do!(UseCaseMemberInvalid, &p; [
+                                or(.type_annotation),
+                                err(.ty),
+                                mtch(AnyTsType::TsStringLiteralType),
+                                err(.literal_token),
+                            ]).and_then(|token| match trim_type_string_literal(token.text_trimmed()) {
+                                "safe" => Ok((token, UseCaseSafety::Safe)),
+                                "idempotent" => Ok((token, UseCaseSafety::Idempotent)),
+                                "unsafe" => Ok((token, UseCaseSafety::Unsafe)),
+                                _ => Err(PartialDiagnostic(
+                                    DiagnosticCode::UseCaseMemberInvalid,
+                                    token.text_range(),
+                                )),
+                            });
+                            match res {
+                                Ok((token, safety)) => {
+                                    usecase.safety = safety;
+                                    spans.safety = token.text_trimmed_range().into();
+                                }
+                                Err(err) => self
+                                    .diag
+                                    .error_detail(err, "expected one of `safe, idempotent, unsafe`"),
                             }
-                            Err(err) => self
-                                .diag
-                                .error_detail(err, "expected one of `safe, idempotent, unsafe`"),
-                        },
-                        "input" => usecase.input = self.parse_usecase_top_schema(p),
-                        "result" => usecase.result = self.parse_usecase_top_schema(p),
-                        "error" => usecase.error = self.parse_usecase_top_schema(p),
+                        }
+                        "input" => (usecase.input, spans.input) = self.parse_usecase_top_schema(p),
+                        "result" => (usecase.result, spans.result) = self.parse_usecase_top_schema(p),
+                        "error" => (usecase.error, spans.error) = self.parse_usecase_top_schema(p),
                         _ => self.diag.warn(PartialDiagnostic(
                             DiagnosticCode::UseCaseMemberUnknown,
                             p.range(),
@@ -298,17 +326,18 @@ impl<'a> ProfileParser<'a> {
             );
         }
 
-        usecase
+        (usecase, spans)
     }
 
     /// Parses documentation comment from syntax node leading whitespace.
-    fn parse_documentation(&mut self, v: &JsSyntaxNode) -> Documentation {
+    fn parse_documentation(&mut self, v: &JsSyntaxNode) -> (Documentation, TextSpan) {
         const DOC_TRIM_CHARS: &[char] = &[' ', '\n', '\t', '*'];
 
         let mut doc = Documentation::default();
+        let mut span = TextSpan::default();
         let doc_comment = match try_extract_documentation(v) {
             Some(d) => d,
-            None => return doc,
+            None => return (doc, span),
         };
 
         let text = match doc_comment
@@ -322,9 +351,10 @@ impl<'a> ProfileParser<'a> {
                     PartialDiagnostic(DiagnosticCode::Unknown, doc_comment.text_range()),
                     "invalid doc comment",
                 );
-                return doc;
+                return (doc, span);
             }
         };
+        span = doc_comment.text_range().into();
 
         match text.split_once('\n') {
             Some((title, description)) => {
@@ -357,13 +387,13 @@ impl<'a> ProfileParser<'a> {
             }
         }
 
-        doc
+        (doc, span)
     }
     /// Entry point into parsing `input`, `result` and `error` schemas
     ///
     /// The difference from [`Self::parse_type_schema`] is that we also insert common definitions here (e.g. AnyValue)
     /// and can emit more specific warnings.
-    fn parse_usecase_top_schema(&mut self, root: TsPropertySignatureTypeMember) -> JsonSchema {
+    fn parse_usecase_top_schema(&mut self, root: TsPropertySignatureTypeMember) -> (JsonSchema, TextSpan) {
         if let Some(token) = root.optional_token() {
             self.diag.warn_detail(
                 PartialDiagnostic(DiagnosticCode::UseCaseMemberInvalid, token.text_trimmed_range()),
@@ -382,8 +412,9 @@ impl<'a> ProfileParser<'a> {
             err(.ty)
         ] catch(err) {
             self.diag.error(err);
-            return JsonSchema::Null;
+            return (JsonSchema::Null, TextSpan::default());
         });
+        let span = ty.range().into();
 
         let mut raw_schmea = self.parse_type_schema(ty);
         raw_schmea.insert(
@@ -393,7 +424,7 @@ impl<'a> ProfileParser<'a> {
             }),
         );
 
-        let Documentation { title, description } = self.parse_documentation(root.syntax());
+        let (Documentation { title, description }, _) = self.parse_documentation(root.syntax());
         if let Some(title) = title {
             raw_schmea.insert("title".into(), title.into());
         }
@@ -401,7 +432,7 @@ impl<'a> ProfileParser<'a> {
             raw_schmea.insert("description".into(), description.into());
         }
 
-        JsonValue::Object(raw_schmea)
+        (JsonValue::Object(raw_schmea), span)
     }
     /// Entry point into parsing schema of any type.
     fn parse_type_schema(&mut self, ty: AnyTsType) -> JsonMap {
@@ -411,7 +442,7 @@ impl<'a> ProfileParser<'a> {
             AnyTsType::TsReferenceType(r) => self.parse_type_schema_reference(r),
             AnyTsType::TsNumberType(_) => json_map!({ "type": "number" }),
             AnyTsType::TsStringType(_) => json_map!({ "type": "string" }),
-            AnyTsType::TsBooleanType(_) => json_map!({ "type": "bool" }),
+            AnyTsType::TsBooleanType(_) => json_map!({ "type": "boolean" }),
             AnyTsType::TsNullLiteralType(_)
             | AnyTsType::TsBooleanLiteralType(_)
             | AnyTsType::TsNumberLiteralType(_)
@@ -462,7 +493,7 @@ impl<'a> ProfileParser<'a> {
                     }
 
                     let mut prop_schema = self.parse_type_schema(ty);
-                    let Documentation { title, description } = self.parse_documentation(p.syntax());
+                    let (Documentation { title, description }, _) = self.parse_documentation(p.syntax());
                     if let Some(title) = title {
                         prop_schema.insert("title".into(), title.into());
                     }
@@ -617,6 +648,7 @@ impl<'a> ProfileParser<'a> {
             usecase_name: "<error>".into(),
             node_range: root.range(),
             examples: Vec::new(),
+            spans: Vec::new()
         };
 
         result.usecase_name = match extract_usecase_example_usecase_name(&root) {
@@ -644,18 +676,21 @@ impl<'a> ProfileParser<'a> {
                 self.diag.error(err);
                 continue;
             });
-            if let Some(example) = self.parse_example_element(element) {
+            if let Some((example, spans)) = self.parse_example_element(element) {
                 result.examples.push(example);
+                result.spans.push(spans);
             }
         }
         result
     }
 
-    fn parse_example_element(&mut self, root: JsObjectExpression) -> Option<UseCaseExample> {
+    fn parse_example_element(&mut self, root: JsObjectExpression) -> Option<(UseCaseExample, UseCaseExampleSpans)> {
         let mut is_error = true;
         let mut name = None;
         let mut input = JsonValue::Null;
         let mut output = JsonValue::Null;
+        let mut spans = UseCaseExampleSpans::default();
+        spans.entire = root.range().into();
 
         for member in root.members() {
             let member = ast_do!(UseCaseExampleInvalid, member; [
@@ -682,13 +717,18 @@ impl<'a> ProfileParser<'a> {
             });
 
             match member_name.deref() {
-                "input" => input = self.parse_example_element_value(member_value),
+                "input" => {
+                    spans.input = member_value.range().into();
+                    input = self.parse_example_element_value(member_value);
+                }
                 "result" => {
                     is_error = false;
+                    spans.output = member_value.range().into();
                     output = self.parse_example_element_value(member_value);
                 }
                 "error" => {
                     is_error = true;
+                    spans.output = member_value.range().into();
                     output = self.parse_example_element_value(member_value);
                 }
                 "name" => match ast_do!(UseCaseExampleInvalid, member_value; [
@@ -698,6 +738,7 @@ impl<'a> ProfileParser<'a> {
                 ]) {
                     Ok(v) => {
                         name = Some(inner_string_text(&v).text().into());
+                        spans.name = v.text_trimmed_range().into();
                     }
                     Err(err) => {
                         self.diag
@@ -711,7 +752,7 @@ impl<'a> ProfileParser<'a> {
             }
         }
 
-        Some(if is_error {
+        let example = if is_error {
             UseCaseExample::Failure {
                 name,
                 input,
@@ -723,7 +764,9 @@ impl<'a> ProfileParser<'a> {
                 input,
                 result: output,
             }
-        })
+        };
+
+        Some((example, spans))
     }
 
     fn parse_example_element_value(&mut self, expr: AnyJsExpression) -> JsonValue {
@@ -935,26 +978,6 @@ fn extract_type_arguments<const N: usize>(
     Ok(result.map(|v| v.unwrap()))
 }
 
-fn extract_usecase_safety(
-    v: &TsPropertySignatureTypeMember,
-) -> Result<UseCaseSafety, PartialDiagnostic> {
-    let token = ast_do!(UseCaseMemberInvalid, v; [
-        or(.type_annotation),
-        err(.ty),
-        mtch(AnyTsType::TsStringLiteralType),
-        err(.literal_token),
-    ])?;
-
-    match trim_type_string_literal(token.text_trimmed()) {
-        "safe" => Ok(UseCaseSafety::Safe),
-        "idempotent" => Ok(UseCaseSafety::Idempotent),
-        "unsafe" => Ok(UseCaseSafety::Unsafe),
-        _ => Err(PartialDiagnostic(
-            DiagnosticCode::UseCaseMemberInvalid,
-            token.text_range(),
-        )),
-    }
-}
 /// Extracts the first type argument of a type reference (named type), as expected for `type UseCaseName = UseCase<X>`.
 fn extract_usecase_options(v: &AnyTsType) -> Result<TsObjectType, PartialDiagnostic> {
     let [first_arg] = ast_do!(UseCaseInvalid, v; [
@@ -1059,7 +1082,7 @@ fn doc_line_common_prefix<'a>(left: &'a str, right: &str) -> &'a str {
 
 fn anyvalue_schema(ref_path: &str) -> JsonSchema {
     json!({
-        "anyOf": [
+        "oneOf": [
             { "type": "null" },
             { "type": "string" },
             { "type": "number" },

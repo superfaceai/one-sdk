@@ -18,84 +18,37 @@ function formatNamespace(
 
 export function listProfileSymbols(
   document: ComlinkDocument,
-  profile: ProfileDocument['profile'],
+  doc: ProfileDocument,
   ctx?: Context<DocumentSymbol[]>
 ): DocumentSymbol[] {
   ctx?.work?.workDoneProgress.begin('Gathering profile symbols');
 
   const namespaceSymbols: DocumentSymbol[] = [];
-  // for (const definition of profile.definitions) {
-  //   // TODO: improve (selection) ranges
-  //   const definitionRange = document.rangeFromSpan(
-  //     definition.location.start.charIndex,
-  //     definition.location.end.charIndex
-  //   );
+  for (let i = 0; i < doc.profile.usecases.length; i += 1) {
+    const usecase = doc.profile.usecases[i]
+    const spans = doc.spans.usecases[i]
 
-  //   switch (definition.kind) {
-  //     case 'UseCaseDefinition':
-  //       {
-  //         const usecaseSymbol = DocumentSymbol.create(
-  //           definition.useCaseName,
-  //           definition.documentation?.title,
-  //           SymbolKind.Interface,
-  //           definitionRange,
-  //           definitionRange,
-  //           []
-  //         );
-  //         namespaceSymbols.push(usecaseSymbol);
-  //       }
-  //       break;
+    namespaceSymbols.push(DocumentSymbol.create(
+      usecase.name,
+      usecase.documentation?.title,
+      SymbolKind.Interface,
+      document.rangeFromSpan(spans.entire[0], spans.entire[1]),
+      document.rangeFromSpan(spans.name[0], spans.name[1]),
+      []
+    ))
+  }
 
-  //     case 'NamedModelDefinition':
-  //       {
-  //         const modelSymbol = DocumentSymbol.create(
-  //           definition.modelName,
-  //           definition.documentation?.title,
-  //           SymbolKind.Interface,
-  //           definitionRange,
-  //           definitionRange,
-  //           []
-  //         );
-  //         namespaceSymbols.push(modelSymbol);
-  //       }
-  //       break;
-
-  //     case 'NamedFieldDefinition':
-  //       {
-  //         const fieldSymbol = DocumentSymbol.create(
-  //           definition.fieldName,
-  //           definition.documentation?.title,
-  //           SymbolKind.Field,
-  //           definitionRange,
-  //           definitionRange,
-  //           []
-  //         );
-  //         namespaceSymbols.push(fieldSymbol);
-  //       }
-  //       break;
-  //   }
-  // }
-
-  const fileSpan = { // TODO
-    start: 0,
-    end: 1,
-  };
+  const fileRange = document.rangeFromSpan(doc.spans.entire[0], doc.spans.entire[1]);
 
   const namespaceSymbol = DocumentSymbol.create(
     formatNamespace(
-      profile.scope,
-      profile.name
+      doc.profile.scope,
+      doc.profile.name
     ),
     undefined,
     SymbolKind.Namespace,
-    document.rangeFromSpan(
-      fileSpan.start, // TODO
-      fileSpan.end
-    ),
-    document.rangeFromSpan(
-      fileSpan.start, // TODO
-      fileSpan.end
-    ),
+    fileRange,
+    fileRange,
     namespaceSymbols
   );
 
@@ -103,8 +56,8 @@ export function listProfileSymbols(
     fileNameFromUri(document.uri),
     undefined,
     SymbolKind.File,
-    document.rangeFromSpan(fileSpan.start, fileSpan.end),
-    document.rangeFromSpan(fileSpan.start, fileSpan.end),
+    fileRange,
+    fileRange,
     [namespaceSymbol]
   );
   ctx?.work?.workDoneProgress.done();
