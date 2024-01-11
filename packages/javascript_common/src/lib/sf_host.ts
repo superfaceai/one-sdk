@@ -1,9 +1,10 @@
-import type { TextCoder, AppContext, AppContextSync } from '../interfaces';
+import type { TextCoder, AppContext, AppContextSync } from './interfaces';
 import { Asyncify, AsyncifyState } from './asyncify.js'
 import { HandleMap } from './handle_map.js'
 import { WasiErrno } from './error.js';
 
 type AbiResult = number;
+// @ts-ignore ignore the unused parameter
 type Ptr<T> = number;
 type Size = number;
 
@@ -22,6 +23,7 @@ function strace<A extends unknown[], R>(name: string, fn: Fn<A, R>, asyncify: As
     return result;
   }
 }
+// @ts-ignore ignore unused function
 function strace_module(moduleName: string, module: WebAssembly.ModuleImports, asyncify: Asyncify): WebAssembly.ModuleImports {
   for (const fnName of Object.keys(module)) {
     const fn: any = module[fnName];
@@ -38,6 +40,7 @@ function join_abi_result(lower: number, upper: number): number {
 
   return l | u;
 }
+// @ts-ignore ignore unused funtion
 function split_abi_result(value: number): [lower: number, upper: number] {
   const lower = value & 0x7FFFFFFF;
   const upper = (value >> 31) & 0x1;

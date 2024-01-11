@@ -5,7 +5,7 @@
  * 
  * The usecase description is anything following the title.
  */
-type UseCaseName = UseCase<{
+type UseCaseName = Usecase<{
   // any of `'safe'`, `'idempotent'`, `'unsafe'`
   safety: 'safe'
 

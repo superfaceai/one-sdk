@@ -186,3 +186,11 @@ test_python_host: build_python_host ${TEST_CORE_WASM}
 
 build_map_std_package: ${MAP_STD}
 	cp -r core_js/map-std/types packages/map_std/
+
+deps_comlink_language_server: 
+	cd packages/comlink_language_server && yarn install
+build_comlink_language_server: deps_comlink_language_server
+	mkdir -p packages/comlink_language_server/assets
+	cd core; cargo build --package comlink_wasm --target wasm32-wasi ${CARGO_FLAGS}
+	wasm-opt -Os ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/comlink_wasm.wasm --output packages/comlink_language_server/assets/comlink.wasm
+	cd packages/comlink_language_server && yarn build

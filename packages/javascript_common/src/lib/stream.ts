@@ -43,7 +43,7 @@ export class ReadableStreamAdapter implements Stream {
 
     return count;
   }
-  async write(data: Uint8Array): Promise<number> {
+  async write(_data: Uint8Array): Promise<number> {
     throw new Error('not implemented');
   }
   async close(): Promise<void> {

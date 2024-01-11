@@ -795,7 +795,7 @@ fn is_usecase_root(v: &TsTypeAliasDeclaration) -> bool {
         _ => return false,
     };
 
-    return name.len() == 1 && name[0] == "UseCase";
+    return name.len() == 1 && name[0] == "Usecase";
 }
 fn is_usecase_example_root(v: &JsVariableDeclarator) -> bool {
     // const X: Y = |Z|
