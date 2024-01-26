@@ -1,0 +1,30 @@
+{
+	"name": "@superfaceai/comlink",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./dist/index.js",
+    "./assets/comlink.wasm": "./assets/comlink.wasm"
+  },
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5",
+    "rimraf": "^5"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "prebuild": "yarn clean",
+    "build": "tsc -p tsconfig.json",
+    "prepack": "cp ../../LICENSE .",
+    "postpack": "rm LICENSE"
+  },
+  "files": [
+    "assets/**/*",
+    "dist/**/*"
+  ]
+}

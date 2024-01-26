@@ -1,4 +1,4 @@
-import { promises as fsp } from 'fs';
+import { promises as fsp } from 'node:fs';
 import {
   DocumentUri,
   TextDocumentContentChangeEvent,
@@ -6,7 +6,7 @@ import {
 
 import { ComlinkDocument } from './document';
 import { stripUriPrefix } from './lib';
-import { Diagnostic, Profile, ProfileSpans } from './parser/model';
+import { Diagnostic, Profile, ProfileSpans } from '@superfaceai/comlink';
 
 export type ProfileDocument = {
   kind: 'profile',

@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
-    "declaration": false,
-    "downlevelIteration": true,
+    "declaration": true,
+    "declarationDir": "dist/",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "lib": ["ESNext", "DOM"],
-    "module": "CommonJS",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
     "outDir": "dist/",
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
@@ -14,7 +15,7 @@
     "sourceMap": true,
     "strict": true,
     "strictPropertyInitialization": true,
-    "target": "ES5",
+    "target": "ES2020",
     "typeRoots": [
       "node_modules/@types"
     ]

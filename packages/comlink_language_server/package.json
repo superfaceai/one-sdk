@@ -4,22 +4,25 @@
   "version": "2.0.0",
   "author": "Superface Team",
   "license": "MIT",
-  "main": "dist/server/lib.js",
+  "main": "dist/server/server.js",
   "files": [
     "dist/**/*",
     "assets/**/*"
   ],
   "devDependencies": {
+    "@superfaceai/comlink": "link:../nodejs_comlink",
     "@types/node": "^18",
     "rimraf": "^5",
-    "typescript": "^5"
-  },
-  "dependencies": {
+    "ts-loader": "^9.5.1",
+    "typescript": "^5",
     "vscode-languageserver": "^9",
-    "vscode-languageserver-textdocument": "^1"
+    "vscode-languageserver-textdocument": "^1",
+    "webpack": "^5.90.0",
+    "webpack-cli": "^5.1.4"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "build": "webpack",
     "build:watch": "yarn build --watch",
     "prebuild": "yarn clean",
     "clean": "rimraf dist/",

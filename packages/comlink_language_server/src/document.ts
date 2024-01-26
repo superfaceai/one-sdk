@@ -8,11 +8,11 @@ import {
   TextDocumentContentChangeEvent,
 } from 'vscode-languageserver';
 import { Position, TextDocument } from 'vscode-languageserver-textdocument';
+import { ComlinkParser } from '@superfaceai/comlink';
 
 import { MapDocument, ProfileDocument } from './documents';
 import { Context, ctxWorkWithProgress } from './lib';
 import { listProfileSymbols } from './symbols';
-import { ComlinkParser } from './parser';
 
 export class ComlinkDocument implements TextDocument {
   static PROFILE_EXTENSIONS = ['profile.ts'];

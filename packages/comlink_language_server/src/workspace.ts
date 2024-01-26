@@ -1,9 +1,9 @@
 import { DocumentSymbol, SymbolInformation } from 'vscode-languageserver-types';
+import { ComlinkParser } from '@superfaceai/comlink';
 
 import { ComlinkDocument } from './document';
 import { ComlinkDocuments } from './documents';
 import { Context, ctxWorkWithProgress, recursiveWalk, WalkEntry } from './lib';
-import { ComlinkParser } from './parser';
 
 /**
  * Walks over the provided folders and ensures that all documents are loaded in the manager.
