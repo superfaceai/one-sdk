@@ -2,7 +2,6 @@ import fs, { FileHandle } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { resolve as resolvePath } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 import { WASI } from 'node:wasi';
 
 import { AsyncMutex } from './common/lib/index.js';
@@ -17,12 +16,14 @@ import {
   Timers,
   UnexpectedError,
   WasiErrno,
-  WasiError,
-  corePathURL
+  WasiError
 } from './common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 
 const pkg = createRequire(import.meta.url)('../package.json');
+function corePathURL(): URL {
+  return new URL('../assets/core-async.wasm', import.meta.url);
+}
 
 export { PerformError, UnexpectedError, ValidationError } from './common/index.js';
 export { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
@@ -264,7 +265,7 @@ class InternalClient {
       }
 
       await this.app.loadCore(
-        await fs.readFile(process.env.CORE_PATH ?? fileURLToPath(corePathURL()))
+        await fs.readFile(process.env.CORE_PATH ?? corePathURL().pathname)
       );
       await this.app.init(new WASI({
         env: {
