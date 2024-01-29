@@ -75,6 +75,62 @@ impl Diagnostics {
     }
 }
 
+/// Macro for traversing the TypeScript AST and mapping errors.
+/// 
+/// Most of the boilerplate in the parser is traversing the AST, for example to get the name of
+/// a JavaScript object literal (assuming it is a literal name, not an index expression), we have
+/// to traverse the tree between `JsPropertyObjectMember` and its name. Without error handing this would
+/// look like:
+/// ```
+/// match member.name().unwrap() {
+///     AnyJsObjectMemberName::JsLiteralMemberName(v) => v,
+///     _ => panic!()
+/// }.name().unwrap()
+/// ```
+/// 
+/// Ideally, we want to both capture the errors and give them correct spans, so with error handling we get:
+/// ```
+/// let name_res = match member.name() {
+///     Ok(AnyJsObjectMemberName::JsLiteralMemberName(name)) => match name.name() {
+///         Ok(v) => Ok(v),
+///         Err(_) => Err(<PartialDiagnostic from `name`>)
+///     }
+///     _ => Err(<PartialDiagnostic from `member`>)
+/// };
+/// let member_name = match name_res {
+///     Ok(n) => n,
+///     Err(err) => {
+///         self.diag.error(err);
+///         continue;
+///     }
+/// };
+/// ```
+/// 
+/// This macro allows us to get rid of layers of nested matches and write this:
+/// ```
+/// let member_name = ast_do!(UseCaseExampleMemberInvalid, &member; [
+///     err(.name),
+///     mtch(AnyJsObjectMemberName::JsLiteralMemberName),
+///     err(.name)
+/// ] catch(err) {
+///     self.diag.error(err);
+///     continue;
+/// });
+/// ```
+/// 
+/// Its base form is `ast_do!( $op($diag_code, $target, $fun|.$method|$variant, $range_target?) )`.
+/// See [`PartialDiagnostic`] for what `$diag_code` and `$range_target` (defaults to `$target`) mean.
+/// 
+/// In case of chaining it becomes `ast_do!($diag_code, $target; [ $op($fun|.$method|$variant, $range_target?) ])`
+/// (the `$diag_code` and first `$target` are given once, the rest is a sequence of operations to apply). Finally, 
+/// the chained variant allows a `catch($catch_name) { $catch_body }` at the end which is a shortcut for doing a match
+/// on the result of the macro and handling `Err(PartialDiagnostic)`.
+/// 
+/// Supported operations are:
+/// * `err($fun|.$method)` - for functions or methods that return a `Result`, the error is ignored (often doesn't carry any meaningful information in the AST).
+/// * `or($fun|.$method)` - for functions or methods that return an `Option`.
+/// * `mtch($variant)` - for enums to match on exactly one variant.
+/// * `and_then($fun)` - just calls `$fun` on current target.
 macro_rules! ast_do {
     (_common $diag_code: ident, $result: expr, $target: expr $(, $range_target: expr)? ) => {
         {
