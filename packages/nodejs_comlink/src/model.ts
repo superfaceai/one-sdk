@@ -1,5 +1,5 @@
 export type JsonValue = number | boolean | string | null | { [k: number]: JsonValue } | { [k: string]: JsonValue };
-export type JsonSchema = JsonValue;
+export type JsonSchema = { [k: string]: JsonValue };
 
 export type Documentation = {
 	title?: string,
