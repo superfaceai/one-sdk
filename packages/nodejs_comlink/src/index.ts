@@ -26,15 +26,27 @@ class TextCoderImpl implements TextCoder {
   }
 }
 
+type ParseProfileOutput = { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] }
 export class ComlinkParser extends AppContextSync {
-  public static parseProfileFileName(uri: string): { scope?: string, name: string } {
-    const baseName = path.basename(uri, '.profile.ts')
+  public static parseProfileFileName(uri: string): { scope?: string, name: string, version?: string } {
+    let baseName = path.basename(uri, '.profile.ts')
+    const result: { scope?: string, name: string, version?: string } = { name: baseName }
+
+    let versionSeparatorIndex = baseName.indexOf('@')
+    if (versionSeparatorIndex >= 0) {
+      result.version = baseName.slice(versionSeparatorIndex + 1)
+      baseName = baseName.slice(0, versionSeparatorIndex)
+    }
+
     const parts = baseName.split('.')
     if (parts.length === 1) {
-      return { name: parts[0] }
+      result.name = parts[0]
     } else {
-      return { scope: parts[0], name: parts[1] }
+      result.scope = parts[0]
+      result.name = parts[1]
     }
+
+    return result
   }
 
   public static async create(): Promise<ComlinkParser> {
@@ -55,7 +67,7 @@ export class ComlinkParser extends AppContextSync {
     instance: WebAssembly.Instance,
     parseTsProfile: () => void
   }
-  private parserState: undefined | { profile: string } | { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] }
+  private parserState: undefined | { profile: string } | ParseProfileOutput
 
   private constructor(module: WebAssembly.Module) {
     super()
@@ -102,13 +114,20 @@ export class ComlinkParser extends AppContextSync {
   writeStream(_handle: number, _data: Uint8Array): number { throw new Error('not implemented') }
   closeStream(_handle: number): void { throw new Error('not implemented') }
 
-  public parseProfile(profile: string): { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] } {
+  public parseProfile(profile: string, filename?: string): ParseProfileOutput {
     this.parserState = { profile }
     this.instance!.parseTsProfile()
     
-    const result = this.parserState
+    const result = this.parserState as unknown as ParseProfileOutput
     this.parserState = undefined
 
-    return result as any
+    if (filename !== undefined) {
+      const { scope, name, version } = ComlinkParser.parseProfileFileName(filename)
+      result.profile.scope = scope
+      result.profile.name = name
+      result.profile.version = version ?? '0.0.0'
+    }
+
+    return result
   }
 }

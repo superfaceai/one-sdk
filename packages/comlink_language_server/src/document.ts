@@ -129,10 +129,7 @@ export class ComlinkDocument implements TextDocument {
           undefined,
           false
         );
-        const { profile, spans, diagnostics } = parser.parseProfile(source)
-        const profileId = ComlinkParser.parseProfileFileName(this.uri)
-        profile.scope = profileId.scope
-        profile.name = profileId.name
+        const { profile, spans, diagnostics } = parser.parseProfile(source, this.uri)
         result = { kind: 'profile', profile, spans, diagnostics }
         ctx.work?.workDoneProgress.done();
 

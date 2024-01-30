@@ -18,6 +18,8 @@ pub struct Profile {
     pub scope: Option<String>,
     /// Name part of `scope/name`.
     pub name: String,
+    /// Version of the profile.
+    pub version: String,
     /// Documentation of the profile.
     pub documentation: Documentation,
     /// List of use cases.

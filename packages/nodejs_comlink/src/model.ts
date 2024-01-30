@@ -8,6 +8,7 @@ export type Documentation = {
 export type Profile = {
 	scope?: string,
 	name: string,
+	version: string,
 	documentation: Documentation
 	usecases: UseCase[]
 }

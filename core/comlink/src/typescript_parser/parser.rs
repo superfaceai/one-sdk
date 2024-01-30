@@ -220,6 +220,7 @@ impl<'a> ProfileParser<'a> {
     }
 
     fn parse_profile(&mut self) -> (Profile, ProfileSpans) {
+        // TODO: scope, name and version are never parsed because they don't appear in the document
         let mut profile = Profile::default();
         let mut spans = ProfileSpans::default();
 
