@@ -24,7 +24,7 @@ class TextCoderImpl implements TextCoder {
 }
 
 export class ComlinkParser extends AppContextSync {
-	public static parseProfileFileName(uri: DocumentUri): { scope?: string, name: string } {
+  public static parseProfileFileName(uri: DocumentUri): { scope?: string, name: string } {
     const baseName = path.basename(uri, '.profile.ts')
     const parts = baseName.split('.')
     if (parts.length === 1) {
@@ -43,8 +43,8 @@ export class ComlinkParser extends AppContextSync {
     await parser.init()
 
     return parser
-	}
-	
+  }
+  
   private readonly module: WebAssembly.Module
   private readonly wasi: WASI
   private readonly textCoder: TextCoder
@@ -55,7 +55,7 @@ export class ComlinkParser extends AppContextSync {
   }
   private parserState: undefined | { profile: string } | { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] }
 
-	private constructor(module: WebAssembly.Module) {
+  private constructor(module: WebAssembly.Module) {
     super()
 
     this.module = module
@@ -100,13 +100,13 @@ export class ComlinkParser extends AppContextSync {
   writeStream(_handle: number, _data: Uint8Array): number { throw new Error('not implemented') }
   closeStream(_handle: number): void { throw new Error('not implemented') }
 
-	public parseProfile(profile: string): { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] } {
-		this.parserState = { profile }
+  public parseProfile(profile: string): { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] } {
+    this.parserState = { profile }
     this.instance!.parseTsProfile()
     
     const result = this.parserState
     this.parserState = undefined
 
     return result as any
-	}
+  }
 }

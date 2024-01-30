@@ -65,7 +65,7 @@ export class App extends AppContext {
     dependencies: { network: Network, fileSystem: FileSystem, textCoder: TextCoder, timers: Timers, persistence: Persistence },
     options: { userAgent?: string, metricsTimeout?: number }
   ) {
-    super()
+    super();
 
     this.textCoder = dependencies.textCoder;
     this.network = dependencies.network;
