@@ -88,8 +88,8 @@ ${CORE_WASM}: ${CORE_DIST}
 	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
 
 ${TEST_CORE_WASM}: ${CORE_DIST}
-	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock"
-	cp core/target/wasm32-wasi/debug/oneclient_core.wasm ${TEST_CORE_WASM}
+	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock" ${CARGO_FLAGS}
+	cp core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm ${TEST_CORE_WASM}
 
 ${CORE_ASYNCIFY_WASM}: ${CORE_WASM}
 	@echo 'Running asyncify...'

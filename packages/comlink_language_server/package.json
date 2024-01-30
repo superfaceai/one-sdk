@@ -26,6 +26,8 @@
     "build:watch": "yarn build --watch",
     "prebuild": "yarn clean",
     "clean": "rimraf dist/",
-    "prepush": "yarn build"
+    "prepush": "yarn build",
+    "prepack": "cp ../../LICENSE .",
+    "postpack": "rm LICENSE"
   }
 }
