@@ -1,4 +1,4 @@
-export * from './lib/interfaces';
+export * from './lib/interfaces.js';
 export interface FileSystem {
   /** Return true if the file exists (can be `stat`ed). */
   exists(path: string): Promise<boolean>;

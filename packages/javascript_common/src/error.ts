@@ -1,4 +1,4 @@
-export * from './lib/error';
+export * from './lib/error.js';
 
 export abstract class BaseError extends Error {
   constructor(name: string, message: string) {
