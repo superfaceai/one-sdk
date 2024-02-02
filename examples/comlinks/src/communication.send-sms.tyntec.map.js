@@ -1,7 +1,7 @@
 /// <reference types="@superface/map-std" />
 // @ts-check
 
-/** @type {Usecase<{ safety: 'unsafe', input: { to?: AnyValue, from?: AnyValue, text?: AnyValue }, result: { messageId: AnyValue }, error: { title: string, detail: string } }>} */
+/** @type {UseCase<{ safety: 'unsafe', input: { to?: AnyValue, from?: AnyValue, text?: AnyValue }, result: { messageId: AnyValue }, error: { title: string, detail: string } }>} */
 var SendMessage = ({ input, parameters, services }) => {
   const url = `${services.default}/messaging/v1/sms`;
   const options = {

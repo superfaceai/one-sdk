@@ -20,7 +20,7 @@ To define a usecase define a new type in a TypeScript `example.profile.ts` file:
 ```typescript
 /// <reference types="@superface/map-std" />
 
-type Example = Usecase<{
+type Example = UseCase<{
   safety: 'safe'
   input: {
     /** Id of the thing to fetch. */

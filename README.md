@@ -16,7 +16,7 @@ For more details about Superface, visit [How it Works](https://superface.ai/how-
 
 ## Try it out
 
-A simple demonstration can be run with `./examples/run.sh node [CORE_MODE=default|docker|lax]`. It builds the entire project and Node.js host, then runs the example.
+A simple demonstration can be run with `./examples/run.sh node`. It builds the entire project and Node.js host, then runs the example.
 
 This will require to have Development requirements installed. In case of building the core in Docker `node` and `yarn` are still required.
 

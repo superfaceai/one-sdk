@@ -149,3 +149,8 @@ impl<'de> Deserialize<'de> for HostValue {
         deserializer.deserialize_any(ValueVisitor)
     }
 }
+impl From<&HostValue> for serde_json::Value {
+    fn from(value: &HostValue) -> Self {
+        serde_json::to_value(value).unwrap()
+    }
+}

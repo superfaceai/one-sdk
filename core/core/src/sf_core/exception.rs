@@ -1,6 +1,7 @@
 use sf_std::unstable::exception::{PerformException, PerformExceptionErrorCode};
 
-use super::{cache::DocumentCacheError, json_schema_validator::JsonSchemaValidatorError};
+use comlink::json_schema_validator::JsonSchemaValidatorError;
+use super::cache::DocumentCacheError;
 
 impl<PostProcessError: std::error::Error> From<DocumentCacheError<PostProcessError>>
     for PerformException

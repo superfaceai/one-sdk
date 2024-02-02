@@ -59,7 +59,7 @@ python3 -m pip install wasmtime requests
 brew install node yarn
 ```
 
-For development build with `make` from root. To create release build run `make CORE_PROFILE=release`.
+For development build with `make` from root. To create release build run `make CARGO_PROFILE=release`.
 
 The core can also be built using Docker - see [scripts/build-a-core](../scripts/build-a-core/README.md) for more information.
 

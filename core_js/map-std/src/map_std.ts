@@ -5,28 +5,28 @@ declare global {
   // types
   /** Any value that can be safely passed in and out of a map. */
   type AnyValue = unstable.AnyValue;
-  /** The first argument of a usecase. */
-  type UsecaseContext<I extends AnyValue = AnyValue> = {
+  /** The first argument of a use case. */
+  type UseCaseContext<I extends AnyValue = AnyValue> = {
     input: I,
     parameters: Record<string, string>,
     services: Record<string, string>
   };
   /** The error thrown to return a defined error. */
   type MapError<R extends AnyValue = AnyValue> = unstable.MapError<R>;
-  /** Safety of a usecase. */
+  /** Safety of a use case. */
   type Safety = 'safe' | 'unsafe' | 'idempotent';
-  type UsecaseOptions = {
+  type UseCaseOptions = {
     safety: Safety;
     input: Record<string, AnyValue>;
     result: AnyValue;
     error: AnyValue;
   };
-  /** Type for defining a usecase. */
-  type Usecase<O extends UsecaseOptions> = {
-    (context: UsecaseContext<O['input']>): O['result']
-    examples?: UsecaseExample<O>[]
+  /** Type for defining a use case. */
+  type UseCase<O extends UseCaseOptions> = {
+    (context: UseCaseContext<O['input']>): O['result']
+    examples?: UseCaseExample<O>[]
   }
-  type UsecaseExample<O extends UsecaseOptions> = {
+  type UseCaseExample<O extends UseCaseOptions> = {
     name?: string;
     input: O['input'];
     result: O['result'];
@@ -41,25 +41,25 @@ declare global {
   };
   var Buffer: typeof NodeBuffer;
   // functions
-  function _start(usecaseName: string): void;
+  function _start(useCaseName: string): void;
 };
 globalThis.std = { unstable };
 globalThis.Buffer = NodeBuffer;
 
-globalThis._start = function _start(usecaseName: string): void {
+globalThis._start = function _start(useCaseName: string): void {
   const context = globalThis.std.unstable.takeContext() as Record<string, unstable.AnyValue>;
 
-  // search for the usecase as a freestanding function
+  // search for the use case as a freestanding function
   // TODO: this is best-effort - these are functions currently visible in the global scope
   const globalSymbols = new Set(['_start', 'Object', 'Function', 'Error', 'EvalError', 'RangeError', 'ReferenceError', 'SyntaxError', 'TypeError', 'URIError', 'InternalError', 'AggregateError', 'Array', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'decodeURI', 'decodeURIComponent', 'encodeURI', 'encodeURIComponent', 'escape', 'unescape', '__date_clock', 'Number', 'Boolean', 'String', 'Symbol', 'eval', 'Date', 'RegExp', 'Proxy', 'Map', 'Set', 'WeakMap', 'WeakSet', 'ArrayBuffer', 'SharedArrayBuffer', 'Uint8ClampedArray', 'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'BigInt64Array', 'BigUint64Array', 'Float32Array', 'Float64Array', 'DataView', 'Promise', 'BigInt', 'Buffer']);
   const usecases = Object.getOwnPropertyNames(globalThis).filter(
     v => typeof (globalThis as any)[v] === 'function' && !globalSymbols.has(v)
   );
-  if (!usecases.includes(usecaseName)) {
-    throw new Error(`Usecase ${usecaseName} not defined, usecases: ${usecases.join(', ')}`);
+  if (!usecases.includes(useCaseName)) {
+    throw new Error(`Use case ${useCaseName} not defined, use cases: ${usecases.join(', ')}`);
   }
 
-  const usecase: Usecase<UsecaseOptions> = (globalThis as any)[usecaseName];
+  const usecase: UseCase<UseCaseOptions> = (globalThis as any)[useCaseName];
 
   try {
     const result = usecase({

@@ -24,6 +24,7 @@ url = { workspace = true }
 sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
 map_std = { path = "../core_to_map_std", package = "core_to_map_std" }
 interpreter_js = { path = "../interpreter_js" }
+comlink = { path = "../comlink" }
 
 sha2 = { workspace = true }
 hex = { workspace = true }

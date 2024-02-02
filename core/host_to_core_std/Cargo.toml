@@ -16,3 +16,5 @@ serde_urlencoded = { workspace = true }
 url = { workspace = true }
 
 tracing = { workspace = true }
+
+wasm_abi = { path = "../wasm_abi" }

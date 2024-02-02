@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["comlink_language", "core", "core_to_map_std", "host_to_core_std", "interpreter_js", "json_schemas"]
+members = ["comlink", "comlink_wasm", "core", "core_to_map_std", "host_to_core_std", "interpreter_js", "json_schemas", "wasm_abi"]
 
 [workspace.dependencies]
 base64 = { version = "0.21" }
@@ -21,3 +21,7 @@ lto = true
 codegen-units = 16
 debug = false
 strip = "debuginfo"
+
+[profile.test]
+# sometimes the debug test build is just too big
+opt-level = 1

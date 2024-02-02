@@ -1,7 +1,5 @@
 use std::io::{self, Read};
 
-use serde::{Deserialize, Serialize};
-
 use super::{IoStream, IoStreamHandle};
 use crate::abi::{
     err_from_wasi_errno, MessageExchange, Size, StaticMessageExchange, StaticStreamExchange,
@@ -16,7 +14,7 @@ use crate::abi::{
 // Instead we rely on our own read/write/close methods and only expose `Read` and `Write` for now. the `fs::File` API will still work
 // but only for files which have been preopened through WASI, otherwise we'll rely on our messages and streams.
 
-define_exchange_core_to_host! {
+crate::abi::define_exchange! {
     struct FileOpenRequest<'a> {
         kind: "file-open",
         path: &'a str,
