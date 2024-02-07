@@ -163,7 +163,6 @@ impl MessageExchange for MessageExchangeFfiFn {
         };
 
         // SAFETY: we never take more than capacity
-        //  worst case we read uninitialized memory, which hopefully isn't as UB in WASM
         unsafe { response_buffer.set_len(response_buffer.capacity().min(result_size)) };
 
         response_buffer
