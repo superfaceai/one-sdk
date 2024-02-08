@@ -73,7 +73,7 @@ runs:
         name: core-wasm
         path: core/dist/core.wasm
     # build and store test-core.wasm and test-core-async.wasm
-    - name: Run make to build core.wasm
+    - name: Run make to build test-core.wasm
       if: ${{ inputs.TEST_CORE_WASM != 'none' }}
       env:
         CARGO_INCREMENTAL: "0" # disable incremental to reduce load on the cache
@@ -85,7 +85,7 @@ runs:
       with:
         name: test-core-async-wasm
         path: core/dist/test-core-async.wasm
-    - name: Upload artifact core.wasm
+    - name: Upload artifact test-core.wasm
       if: ${{ inputs.TEST_CORE_WASM == 'upload' }}
       uses: actions/upload-artifact@v4
       with:
