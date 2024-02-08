@@ -3,7 +3,7 @@ use std::fmt::Display;
 use jsonschema::JSONSchema;
 use thiserror::Error;
 
-use super::json::{JsonSchema, JsonValue};
+use super::json::JsonValue;
 
 #[derive(Debug)]
 pub enum JsonSchemaValidatorError {
@@ -51,7 +51,7 @@ pub struct JsonSchemaValidator {
     compiled: JSONSchema,
 }
 impl JsonSchemaValidator {
-    pub fn new(schema: &JsonSchema) -> Result<Self, JsonSchemaValidatorError> {
+    pub fn new(schema: &JsonValue) -> Result<Self, JsonSchemaValidatorError> {
         match JSONSchema::compile(schema) {
             Err(error) => Err(JsonSchemaValidatorError::SchemaError {
                 kind: format!("{:?}", error.kind),

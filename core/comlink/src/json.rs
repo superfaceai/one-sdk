@@ -1,7 +1,7 @@
 pub type JsonValue = serde_json::Value;
 pub type JsonNumber = serde_json::Number;
 pub type JsonMap = serde_json::Map<String, JsonValue>;
-pub type JsonSchema = JsonValue;
+pub type JsonSchema = JsonMap;
 
 macro_rules! json_map {
     (

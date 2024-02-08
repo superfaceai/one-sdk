@@ -1,0 +1,307 @@
+name: Release comlink package
+on:
+  workflow_dispatch:
+    inputs:
+      release-level:
+        description: "Release level"
+        required: true
+        type: choice
+        default: prerelease
+        options:
+        - prerelease
+        - patch
+        - minor
+        - major
+      release-kind:
+        description: "Release kind"
+        required: false
+        type: choice
+        default: alpha
+        options:
+        - alpha
+        - beta
+        - rc
+        - stable
+      package:
+        required: true
+        type: choice
+        options:
+        - map_std
+        - nodejs_comlink
+        - comlink_language_server
+
+jobs:
+  map-std-prepare:
+    name: Prepare Map std
+    if: ${{ inputs.package == 'map_std' }}
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_PATH: packages/map_std
+      PACKAGE_TAG: mapstd
+    outputs:
+      RELEASE_VERSION: ${{ steps.prepare_package.outputs.RELEASE_VERSION }}
+      RELEASE_LEVEL: ${{ steps.prepare_package.outputs.RELEASE_LEVEL }}
+      RELEASE_TAG: ${{ steps.prepare_package.outputs.RELEASE_TAG }}
+      RELEASE_PREID: ${{ steps.prepare_package.outputs.RELEASE_PREID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/package_prepare
+        id: prepare_package
+        with:
+          RELEASE_LEVEL: ${{ inputs.release-level }}
+          RELEASE_KIND: ${{ inputs.release-kind }}
+          PACKAGE_PATH: ${{ env.PACKAGE_PATH }}
+      - uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: core_js/yarn.lock
+      - name: Update version in package.json
+        working-directory: ${{ env.PACKAGE_PATH }}
+        run: yarn version --no-git-tag-version --new-version ${{ steps.prepare_package.outputs.RELEASE_VERSION }}
+      - name: Build
+        working-directory: core_js
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @superfaceai/map-std build
+          cp -r map-std/types ../${{ env.PACKAGE_PATH }}/
+      - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
+        working-directory: ${{ env.PACKAGE_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add package.json VERSION CHANGELOG.md
+          git commit -m "chore: release ${{ env.PACKAGE_PATH }} ${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          git tag "${{ env.PACKAGE_TAG }}-v${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          git push origin
+          git push origin --tags
+      - name: Update GitHub release documentation
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "${{ env.PACKAGE_TAG }}-v${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          body: ${{ steps.prepare_package.outputs.CHANGELOG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  map-std-publish:
+    name: Publish Map Std
+    needs: [map-std-prepare]
+    if: ${{ !cancelled() && needs.map-std-prepare.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_PATH: packages/map_std
+    steps:
+      # Setup
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: core_js/yarn.lock
+      # Build
+      - name: Copy LICENSE
+        run: cp LICENSE ${{ env.PACKAGE_PATH }}/LICENSE
+      - name: Build
+        working-directory: core_js
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @superfaceai/map-std build
+          cp -r map-std/types ../${{ env.PACKAGE_PATH }}/
+      # Publish
+      - name: Publish to NPM registry
+        working-directory: ${{ env.PACKAGE_PATH }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
+        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.map-std-prepare.outputs.RELEASE_VERSION }} --tag ${{ needs.map-std-prepare.outputs.RELEASE_TAG }}
+
+  comlink:
+    name: Comlink WASM
+    if: ${{ inputs.package == 'nodejs_comlink' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build_core
+        with:
+          CARGO_PROFILE: 'release'
+          COMLINK_WASM: 'upload'
+  nodejs-comlink-prepare:
+    name: Prepare Node.js Comlink
+    needs: [comlink]
+    if: ${{ !cancelled() && needs.comlink.result == 'success' && inputs.package == 'nodejs_comlink' }}
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_PATH: packages/nodejs_comlink
+      PACKAGE_TAG: nodejs_comlink
+    outputs:
+      RELEASE_VERSION: ${{ steps.prepare_package.outputs.RELEASE_VERSION }}
+      RELEASE_LEVEL: ${{ steps.prepare_package.outputs.RELEASE_LEVEL }}
+      RELEASE_TAG: ${{ steps.prepare_package.outputs.RELEASE_TAG }}
+      RELEASE_PREID: ${{ steps.prepare_package.outputs.RELEASE_PREID }}
+    steps:
+      # setup
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/package_prepare
+        id: prepare_package
+        with:
+          RELEASE_LEVEL: ${{ inputs.release-level }}
+          RELEASE_KIND: ${{ inputs.release-kind }}
+          PACKAGE_PATH: ${{ env.PACKAGE_PATH }}
+      - uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: ${{ env.PACKAGE_PATH }}/yarn.lock
+      - uses: actions/download-artifact@v4
+        with:
+          name: comlink-wasm
+          path: ${{ env.PACKAGE_PATH }}/assets
+      # version and changelog
+      - name: Update version in package.json
+        working-directory: ${{ env.PACKAGE_PATH }}
+        run: yarn version --no-git-tag-version --new-version ${{ steps.prepare_package.outputs.RELEASE_VERSION }}
+      - name: Build
+        working-directory: ${{ env.PACKAGE_PATH }}
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
+        working-directory: ${{ env.PACKAGE_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add package.json VERSION CHANGELOG.md
+          git commit -m "chore: release ${{ env.PACKAGE_PATH }} ${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          git tag "${{ env.PACKAGE_TAG }}-v${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          git push origin
+          git push origin --tags
+      - name: Update GitHub release documentation
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "${{ env.PACKAGE_TAG }}-v${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          body: ${{ steps.prepare_package.outputs.CHANGELOG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  nodejs-comlink-publish:
+    name: Publich Node.js Comlink
+    needs: [comlink, nodejs-comlink-prepare]
+    if: ${{ !cancelled() && needs.nodejs-comlink-prepare.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_PATH: packages/nodejs_comlink
+    steps:
+      # Setup
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: ${{ env.PACKAGE_PATH }}/yarn.lock
+      # Build
+      - uses: actions/download-artifact@v4
+        with:
+          name: comlink-wasm
+          path: ${{ env.PACKAGE_PATH }}/assets
+      - name: Copy LICENSE
+        run: cp LICENSE ${{ env.PACKAGE_PATH }}/LICENSE
+      - name: Build
+        working-directory: ${{ env.PACKAGE_PATH }}
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      # Publish
+      - name: Publish to NPM registry
+        working-directory: ${{ env.PACKAGE_PATH }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
+        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.nodejs-comlink-prepare.outputs.RELEASE_VERSION }} --tag ${{ needs.nodejs-comlink-prepare.outputs.RELEASE_TAG }}
+
+  comlink-language-server-prepare:
+    name: Prepare Comlink Language Server
+    if: ${{ inputs.package == 'comlink_language_server' }}
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_PATH: packages/comlink_language_server
+      PACKAGE_TAG: comlink_language_server
+    outputs:
+      RELEASE_VERSION: ${{ steps.prepare_package.outputs.RELEASE_VERSION }}
+      RELEASE_LEVEL: ${{ steps.prepare_package.outputs.RELEASE_LEVEL }}
+      RELEASE_TAG: ${{ steps.prepare_package.outputs.RELEASE_TAG }}
+      RELEASE_PREID: ${{ steps.prepare_package.outputs.RELEASE_PREID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/package_prepare
+        id: prepare_package
+        with:
+          RELEASE_LEVEL: ${{ inputs.release-level }}
+          RELEASE_KIND: ${{ inputs.release-kind }}
+          PACKAGE_PATH: ${{ env.PACKAGE_PATH }}
+      - uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: ${{ env.PACKAGE_PATH }}/yarn.lock
+      - name: Update version in package.json
+        working-directory: ${{ env.PACKAGE_PATH }}
+        run: yarn version --no-git-tag-version --new-version ${{ steps.prepare_package.outputs.RELEASE_VERSION }}
+      - name: Build
+        working-directory: ${{ env.PACKAGE_PATH }}
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      - name: Commit package.json, VERSION, CHANGELOG.md and create git tag
+        working-directory: ${{ env.PACKAGE_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add package.json VERSION CHANGELOG.md
+          git commit -m "chore: release ${{ env.PACKAGE_PATH }} ${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          git tag "${{ env.PACKAGE_TAG }}-v${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          git push origin
+          git push origin --tags
+      - name: Update GitHub release documentation
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "${{ env.PACKAGE_TAG }}-v${{ steps.prepare_package.outputs.RELEASE_VERSION }}"
+          body: ${{ steps.prepare_package.outputs.CHANGELOG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  comlink-language-server-publish:
+    name: Publish Comlink Language Server
+    needs: [comlink-language-server-prepare]
+    if: ${{ !cancelled() && needs.comlink-language-server-prepare.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_PATH: packages/comlink_language_server
+    steps:
+      # Setup
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: "18"
+          cache: yarn
+          cache-dependency-path: ${{ env.PACKAGE_PATH }}/yarn.lock
+      # Build
+      - name: Copy LICENSE
+        run: cp LICENSE ${{ env.PACKAGE_PATH }}/LICENSE
+      - name: Build
+        working-directory: ${{ env.PACKAGE_PATH }}
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      # Publish
+      - name: Publish to NPM registry
+        working-directory: ${{ env.PACKAGE_PATH }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPMJS_BOT_PAT }}
+        run: yarn publish --verbose --no-git-tag-version --access public --new-version ${{ needs.comlink-language-server-prepare.outputs.RELEASE_VERSION }} --tag ${{ needs.comlink-language-server-prepare.outputs.RELEASE_TAG }}

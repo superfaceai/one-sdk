@@ -1,5 +1,5 @@
 export type JsonValue = number | boolean | string | null | { [k: number]: JsonValue } | { [k: string]: JsonValue };
-export type JsonSchema = JsonValue;
+export type JsonSchema = { [k: string]: JsonValue };
 
 export type Documentation = {
 	title?: string,
@@ -8,6 +8,7 @@ export type Documentation = {
 export type Profile = {
 	scope?: string,
 	name: string,
+	version: string,
 	documentation: Documentation
 	usecases: UseCase[]
 }

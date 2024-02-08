@@ -8,12 +8,12 @@ import {
   SymbolInformation,
   TextDocumentSyncKind
 } from 'vscode-languageserver/node';
+import { ComlinkParser } from '@superfaceai/comlink';
 
 import { ComlinkDocument } from './document';
 import { ComlinkDocuments } from './documents';
 import { Logger, stripUriPrefix, WorkContext } from './lib';
 import { listWorkspaceSymbols, loadWorkspaceDocuments } from './workspace';
-import { ComlinkParser } from './parser'
 
 /**
  * Entry point class to the server.

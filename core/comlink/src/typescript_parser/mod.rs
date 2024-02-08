@@ -23,22 +23,31 @@ pub fn parse_profile(source: &str) -> (Profile, ProfileSpans, Vec<Diagnostic>) {
         for (example, example_spans) in usecase.examples.iter().zip(usecase_spans.examples.iter()) {
             match example {
                 UseCaseExample::Success { input, result, .. } => {
-                    check_profile_examples_schemas( &usecase.input, usecase_spans.input, input, example_spans.input, &mut diagnostics);
-                    check_profile_examples_schemas( &usecase.result, usecase_spans.result, result, example_spans.output, &mut diagnostics);
+                    check_profile_examples_schemas(&usecase.input, usecase_spans.input, input, example_spans.input, &mut diagnostics);
+                    check_profile_examples_schemas(&usecase.result, usecase_spans.result, result, example_spans.output, &mut diagnostics);
                 }
                 UseCaseExample::Failure { input, error, .. } => {
-                    check_profile_examples_schemas( &usecase.input, usecase_spans.input, input, example_spans.input, &mut diagnostics);
-                    check_profile_examples_schemas( &usecase.error, usecase_spans.error, error, example_spans.output, &mut diagnostics);
+                    check_profile_examples_schemas(&usecase.input, usecase_spans.input, input, example_spans.input, &mut diagnostics);
+                    check_profile_examples_schemas(&usecase.error, usecase_spans.error, error, example_spans.output, &mut diagnostics);
                 }
             }
         }
+    }
+    if profile.usecases.len() == 0 {
+        diagnostics.push(Diagnostic {
+            severity: DiagnosticSeverity::Error,
+            code: DiagnosticCode::ProfileInvalid as u16,
+            message: format!("{}: Profile must contain at least one Use case", DiagnosticCode::ProfileInvalid.description()),
+            span: spans.entire
+        });
     }
 
     (profile, spans, diagnostics)
 }
 
 fn check_profile_examples_schemas(schema: &JsonSchema, schema_span: TextSpan, value: &JsonValue, value_span: TextSpan, diag: &mut Vec<Diagnostic>) {
-    let validator = match super::json_schema_validator::JsonSchemaValidator::new(schema) {
+    let schema = JsonValue::Object(schema.clone());
+    let validator = match super::json_schema_validator::JsonSchemaValidator::new(&schema) {
         Ok(v) => v,
         Err(err) => {
             diag.push(Diagnostic {

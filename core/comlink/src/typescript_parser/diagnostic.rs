@@ -22,6 +22,7 @@ pub enum DiagnosticCode {
     // 10x
     GlobalTypeUnknown = 101,
     GlobalTypeInvalid,
+    ProfileInvalid,
     // 21x
     UseCaseInvalid = 211,
     UseCaseNameInvalid,
@@ -39,6 +40,7 @@ impl DiagnosticCode {
             Self::Unknown => "Unknown",
             Self::GlobalTypeUnknown => "Global type unknown",
             Self::GlobalTypeInvalid => "Global type error",
+            Self::ProfileInvalid => "The document is not a valid profile",
             Self::UseCaseInvalid => "Use case options error",
             Self::UseCaseNameInvalid => "Use case name error",
             Self::UseCaseMemberUnknown => "Use case member unknown",

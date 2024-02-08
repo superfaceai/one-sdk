@@ -1,4 +1,4 @@
-import type { TextCoder, AppContext, AppContextSync } from './interfaces';
+import type { TextCoder, AppContext, AppContextSync } from './interfaces.js';
 import { Asyncify, AsyncifyState } from './asyncify.js'
 import { HandleMap } from './handle_map.js'
 import { WasiErrno } from './error.js';

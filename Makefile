@@ -33,6 +33,7 @@ WASI_SDK_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk
 CORE_DIST=core/dist
 CORE_WASM=${CORE_DIST}/core.wasm
 CORE_ASYNCIFY_WASM=${CORE_DIST}/core-async.wasm
+CORE_COMLINK_WASM=${CORE_DIST}/comlink.wasm
 # Test core
 TEST_CORE_WASM=${CORE_DIST}/test-core.wasm
 TEST_CORE_ASYNCIFY_WASM=${CORE_DIST}/test-core-async.wasm
@@ -87,8 +88,8 @@ ${CORE_WASM}: ${CORE_DIST}
 	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
 
 ${TEST_CORE_WASM}: ${CORE_DIST}
-	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock"
-	cp core/target/wasm32-wasi/debug/oneclient_core.wasm ${TEST_CORE_WASM}
+	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock" ${CARGO_FLAGS}
+	cp core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm ${TEST_CORE_WASM}
 
 ${CORE_ASYNCIFY_WASM}: ${CORE_WASM}
 	@echo 'Running asyncify...'
@@ -96,6 +97,11 @@ ${CORE_ASYNCIFY_WASM}: ${CORE_WASM}
 	
 ${TEST_CORE_ASYNCIFY_WASM}: ${TEST_CORE_WASM}
 	wasm-opt -Os --asyncify ${TEST_CORE_WASM} --output ${TEST_CORE_ASYNCIFY_WASM}
+
+${CORE_COMLINK_WASM}:
+	mkdir -p ${CORE_DIST}
+	cd core; cargo build --package comlink_wasm --target wasm32-wasi ${CARGO_FLAGS}
+	wasm-opt -Os ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/comlink_wasm.wasm --output ${CORE_COMLINK_WASM}
 
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
@@ -145,8 +151,8 @@ clean_core_js:
 ##############
 ## PACKAGES ##
 ##############
-build_packages: build_python_host build_nodejs_host build_cfw_host
-deps_packages: deps_python_host deps_nodejs_host deps_cfw_host
+build_packages: build_python_host build_nodejs_host build_cfw_host build_nodejs_comlink build_comlink_language_server
+deps_packages: deps_python_host deps_nodejs_host deps_cfw_host deps_nodejs_comlink deps_comlink_language_server
 test_packages: test_nodejs_host test_cfw_host test_python_host
 
 # Node.js Host
@@ -155,10 +161,17 @@ deps_nodejs_host:
 build_nodejs_host: deps_nodejs_host ${CORE_ASYNCIFY_WASM}
 	mkdir -p ${NODEJS_HOST_ASSETS}
 	cp ${CORE_ASYNCIFY_WASM} ${NODEJS_HOST_ASSETS}/core-async.wasm
-	cd packages/nodejs_host && yarn build	
+	cd packages/nodejs_host && yarn build
 test_nodejs_host: build_nodejs_host ${TEST_CORE_ASYNCIFY_WASM}
 	cp ${TEST_CORE_ASYNCIFY_WASM} ${NODEJS_HOST_ASSETS}/test-core-async.wasm
 	cd packages/nodejs_host && yarn test
+
+deps_nodejs_comlink: 
+	cd packages/nodejs_comlink && yarn install
+build_nodejs_comlink: deps_nodejs_host ${CORE_COMLINK_WASM}
+	mkdir -p packages/nodejs_comlink/assets
+	cp ${CORE_COMLINK_WASM} packages/nodejs_comlink/assets/comlink.wasm
+	cd packages/nodejs_comlink && yarn build
 
 # Cloudflare worker Host
 deps_cfw_host:
@@ -187,10 +200,7 @@ test_python_host: build_python_host ${TEST_CORE_WASM}
 build_map_std_package: ${MAP_STD}
 	cp -r core_js/map-std/types packages/map_std/
 
-deps_comlink_language_server: 
+deps_comlink_language_server: build_nodejs_comlink
 	cd packages/comlink_language_server && yarn install
 build_comlink_language_server: deps_comlink_language_server
-	mkdir -p packages/comlink_language_server/assets
-	cd core; cargo build --package comlink_wasm --target wasm32-wasi ${CARGO_FLAGS}
-	wasm-opt -Os ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/comlink_wasm.wasm --output packages/comlink_language_server/assets/comlink.wasm
 	cd packages/comlink_language_server && yarn build

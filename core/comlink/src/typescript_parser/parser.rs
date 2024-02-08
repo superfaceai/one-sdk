@@ -220,6 +220,7 @@ impl<'a> ProfileParser<'a> {
     }
 
     fn parse_profile(&mut self) -> (Profile, ProfileSpans) {
+        // TODO: scope, name and version are never parsed because they don't appear in the document
         let mut profile = Profile::default();
         let mut spans = ProfileSpans::default();
 
@@ -468,12 +469,12 @@ impl<'a> ProfileParser<'a> {
             err(.ty)
         ] catch(err) {
             self.diag.error(err);
-            return (JsonSchema::Null, TextSpan::default());
+            return (json_map!({ "type": "null" }), TextSpan::default());
         });
         let span = ty.range().into();
 
-        let mut raw_schmea = self.parse_type_schema(ty);
-        raw_schmea.insert(
+        let mut schema = self.parse_type_schema(ty);
+        schema.insert(
             "$defs".into(),
             json!({
                 "AnyValue": anyvalue_schema("#/$defs/AnyValue")
@@ -482,13 +483,13 @@ impl<'a> ProfileParser<'a> {
 
         let (Documentation { title, description }, _) = self.parse_documentation(root.syntax());
         if let Some(title) = title {
-            raw_schmea.insert("title".into(), title.into());
+            schema.insert("title".into(), title.into());
         }
         if let Some(description) = description {
-            raw_schmea.insert("description".into(), description.into());
+            schema.insert("description".into(), description.into());
         }
 
-        (JsonValue::Object(raw_schmea), span)
+        (schema, span)
     }
     /// Entry point into parsing schema of any type.
     fn parse_type_schema(&mut self, ty: AnyTsType) -> JsonMap {
@@ -1137,7 +1138,7 @@ fn doc_line_common_prefix<'a>(left: &'a str, right: &str) -> &'a str {
 }
 
 fn anyvalue_schema(ref_path: &str) -> JsonSchema {
-    json!({
+    json_map!({
         "oneOf": [
             { "type": "null" },
             { "type": "string" },
@@ -1169,7 +1170,7 @@ mod test {
 
     #[test]
     fn test_anyvalue_schema() {
-        let schema = anyvalue_schema("#");
+        let schema: JsonValue = anyvalue_schema("#").into();
         let validator = crate::json_schema_validator::JsonSchemaValidator::new(&schema).unwrap();
 
         let values = [
