@@ -1,6 +1,6 @@
 {
   "name": "@superfaceai/comlink",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "exports": {
     ".": "./dist/index.js",
     "./assets/comlink.wasm": "./assets/comlink.wasm"
@@ -13,8 +13,8 @@
   },
   "devDependencies": {
     "@types/node": "^20",
-    "typescript": "^5",
-    "rimraf": "^5"
+    "rimraf": "^5",
+    "typescript": "^5"
   },
   "scripts": {
     "clean": "rimraf dist",
