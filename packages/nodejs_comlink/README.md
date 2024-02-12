@@ -5,4 +5,4 @@
 
 # Superface Comlink tools
 
-Contains Comlink tooling (profile parse, JSON schema generation and validation).
+Contains Comlink tooling (profile parser, JSON schema generation and validation).
