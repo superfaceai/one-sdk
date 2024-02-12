@@ -274,7 +274,9 @@ impl OneClientCore {
             provider_json,
             &perform_input.map_security
         ));
-        let map_services = prepare_services_map(provider_json, &map_parameters);
+        let map_services = try_metrics!(
+            prepare_services_map(provider_json, &map_parameters)
+        );
 
         let ProfileCacheEntry {
             profile: _,
