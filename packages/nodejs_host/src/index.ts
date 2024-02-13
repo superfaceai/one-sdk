@@ -1,5 +1,5 @@
 import fs, { FileHandle } from 'node:fs/promises';
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import process from 'node:process';
 import { WASI } from 'node:wasi';
@@ -20,7 +20,6 @@ import {
 } from './common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 
-const pkg = createRequire(import.meta.url)('../package.json');
 function corePathURL(): URL {
   return new URL('../assets/core-async.wasm', import.meta.url);
 }
@@ -234,12 +233,14 @@ class InternalClient {
   private app: App;
   private readyState: AsyncMutex<{ ready: boolean }>;
   private readonly fileSystem: NodeFileSystem;
+  private readonly pkg: { version: string };
 
   constructor(readonly options: ClientOptions = {}) {
     if (options.assetsPath !== undefined) {
       this.assetsPath = options.assetsPath;
     }
 
+    this.pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), { encoding: 'utf8' }));
     this.readyState = new AsyncMutex({ ready: false });
     this.fileSystem = new NodeFileSystem();
 
@@ -351,7 +352,7 @@ class InternalClient {
     const platform = process.platform;
     const arch = process.arch;
     const nodeVersion = process.version;
-    const version = pkg.version;
+    const version = this.pkg.version;
 
     return `one-sdk-nodejs/${version} (${platform} ${arch}) node.js/${nodeVersion}`;
   }
