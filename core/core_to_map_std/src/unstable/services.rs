@@ -74,7 +74,11 @@ fn replace_parameters(url: &str, parameters: &MapValueObject) -> Result<String, 
 
         match parameters.get(param_name) {
             Some(MapValue::String(val)) => val,
-            _ => {
+            Some(v) => {
+                errors.push(format!("String parameter {} has type {}", param_name, v.type_name()));
+                ""
+            }
+            None => {
                 errors.push(format!("String parameter {} is missing", param_name));
                 ""
             }
@@ -122,8 +126,8 @@ mod test {
         ).unwrap_err();
 
         assert_eq!(err, vec![
-            "String parameter THREE".to_string(),
-            "String parameter FOUR".to_string()
+            "String parameter THREE has type None".to_string(),
+            "String parameter FOUR is missing".to_string()
         ]);
     }
 }

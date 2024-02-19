@@ -26,6 +26,17 @@ pub enum MapValue {
     Object(MapValueObject),
 }
 impl MapValue {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Self::None => "None",
+            Self::Bool(_) => "Bool",
+            Self::Number(_) => "Number",
+            Self::String(_) => "String",
+            Self::Array(_) => "Array",
+            Self::Object(_) => "Object"
+        }
+    }
+
     pub fn try_into_string(self) -> Option<String> {
         match self {
             Self::String(s) => Some(s),
