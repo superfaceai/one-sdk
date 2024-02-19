@@ -75,7 +75,7 @@ fn replace_parameters(url: &str, parameters: &MapValueObject) -> Result<String, 
         match parameters.get(param_name) {
             Some(MapValue::String(val)) => val,
             _ => {
-                errors.push(format!("String parameter {}", param_name));
+                errors.push(format!("String parameter {} is missing", param_name));
                 ""
             }
         }
