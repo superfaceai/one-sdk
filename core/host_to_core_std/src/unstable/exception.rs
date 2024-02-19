@@ -7,6 +7,7 @@ pub enum PerformExceptionErrorCode {
     JsInterpreterError,
     ParametersFormatError,
     PrepareSecurityMapError,
+    PrepareServicesMapError,
     ReplacementStdlibError,
     TakeInputError,
 }
@@ -19,6 +20,9 @@ impl std::fmt::Display for PerformExceptionErrorCode {
             PerformExceptionErrorCode::ParametersFormatError => write!(f, "ParametersFormatError"),
             PerformExceptionErrorCode::PrepareSecurityMapError => {
                 write!(f, "PrepareSecurityMapError")
+            }
+            PerformExceptionErrorCode::PrepareServicesMapError => {
+                write!(f, "PrepareServicesMapError")
             }
             PerformExceptionErrorCode::ReplacementStdlibError => {
                 write!(f, "ReplacementStdlibError")

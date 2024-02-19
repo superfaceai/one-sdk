@@ -186,7 +186,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   nodejs-comlink-publish:
-    name: Publich Node.js Comlink
+    name: Publish Node.js Comlink
     needs: [comlink, nodejs-comlink-prepare]
     if: ${{ !cancelled() && needs.nodejs-comlink-prepare.result == 'success' }}
     runs-on: ubuntu-latest

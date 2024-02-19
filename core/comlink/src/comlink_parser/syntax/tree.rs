@@ -13,7 +13,7 @@ pub mod serde;
 pub mod tokens;
 
 pub use self::{
-    location::{Location, LocationSpan},
+    location::LocationSpan,
     parser::{Parser, ParserError},
 };
 use location::RawLocation;

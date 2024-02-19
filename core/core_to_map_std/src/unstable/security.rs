@@ -80,7 +80,7 @@ pub enum Security {
 pub type SecurityMapKey = String;
 pub enum SecurityMapValue {
     Security(Security),
-    Error(MapInterpreterSecurityMisconfiguredError),
+    Error(SecurityMisconfiguredError),
 }
 pub type SecurityMap = HashMap<SecurityMapKey, SecurityMapValue>;
 
@@ -93,8 +93,8 @@ pub type SecurityValuesMap = HashMap<String, SecurityValue>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PrepareSecurityMapError {
-    #[error("Security is misconfigured:\n{}", MapInterpreterSecurityMisconfiguredError::format_errors(.0.as_slice()))]
-    SecurityMisconfigured(Vec<MapInterpreterSecurityMisconfiguredError>),
+    #[error("Security is misconfigured:\n{}", SecurityMisconfiguredError::format_errors(.0.as_slice()))]
+    SecurityMisconfigured(Vec<SecurityMisconfiguredError>),
 }
 impl From<PrepareSecurityMapError> for PerformException {
     fn from(value: PrepareSecurityMapError) -> Self {
@@ -106,12 +106,12 @@ impl From<PrepareSecurityMapError> for PerformException {
 }
 
 #[derive(Debug)]
-pub struct MapInterpreterSecurityMisconfiguredError {
+pub struct SecurityMisconfiguredError {
     pub id: String,
     pub expected: String,
 }
-impl MapInterpreterSecurityMisconfiguredError {
-    pub fn format_errors(errors: &[MapInterpreterSecurityMisconfiguredError]) -> String {
+impl SecurityMisconfiguredError {
+    pub fn format_errors(errors: &[Self]) -> String {
         let mut res = String::new();
 
         for err in errors {
@@ -201,7 +201,7 @@ pub fn prepare_security_map(
     };
 
     let mut security_map = SecurityMap::new();
-    let mut errors: Vec<MapInterpreterSecurityMisconfiguredError> = Vec::new();
+    let mut errors: Vec<SecurityMisconfiguredError> = Vec::new();
 
     for security_scheme in security_schemes {
         match security_scheme {
@@ -214,7 +214,7 @@ pub fn prepare_security_map(
                 let apikey = match security_values.get(id) {
                     Some(SecurityValue::ApiKey { apikey }) => apikey,
                     Some(_) => {
-                        errors.push(MapInterpreterSecurityMisconfiguredError {
+                        errors.push(SecurityMisconfiguredError {
                             id: id.to_owned(),
                             expected: "{ apikey: String }".to_string(),
                         });
@@ -223,7 +223,7 @@ pub fn prepare_security_map(
                     None => {
                         security_map.insert(
                             id.to_owned(),
-                            SecurityMapValue::Error(MapInterpreterSecurityMisconfiguredError {
+                            SecurityMapValue::Error(SecurityMisconfiguredError {
                                 id: id.to_owned(),
                                 expected: "not empty value".to_string(),
                             }),
@@ -248,7 +248,7 @@ pub fn prepare_security_map(
                 let (user, password) = match security_values.get(id) {
                     Some(SecurityValue::Basic { username, password }) => (username, password),
                     Some(_) => {
-                        errors.push(MapInterpreterSecurityMisconfiguredError {
+                        errors.push(SecurityMisconfiguredError {
                             id: id.to_owned(),
                             expected: "{ username: String, password: String }".to_string(),
                         });
@@ -257,7 +257,7 @@ pub fn prepare_security_map(
                     None => {
                         security_map.insert(
                             id.to_owned(),
-                            SecurityMapValue::Error(MapInterpreterSecurityMisconfiguredError {
+                            SecurityMapValue::Error(SecurityMisconfiguredError {
                                 id: id.to_owned(),
                                 expected: "not empty value".to_string(),
                             }),
@@ -280,7 +280,7 @@ pub fn prepare_security_map(
                 let token = match security_values.get(id) {
                     Some(SecurityValue::Bearer { token }) => token,
                     Some(_) => {
-                        errors.push(MapInterpreterSecurityMisconfiguredError {
+                        errors.push(SecurityMisconfiguredError {
                             id: id.to_owned(),
                             expected: "{ token: String }".to_string(),
                         });
@@ -289,7 +289,7 @@ pub fn prepare_security_map(
                     None => {
                         security_map.insert(
                             id.to_owned(),
-                            SecurityMapValue::Error(MapInterpreterSecurityMisconfiguredError {
+                            SecurityMapValue::Error(SecurityMisconfiguredError {
                                 id: id.to_owned(),
                                 expected: "not None".to_string(),
                             }),
@@ -336,7 +336,7 @@ pub fn resolve_security(
         }
         Some(SecurityMapValue::Error(err)) => {
             return Err(HttpCallError::InvalidSecurityConfiguration(
-                MapInterpreterSecurityMisconfiguredError::format_errors(std::slice::from_ref(err)),
+                SecurityMisconfiguredError::format_errors(std::slice::from_ref(err)),
             ));
         }
         Some(SecurityMapValue::Security(Security::Http(HttpSecurity::Basic {
