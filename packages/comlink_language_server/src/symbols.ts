@@ -42,8 +42,8 @@ export function listProfileSymbols(
 
   const namespaceSymbol = DocumentSymbol.create(
     formatNamespace(
-      doc.profile.scope,
-      doc.profile.name
+      doc.profile.id.scope,
+      doc.profile.id.name
     ),
     undefined,
     SymbolKind.Namespace,
