@@ -42,7 +42,7 @@ class CfwFileSystem implements FileSystem {
 
     const data = this.preopens[path];
     if (data === undefined) {
-      throw new WasiError(WasiErrno.EBADF);
+      throw new WasiError(WasiErrno.ENOENT);
     }
 
     return this.files.insert({ data, cursor: 0 });

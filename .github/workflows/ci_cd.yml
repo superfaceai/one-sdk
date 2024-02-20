@@ -12,6 +12,7 @@ jobs:
           CARGO_PROFILE: 'debug'
           CORE_WASM: 'upload'
           TEST_CORE_WASM: 'upload'
+          COMLINK_WASM: 'upload'
       - name: Install Wasmtime
         run: |
           curl https://wasmtime.dev/install.sh -sSf | bash
@@ -146,3 +147,32 @@ jobs:
       run: python -m pip install .
     - name: Run tests
       run: python -m unittest discover tests/
+  
+  comlink-nodejs:
+    name: Node.js Comlink
+    needs: [core]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/nodejs_comlink
+    steps:
+    # checkout
+    - uses: actions/checkout@v4
+    # setup
+    - uses: actions/setup-node@v4
+      with:
+        registry-url: https://registry.npmjs.org/
+        node-version: "18"
+        cache: yarn
+        cache-dependency-path: packages/nodejs_comlink/yarn.lock
+    - uses: actions/download-artifact@v4
+      with:
+        name: comlink-wasm
+        path: packages/nodejs_comlink/assets
+    # test and build
+    - name: Install Yarn dependencies
+      run: yarn install --frozen-lockfile
+    - name: Build
+      run: yarn build
+    - name: Run tests
+      run: yarn test

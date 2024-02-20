@@ -13,13 +13,19 @@ pub struct Documentation {
 }
 
 #[derive(Debug, Default, Serialize)]
-pub struct Profile {
+#[cfg_attr(test, derive(PartialEq))]
+pub struct ProfileId {
     /// Scope part of `scope/name`.
     pub scope: Option<String>,
     /// Name part of `scope/name`.
     pub name: String,
     /// Version of the profile.
     pub version: String,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct Profile {
+    pub id: ProfileId,
     /// Documentation of the profile.
     pub documentation: Documentation,
     /// List of use cases.

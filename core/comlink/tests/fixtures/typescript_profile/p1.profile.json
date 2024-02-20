@@ -3,9 +3,11 @@
     "description": null,
     "title": null
   },
-  "name": "",
-  "scope": null,
-  "version": "",
+  "id": {
+    "name": "",
+    "scope": null,
+    "version": ""
+  },
   "usecases": [
     {
       "documentation": {

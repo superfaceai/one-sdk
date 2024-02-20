@@ -153,7 +153,7 @@ clean_core_js:
 ##############
 build_packages: build_python_host build_nodejs_host build_cfw_host build_nodejs_comlink build_comlink_language_server
 deps_packages: deps_python_host deps_nodejs_host deps_cfw_host deps_nodejs_comlink deps_comlink_language_server
-test_packages: test_nodejs_host test_cfw_host test_python_host
+test_packages: test_nodejs_host test_cfw_host test_python_host test_nodejs_comlink
 
 # Node.js Host
 deps_nodejs_host:
@@ -172,6 +172,8 @@ build_nodejs_comlink: deps_nodejs_host ${CORE_COMLINK_WASM}
 	mkdir -p packages/nodejs_comlink/assets
 	cp ${CORE_COMLINK_WASM} packages/nodejs_comlink/assets/comlink.wasm
 	cd packages/nodejs_comlink && yarn build
+test_nodejs_comlink: build_nodejs_comlink
+	cd packages/nodejs_comlink && yarn test
 
 # Cloudflare worker Host
 deps_cfw_host:
