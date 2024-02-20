@@ -1,6 +1,6 @@
 {
   "name": "@superfaceai/comlink",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "exports": {
     ".": "./dist/index.js",
     "./assets/comlink.wasm": "./assets/comlink.wasm"
