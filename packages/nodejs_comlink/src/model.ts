@@ -6,10 +6,12 @@ export type Documentation = {
 	description?: string
 }
 export type Profile = {
-	scope?: string,
-	name: string,
-	version: string,
-	documentation: Documentation
+	id: {
+		scope?: string,
+		name: string,
+		version: string,
+	},
+	documentation: Documentation,
 	usecases: UseCase[]
 }
 export type UseCaseSafety = 'safe' | 'idempotent' | 'unsafe'
