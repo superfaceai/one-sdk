@@ -1,4 +1,4 @@
-/// <reference types="@superface/map-std" />
+/// <reference types="@superfaceai/map-std" />
 type Example = UseCase<{
   safety: 'safe'
   input: { id: AnyValue }

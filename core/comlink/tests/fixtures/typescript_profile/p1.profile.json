@@ -15,36 +15,6 @@
         "title": "The usecase title"
       },
       "error": {
-        "$defs": {
-          "AnyValue": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "items": {
-                  "$ref": "#/$defs/AnyValue"
-                },
-                "type": "array"
-              },
-              {
-                "additionalProperties": {
-                  "$ref": "#/$defs/AnyValue"
-                },
-                "type": "object"
-              }
-            ]
-          }
-        },
         "oneOf": [
           {
             "additionalProperties": false,
@@ -96,36 +66,6 @@
         }
       ],
       "input": {
-        "$defs": {
-          "AnyValue": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "items": {
-                  "$ref": "#/$defs/AnyValue"
-                },
-                "type": "array"
-              },
-              {
-                "additionalProperties": {
-                  "$ref": "#/$defs/AnyValue"
-                },
-                "type": "object"
-              }
-            ]
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "id": {

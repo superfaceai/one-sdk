@@ -2,6 +2,6 @@
   "name": "comlinks",
   "private": true,
   "devDependencies": {
-    "@superface/map-std": "link:../../packages/map_std"
+    "@superfaceai/map-std": "link:../../packages/map_std"
   }
 }
