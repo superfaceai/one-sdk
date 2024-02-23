@@ -51,36 +51,6 @@ const UseCaseExamples: UseCaseName['examples'] = [
           "title": null
         },
         "error": {
-          "$defs": {
-            "AnyValue": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "boolean"
-                },
-                {
-                  "items": {
-                    "$ref": "#/$defs/AnyValue"
-                  },
-                  "type": "array"
-                },
-                {
-                  "additionalProperties": {
-                    "$ref": "#/$defs/AnyValue"
-                  },
-                  "type": "object"
-                }
-              ]
-            }
-          },
           "oneOf": [
             {
               "additionalProperties": false,
@@ -132,36 +102,6 @@ const UseCaseExamples: UseCaseName['examples'] = [
           }
         ],
         "input": {
-          "$defs": {
-            "AnyValue": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "boolean"
-                },
-                {
-                  "items": {
-                    "$ref": "#/$defs/AnyValue"
-                  },
-                  "type": "array"
-                },
-                {
-                  "additionalProperties": {
-                    "$ref": "#/$defs/AnyValue"
-                  },
-                  "type": "object"
-                }
-              ]
-            }
-          },
           "additionalProperties": false,
           "properties": {
             "id": {

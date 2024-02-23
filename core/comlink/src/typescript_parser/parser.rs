@@ -206,12 +206,14 @@ struct StandaloneUseCaseExamples {
 pub struct ProfileParser<'a> {
     source: &'a str,
     diag: Diagnostics,
+    common_defs: HashSet<&'static str>
 }
 impl<'a> ProfileParser<'a> {
     pub fn parse(source: &'a str) -> (Profile, ProfileSpans, Vec<Diagnostic>) {
         let mut context = Self {
             source,
             diag: Diagnostics::new(),
+            common_defs: Default::default()
         };
 
         let (profile, spans) = context.parse_profile();
@@ -474,12 +476,19 @@ impl<'a> ProfileParser<'a> {
         let span = ty.range().into();
 
         let mut schema = self.parse_type_schema(ty);
-        schema.insert(
-            "$defs".into(),
-            json!({
-                "AnyValue": anyvalue_schema("#/$defs/AnyValue")
-            }),
-        );
+        for def in self.common_defs.drain() {
+            match def {
+                "AnyValue" => {
+                    schema.insert(
+                        "$defs".into(),
+                        json!({
+                            "AnyValue": anyvalue_schema("#/$defs/AnyValue")
+                        }),
+                    );
+                }
+                _ => () // should be handled at usage site
+            }
+        }
 
         let (Documentation { title, description }, _) = self.parse_documentation(root.syntax());
         if let Some(title) = title {
@@ -601,6 +610,7 @@ impl<'a> ProfileParser<'a> {
 
         match name.len() {
             1 if name[0] == "AnyValue" => {
+                self.common_defs.insert("AnyValue");
                 json_map!({ "$ref": "#/$defs/AnyValue" })
             }
             1 if name[0] == "Array" => {

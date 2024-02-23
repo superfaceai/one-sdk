@@ -1,4 +1,4 @@
-/// <reference types="@superface/map-std" />
+/// <reference types="@superfaceai/map-std" />
 
 /**
  * The usecase title
