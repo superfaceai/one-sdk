@@ -24,11 +24,16 @@ import { fileURLToPath } from 'node:url';
 function coreWasmPath(): string {
   // use new URL constructor to get webpack to bundle the asset and non-bundled code to work correctly in all contexts
   const url = new URL('../assets/core-async.wasm', import.meta.url)
-  // resolve in case we get a relative path, like with next
-  // if we reconstructed it as URL here we would get an mismatch because somehow there are two URL classes when bundled for next
-  const path = resolvePath(url.pathname)
+
+  let path = url.pathname;
+  if (path.charAt(0) !== '/') {
+    // when bundled with webpack (in nextjs at least), we get an invalid URL here where only the pathname is filled in
+    // this pathname is additionally relative, so we must resolve it
+    path = resolvePath(path)
+  }
   
   // reconstruct the URL but only as a string and have node parse it using platform-specific code
+  // if we reconstructed it as URL here we would get an mismatch because somehow there are two URL classes when bundled for next
   return fileURLToPath(`file://${path}`)
 }
 
