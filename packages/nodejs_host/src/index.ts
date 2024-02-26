@@ -19,6 +19,7 @@ import {
   WasiError
 } from './common/index.js';
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
+import { fileURLToPath } from 'node:url';
 
 function corePathURL(): URL {
   return new URL('../assets/core-async.wasm', import.meta.url);
@@ -266,7 +267,7 @@ class InternalClient {
       }
 
       await this.app.loadCore(
-        await fs.readFile(process.env.CORE_PATH ?? corePathURL().pathname)
+        await fs.readFile(process.env.CORE_PATH ?? fileURLToPath(corePathURL()))
       );
       await this.app.init(new WASI({
         env: {
