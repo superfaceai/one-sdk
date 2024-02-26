@@ -21,8 +21,15 @@ import {
 import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
 import { fileURLToPath } from 'node:url';
 
-function corePathURL(): URL {
-  return new URL('../assets/core-async.wasm', import.meta.url);
+function coreWasmPath(): string {
+  // use new URL constructor to get webpack to bundle the asset and non-bundled code to work correctly in all contexts
+  const url = new URL('../assets/core-async.wasm', import.meta.url)
+  // resolve in case we get a relative path, like with next
+  // if we reconstructed it as URL here we would get an mismatch because somehow there are two URL classes when bundled for next
+  const path = resolvePath(url.pathname)
+  
+  // reconstruct the URL but only as a string and have node parse it using platform-specific code
+  return fileURLToPath(`file://${path}`)
 }
 
 export { PerformError, UnexpectedError, ValidationError } from './common/index.js';
@@ -267,7 +274,7 @@ class InternalClient {
       }
 
       await this.app.loadCore(
-        await fs.readFile(process.env.CORE_PATH ?? fileURLToPath(corePathURL()))
+        await fs.readFile(process.env.CORE_PATH ?? coreWasmPath())
       );
       await this.app.init(new WASI({
         env: {

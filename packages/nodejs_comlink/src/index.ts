@@ -1,13 +1,21 @@
 import { WASI, WASIOptions } from 'node:wasi';
 import fs from 'node:fs/promises';
+import { resolve as resolvePath } from 'node:path';
 
 import { AppContextSync, TextCoder, sf_host } from './common_lib/index.js'
 import type { Profile, Diagnostic, ProfileSpans } from './model'
 import { fileURLToPath } from 'node:url';
 export type * from './model'
 
-function comlinkPathURL(): URL {
-  return new URL('../assets/comlink.wasm', import.meta.url)
+function comlinkWasmPath(): string {
+  // use new URL constructor to get webpack to bundle the asset and non-bundled code to work correctly in all contexts
+  const url = new URL('../assets/comlink.wasm', import.meta.url)
+  // resolve in case we get a relative path, like with next
+  const path = resolvePath(url.pathname)
+  
+  // reconstruct the URL but only as a string and have node parse it using platform-specific code
+  // if we reconstructed it as URL here we would get an mismatch because somehow there are two URL classes when bundled for next
+  return fileURLToPath(`file://${path}`)
 }
 
 class TextCoderImpl implements TextCoder {
@@ -30,7 +38,7 @@ type ParseProfileInput = { profile: string, file_path?: string }
 type ParseProfileOutput = { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] }
 export class ComlinkParser extends AppContextSync {
   public static async create(): Promise<ComlinkParser> {
-    const wasm = await fs.readFile(process.env.COMLINK_WASM_PATH ?? fileURLToPath(comlinkPathURL()))
+    const wasm = await fs.readFile(process.env.COMLINK_WASM_PATH ?? comlinkWasmPath())
     const module = await WebAssembly.compile(wasm)
 
     const parser =  new ComlinkParser(module)
