@@ -18,18 +18,29 @@ impl RingEventBuffer {
         self.data.capacity() - self.data.len()
     }
 
-    fn pop_event(&mut self) -> impl Iterator<Item = u8> + '_ {
-        let (first, second) = self.data.as_slices();
+    /// Calculate how many bytes we need to drain until `needed` bytes fit in the buffer. 
+    /// 
+    /// If `needed` is less than `self.free_len()` then `0` is returned.
+    /// 
+    /// This attempts to align the len to event separators. Once all previous events are exhaused
+    /// and there still isn't enough room for the new data we truncate the current in-progress event from the left.
+    fn drain_len_for(&self, needed: usize) -> usize {
+        let needed = needed.saturating_sub(self.free_len());
+        if needed == 0 {
+            return 0;
+        }
 
-        let event_len = match first.iter().position(|&b| b == EVENT_SEPARATOR) {
-            Some(i) => i + 1,
-            None => match second.iter().position(|&b| b == EVENT_SEPARATOR) {
-                Some(i) => first.len() + i + 1,
-                None => unreachable!(),
-            },
-        };
-
-        self.data.drain(0..event_len)
+        // go over the slices, if we find event separator that covers enough bytes to make room for `needed` then we return that
+        for (i, b) in self.data.iter().enumerate() {
+            if *b == EVENT_SEPARATOR {
+                if i + 1 >= needed {
+                    return i + 1;
+                }
+            }
+        }
+        // otherwise we must drain all events plus some more data from the current in-progress event
+        // this is basically `needed` clamped to the size of existing data
+        needed.min(self.data.len())
     }
 }
 impl TracingEventBuffer for RingEventBuffer {
@@ -39,9 +50,10 @@ impl TracingEventBuffer for RingEventBuffer {
             data = &data[data.len() - self.data.capacity()..];
         }
 
-        // pop all previous events to make room for this new data
-        while data.len() > self.free_len() {
-            let _ = self.pop_event();
+        // pop as many events as needed to make room for this new data
+        match self.drain_len_for(data.len()) {
+            0 => (),
+            n => { let _ = self.data.drain(0..n); }
         }
 
         self.data.extend(data.iter().copied());
@@ -91,13 +103,17 @@ mod test {
     #[test]
     fn test_ring_buffer_write_wrapping() {
         let mut buffer = RingEventBuffer::new(10);
+        assert!(buffer.data.as_slices().0.is_empty());
+        assert!(buffer.data.as_slices().1.is_empty());
+        assert_eq!(buffer.as_raw_parts()[0].1, 0);
+        assert_eq!(buffer.as_raw_parts()[1].1, 0);
+
         buffer.write(&[10, 11, 12, 0]);
         buffer.write(&[13, 14, 15, 0]);
 
         assert_eq!(buffer.data.as_slices().0, &[10, 11, 12, 0, 13, 14, 15, 0]);
         assert_eq!(buffer.as_raw_parts()[0].1, 8);
         assert_eq!(buffer.as_raw_parts()[1].1, 0);
-        assert_eq!(buffer.pop_event().collect::<Vec<_>>(), vec![10, 11, 12, 0]);
 
         buffer.write(&[16, 17, 18, 0]);
         buffer.write(&[19, 0]);
@@ -105,13 +121,15 @@ mod test {
         assert_eq!(buffer.data.as_slices().1, &[18, 0, 19, 0]);
         assert_eq!(buffer.as_raw_parts()[0].1, 6);
         assert_eq!(buffer.as_raw_parts()[1].1, 4);
-        assert_eq!(buffer.pop_event().collect::<Vec<_>>(), vec![13, 14, 15, 0]);
-        assert_eq!(buffer.pop_event().collect::<Vec<_>>(), vec![16, 17, 18, 0]);
-        assert_eq!(buffer.pop_event().collect::<Vec<_>>(), vec![19, 0]);
+    }
 
-        assert!(buffer.data.as_slices().0.is_empty());
-        assert!(buffer.data.as_slices().1.is_empty());
-        assert_eq!(buffer.as_raw_parts()[0].1, 0);
-        assert_eq!(buffer.as_raw_parts()[1].1, 0);
+    #[test]
+    fn test_ring_buffer_split_write_overflow() {
+        let mut buffer = RingEventBuffer::new(5);
+        for b in [1, 2, 3, 4, 5, 6, 7, 8, 9, 0] {
+            buffer.write(&[b]);
+        }
+        assert_eq!(buffer.free_len(), 0);
+        assert_eq!(buffer.data.as_slices().0, &[6, 7, 8, 9, 0]);
     }
 }
