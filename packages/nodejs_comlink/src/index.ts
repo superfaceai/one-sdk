@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 
 import { AppContextSync, TextCoder, sf_host } from './common_lib/index.js'
 import type { Profile, Diagnostic, ProfileSpans } from './model'
+import { fileURLToPath } from 'node:url';
 export type * from './model'
 
 function comlinkPathURL(): URL {
@@ -29,7 +30,7 @@ type ParseProfileInput = { profile: string, file_path?: string }
 type ParseProfileOutput = { profile: Profile, spans: ProfileSpans, diagnostics: Diagnostic[] }
 export class ComlinkParser extends AppContextSync {
   public static async create(): Promise<ComlinkParser> {
-    const wasm = await fs.readFile(process.env.COMLINK_WASM_PATH ?? comlinkPathURL().pathname)
+    const wasm = await fs.readFile(process.env.COMLINK_WASM_PATH ?? fileURLToPath(comlinkPathURL()))
     const module = await WebAssembly.compile(wasm)
 
     const parser =  new ComlinkParser(module)
