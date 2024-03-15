@@ -2,7 +2,7 @@ import { messageExchange, jsonReviverMapValue, jsonReplacerMapValue, responseErr
 import { ensureMultimap } from './internal/util';
 import { Bytes, ByteStream } from './internal/bytes';
 import type { MultiMap } from './internal/types';
-import { Buffer } from './internal/node_compat';
+import { Buffer } from './internal/node_buffer';
 
 export type { MultiMap, Encoding } from './internal/types';
 
@@ -53,12 +53,15 @@ export class HttpResponse {
     this.#bodyStream = new ByteStream(bodyStream);
   }
 
-  // TODO: either make Bytes public or use a different type
   private bodyBytes(): Bytes {
-    const buffer = this.#bodyStream.readToEnd();
+    const bytes = this.#bodyStream.readToEnd();
     this.#bodyStream.close();
 
-    return buffer;
+    return bytes;
+  }
+
+  public bodyBuffer(): Buffer {
+    return Buffer.from(this.bodyBytes());
   }
 
   public bodyText(): string {

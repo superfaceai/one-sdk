@@ -10,8 +10,8 @@ declare type StdFfi = {
     // coding
     bytes_to_utf8(bytes: ArrayBuffer): string,
     utf8_to_bytes(utf8: string): ArrayBuffer,
-    bytes_to_base64(bytes: ArrayBuffer): string,
-    base64_to_bytes(base64: string): ArrayBuffer,
+    bytes_to_base64(bytes: ArrayBuffer, url_safe: boolean): string,
+    base64_to_bytes(base64: string, url_safe: boolean): ArrayBuffer,
     record_to_urlencoded(value: Record<string, string[]>): string,
     // env
     print(message: string): void,

@@ -74,6 +74,7 @@ macro_rules! ensure_arguments {
         )
     };
 
+    (#arg_type(bool) $val: expr) => { $val.as_bool().ok() };
     (#arg_type(i32) $val: expr) => { $val.try_as_integer().ok() };
     (#arg_type(str) $val: expr) => { $val.as_str().ok() };
     (#arg_type(mut_bytes) $val: expr) => { $val.as_bytes_mut().ok() };
