@@ -1,4 +1,4 @@
-/// <reference types="@superface/map-std" />
+/// <reference types="@superfaceai/map-std" />
 // @ts-check
 
 /** @type {UseCase<{ safety: 'unsafe', input: { to?: AnyValue, from?: AnyValue, text?: AnyValue }, result: { messageId: AnyValue }, error: { title: string, detail: string } }>} */
