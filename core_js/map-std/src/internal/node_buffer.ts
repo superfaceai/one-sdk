@@ -45,7 +45,7 @@ export class Buffer {
       if (buf.length <= remaining) {
         bytes.extend(buf.inner.data);
       } else {
-        bytes.extend(buf.inner.data.slice(0, remaining));
+        bytes.extend(buf.inner.data.subarray(0, remaining));
       }
     }
 
