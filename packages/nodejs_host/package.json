@@ -1,6 +1,6 @@
 {
   "name": "@superfaceai/one-sdk",
-  "version": "3.0.0-beta.19",
+  "version": "3.0.0-beta.20",
   "exports": {
     ".": "./dist/index.js",
     "./common": "./dist/common/index.js",
