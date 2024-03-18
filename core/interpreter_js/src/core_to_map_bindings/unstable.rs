@@ -25,7 +25,7 @@ pub fn link<H: MapStdUnstable + 'static>(
             // debug
             "printDebug": __export_print_debug,
             "print": __export_print,
-            // env
+            // coding
             "bytes_to_utf8": __export_bytes_to_utf8,
             "utf8_to_bytes": __export_utf8_to_bytes,
             "bytes_to_base64": __export_bytes_to_base64,
@@ -146,14 +146,21 @@ fn __export_utf8_to_bytes<'ctx, H: MapStdUnstable + 'static>(
     Ok(JSValue::ArrayBuffer(string.into()))
 }
 
+fn get_base64_alphabet(url_safe: bool, pad: bool) -> base64::engine::GeneralPurpose {
+    match (url_safe, pad) {
+        (false, true) => base64::engine::general_purpose::STANDARD,
+        (true, true) => base64::engine::general_purpose::URL_SAFE,
+        _ => unimplemented!()
+    }
+}
 fn __export_bytes_to_base64<'ctx, H: MapStdUnstable + 'static>(
     _state: &mut H,
     _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
-    let bytes = ensure_arguments!("bytes_to_base64" args; 0: bytes);
+    let (bytes, url_safe) = ensure_arguments!("bytes_to_base64" args; 0: bytes, 1: bool);
 
-    let result = base64::engine::general_purpose::STANDARD.encode(bytes);
+    let result = get_base64_alphabet(url_safe, true).encode(bytes);
 
     Ok(result.into())
 }
@@ -163,9 +170,9 @@ fn __export_base64_to_bytes<'ctx, H: MapStdUnstable + 'static>(
     _this: &JSValueRef<'ctx>,
     args: &[JSValueRef<'ctx>],
 ) -> Result<JSValue, JSError> {
-    let string = ensure_arguments!("base64_to_bytes" args; 0: str);
+    let (string, url_safe) = ensure_arguments!("base64_to_bytes" args; 0: str, 1: bool);
 
-    match base64::engine::general_purpose::STANDARD.decode(string) {
+    match get_base64_alphabet(url_safe, true).decode(string) {
         Err(err) => Err(JSError::Type(format!(
             "Could not decode string as base64: {}",
             err

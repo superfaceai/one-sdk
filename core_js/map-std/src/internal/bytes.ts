@@ -70,23 +70,32 @@ export class Bytes {
     // TODO: again support for TypedArrays in Javy
     const buffer = this.#buffer.buffer.slice(0, this.len);
 
-    if (encoding === 'utf8') {
-      return __ffi.unstable.bytes_to_utf8(buffer);
-    } else if (encoding === 'base64') {
-      return __ffi.unstable.bytes_to_base64(buffer);
+    switch (encoding) {
+      case 'utf8':
+        return __ffi.unstable.bytes_to_utf8(buffer);
+      case 'base64':
+        return __ffi.unstable.bytes_to_base64(buffer, false);
+      case 'base64url':
+        return __ffi.unstable.bytes_to_base64(buffer, true);
+      default:
+        throw new Error(`encoding "${encoding}" not implemented`);
     }
-
-    throw new Error(`encoding "${encoding}" not implemented`);
   }
 
   static encode(string: string, encoding: Encoding = 'utf8'): Bytes {
     let buffer;
-    if (encoding === 'utf8') {
-      buffer = __ffi.unstable.utf8_to_bytes(string);
-    } else if (encoding === 'base64') {
-      buffer = __ffi.unstable.base64_to_bytes(string);
-    } else {
-      throw new Error(`encoding "${encoding}" not implemented`);
+    switch (encoding) {
+      case 'utf8':
+        buffer = __ffi.unstable.utf8_to_bytes(string);
+        break;
+      case 'base64':
+        buffer = __ffi.unstable.base64_to_bytes(string, false);
+        break;
+      case 'base64url':
+        buffer = __ffi.unstable.base64_to_bytes(string, true);
+        break;
+      default:
+        throw new Error(`encoding "${encoding}" not implemented`);
     }
 
     return new Bytes(new Uint8Array(buffer), buffer.byteLength);

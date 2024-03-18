@@ -1,7 +1,6 @@
 import { Bytes } from './bytes';
 import type { Encoding } from './types';
 
-// TODO: Comlink/node map compat
 export class Buffer {
   static from(value: unknown, encoding: Encoding = 'utf8'): Buffer {
     if (typeof value === 'string') {
@@ -31,6 +30,28 @@ export class Buffer {
     return value instanceof Buffer;
   }
 
+  static concat(list: Buffer[], totalLength?: number): Buffer {
+    if (totalLength == undefined) {
+      totalLength = list.reduce((acc, curr) => acc + curr.length, 0)
+    }
+
+    const bytes = Bytes.withCapacity(totalLength)
+    for (const buf of list) {
+      if (bytes.len === bytes.capacity) {
+        break;
+      }
+      
+      const remaining = bytes.capacity - bytes.len;
+      if (buf.length <= remaining) {
+        bytes.extend(buf.inner.data);
+      } else {
+        bytes.extend(buf.inner.data.subarray(0, remaining));
+      }
+    }
+
+    return new Buffer(bytes)
+  }
+
   #inner: Bytes;
   private constructor(inner: Bytes) {
     this.#inner = inner;
@@ -39,6 +60,10 @@ export class Buffer {
   /** @internal */
   get inner(): Bytes {
     return this.#inner;
+  }
+
+  get length(): number {
+    return this.#inner.len;
   }
 
   public toString(encoding: Encoding = 'utf8'): string {

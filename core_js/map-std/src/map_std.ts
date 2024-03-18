@@ -1,4 +1,4 @@
-import { Buffer as NodeBuffer } from './internal/node_compat';
+import { Buffer as NodeBuffer } from './internal/node_buffer';
 import * as unstable from './unstable';
 
 declare global {

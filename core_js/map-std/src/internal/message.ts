@@ -1,4 +1,4 @@
-import { Buffer } from './node_compat';
+import { Buffer } from './node_buffer';
 
 export function jsonReplacerMapValue(key: any, value: any): any {
   // TODO: this is how node Buffer gets serialized - do we want that?
