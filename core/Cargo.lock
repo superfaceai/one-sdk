@@ -1209,6 +1209,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "oneclient_core_wasm"
+version = "0.1.0"
+dependencies = [
+ "host_to_core_std",
+ "oneclient_core",
+ "tracing",
+ "wasm_abi",
+]
+
+[[package]]
 name = "openssl"
 version = "0.10.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"

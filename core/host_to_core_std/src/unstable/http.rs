@@ -3,12 +3,14 @@ use std::io::Read;
 use thiserror::Error;
 use url::Url;
 
-use super::{ErrorCode, IoStream, IoStreamHandle};
+use super::{
+    stream::{IoStream, IoStreamHandle},
+    ErrorCode,
+};
+#[cfg(feature = "global_exchange")]
+use crate::global_exchange::{GlobalMessageExchange, GlobalStreamExchange};
 use crate::{
-    abi::{
-        Handle, MessageExchange, MessageExchangeFfiFn, StaticMessageExchange, StaticStreamExchange,
-        StreamExchange, StreamExchangeFfiFn,
-    },
+    abi::{Handle, MessageExchange, StaticMessageExchange, StaticStreamExchange, StreamExchange},
     fmt::AltDebug,
     lowercase_headers_multimap, HeadersMultiMap, MultiMap,
 };
@@ -66,10 +68,9 @@ pub enum HttpCallError {
     #[error("Unknown http error: {0}")]
     Unknown(String), // TODO: more granular
 }
-pub struct HttpRequest<
-    Me: MessageExchange = MessageExchangeFfiFn,
-    Se: StreamExchange = StreamExchangeFfiFn,
-> {
+#[cfg(feature = "global_exchange")]
+pub type GlobalHttpRequest = HttpRequest<GlobalMessageExchange, GlobalStreamExchange>;
+pub struct HttpRequest<Me: MessageExchange, Se: StreamExchange> {
     handle: Handle,
     message_exchange: Me,
     stream_exchange: Se,
@@ -94,7 +95,7 @@ impl<Me: StaticMessageExchange, Se: StaticStreamExchange> HttpRequest<Me, Se> {
     }
 }
 impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
-    fn fetch_in(
+    pub fn fetch_in(
         method: &str,
         url: &str,
         headers: &HeadersMultiMap,
@@ -189,7 +190,9 @@ impl<Me: MessageExchange, Se: StreamExchange> HttpRequest<Me, Se> {
     }
 }
 
-pub struct HttpResponse<Se: StreamExchange = StreamExchangeFfiFn> {
+#[cfg(feature = "global_exchange")]
+pub type GlobalHttpResponse = HttpResponse<GlobalStreamExchange>;
+pub struct HttpResponse<Se: StreamExchange> {
     status: u16,
     headers: HeadersMultiMap,
     body: IoStream<Se>,

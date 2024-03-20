@@ -7,6 +7,8 @@ use std::collections::HashMap;
 pub use wasm_abi as abi;
 
 pub mod fmt;
+#[cfg(feature = "global_exchange")]
+pub mod global_exchange;
 pub mod unstable;
 
 pub type MultiMap<K = String, V = String> = HashMap<K, Vec<V>>;

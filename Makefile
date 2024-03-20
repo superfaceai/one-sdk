@@ -83,13 +83,13 @@ ${CORE_DIST}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROF
 	touch ${CORE_DIST}
 
 ${CORE_WASM}: ${CORE_DIST}
-	cd core; cargo build --package oneclient_core --target wasm32-wasi ${CARGO_FLAGS}
+	cd core; cargo build --package oneclient_core_wasm --target wasm32-wasi ${CARGO_FLAGS}
 	@echo 'Optimizing wasm...'
-	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
+	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core_wasm.wasm --output ${CORE_WASM}
 
 ${TEST_CORE_WASM}: ${CORE_DIST}
-	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock" ${CARGO_FLAGS}
-	cp core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm ${TEST_CORE_WASM}
+	cd core; cargo build --package oneclient_core_wasm --target wasm32-wasi --features "core_mock" ${CARGO_FLAGS}
+	cp core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core_wasm.wasm ${TEST_CORE_WASM}
 
 ${CORE_ASYNCIFY_WASM}: ${CORE_WASM}
 	@echo 'Running asyncify...'

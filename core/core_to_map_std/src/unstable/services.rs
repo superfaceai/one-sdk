@@ -1,14 +1,17 @@
 use std::fmt::Write;
 
-use regex::{Regex, Captures};
-use sf_std::unstable::{provider::ProviderJson, exception::{PerformException, PerformExceptionErrorCode}};
+use regex::{Captures, Regex};
+use sf_std::unstable::{
+    exception::{PerformException, PerformExceptionErrorCode},
+    provider::ProviderJson,
+};
 
 use super::{MapValue, MapValueObject};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PrepareServicesMapError {
     #[error("Service is misconfigured:\n{}", ServiceMisconfiguredError::format_errors(.0.as_slice()))]
-    ServicesMisconfigured(Vec<ServiceMisconfiguredError>)
+    ServicesMisconfigured(Vec<ServiceMisconfiguredError>),
 }
 impl From<PrepareServicesMapError> for PerformException {
     fn from(value: PrepareServicesMapError) -> Self {
@@ -42,19 +45,24 @@ impl ServiceMisconfiguredError {
     }
 }
 
-pub fn prepare_services_map(provider_json: &ProviderJson, parameters: &MapValueObject) -> Result<MapValue, PrepareServicesMapError> {
+pub fn prepare_services_map(
+    provider_json: &ProviderJson,
+    parameters: &MapValueObject,
+) -> Result<MapValue, PrepareServicesMapError> {
     let mut services_map = MapValueObject::new();
     let mut errors = Vec::new();
 
     for service in &provider_json.services {
         match replace_parameters(&service.base_url, parameters) {
-            Ok(service_url) => { services_map.insert(service.id.to_string(), MapValue::String(service_url)); }
-            Err(errs) => errors.extend(
-                errs.into_iter().map(|expected| ServiceMisconfiguredError {
+            Ok(service_url) => {
+                services_map.insert(service.id.to_string(), MapValue::String(service_url));
+            }
+            Err(errs) => {
+                errors.extend(errs.into_iter().map(|expected| ServiceMisconfiguredError {
                     id: service.id.to_owned(),
-                    expected
-                })
-            )
+                    expected,
+                }))
+            }
         }
     }
 
@@ -75,7 +83,11 @@ fn replace_parameters(url: &str, parameters: &MapValueObject) -> Result<String, 
         match parameters.get(param_name) {
             Some(MapValue::String(val)) => val,
             Some(v) => {
-                errors.push(format!("String parameter {} has type {}", param_name, v.type_name()));
+                errors.push(format!(
+                    "String parameter {} has type {}",
+                    param_name,
+                    v.type_name()
+                ));
                 ""
             }
             None => {
@@ -106,7 +118,8 @@ mod test {
                 ("THREE".to_string(), MapValue::String("third".to_string())),
                 ("FOUR".to_string(), MapValue::String("fourth".to_string())),
             ]),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(
             result_url,
@@ -123,11 +136,15 @@ mod test {
                 ("TWO".to_string(), MapValue::String("second".to_string())),
                 ("THREE".to_string(), MapValue::None),
             ]),
-        ).unwrap_err();
+        )
+        .unwrap_err();
 
-        assert_eq!(err, vec![
-            "String parameter THREE has type None".to_string(),
-            "String parameter FOUR is missing".to_string()
-        ]);
+        assert_eq!(
+            err,
+            vec![
+                "String parameter THREE has type None".to_string(),
+                "String parameter FOUR is missing".to_string()
+            ]
+        );
     }
 }

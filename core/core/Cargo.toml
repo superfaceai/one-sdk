@@ -3,12 +3,7 @@ name = "oneclient_core"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-crate-type = ["cdylib"]
-
 [features]
-default = ["asyncify"]
-asyncify = []
 core_mock = []
 
 [dependencies]
@@ -21,7 +16,7 @@ jsonschema = { workspace = true }
 base64 = { workspace = true }
 url = { workspace = true }
 
-sf_std = { path = "../host_to_core_std", package = "host_to_core_std" }
+sf_std = { path = "../host_to_core_std", package = "host_to_core_std", features = ["global_exchange"] }
 map_std = { path = "../core_to_map_std", package = "core_to_map_std" }
 interpreter_js = { path = "../interpreter_js" }
 comlink = { path = "../comlink" }

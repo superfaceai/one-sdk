@@ -1,6 +1,9 @@
 use super::{exception::PerformException, ErrorCode, HostValue};
 use crate::abi::{JsonMessageError, MessageExchange};
 
+#[cfg(feature = "global_exchange")]
+use crate::{abi::StaticMessageExchange, global_exchange::GlobalMessageExchange};
+
 crate::abi::define_exchange! {
     struct PerformInputRequest {
         kind: "perform-input"
@@ -134,6 +137,11 @@ impl PerformInput {
             ))),
         }
     }
+
+    #[cfg(feature = "global_exchange")]
+    pub fn take() -> Result<PerformInput, TakePerformInputError> {
+        Self::take_in(GlobalMessageExchange::instance())
+    }
 }
 
 pub fn set_perform_output_result_in<E: MessageExchange>(result: HostValue, message_exchange: E) {
@@ -149,6 +157,10 @@ pub fn set_perform_output_result_in<E: MessageExchange>(result: HostValue, messa
         } => panic!("perform-output-result error: {:?}: {}", error_code, message),
     }
 }
+#[cfg(feature = "global_exchange")]
+pub fn set_perform_output_result(result: HostValue) {
+    set_perform_output_result_in(result, GlobalMessageExchange::instance())
+}
 
 pub fn set_perform_output_error_in<E: MessageExchange>(error: HostValue, message_exchange: E) {
     let response = PerformOutputErrorRequest::new(error)
@@ -162,6 +174,10 @@ pub fn set_perform_output_error_in<E: MessageExchange>(error: HostValue, message
             message,
         } => panic!("perform-output-error error: {:?}: {}", error_code, message),
     }
+}
+#[cfg(feature = "global_exchange")]
+pub fn set_perform_output_error(error: HostValue) {
+    set_perform_output_error_in(error, GlobalMessageExchange::instance())
 }
 
 pub fn set_perform_output_exception_in<E: MessageExchange>(
@@ -182,6 +198,10 @@ pub fn set_perform_output_exception_in<E: MessageExchange>(
             error_code, message
         ),
     }
+}
+#[cfg(feature = "global_exchange")]
+pub fn set_perform_output_exception(exception: PerformException) {
+    set_perform_output_exception_in(exception, GlobalMessageExchange::instance())
 }
 
 #[cfg(test)]

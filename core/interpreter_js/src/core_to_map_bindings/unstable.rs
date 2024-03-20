@@ -150,7 +150,7 @@ fn get_base64_alphabet(url_safe: bool, pad: bool) -> base64::engine::GeneralPurp
     match (url_safe, pad) {
         (false, true) => base64::engine::general_purpose::STANDARD,
         (true, true) => base64::engine::general_purpose::URL_SAFE,
-        _ => unimplemented!()
+        _ => unimplemented!(),
     }
 }
 fn __export_bytes_to_base64<'ctx, H: MapStdUnstable + 'static>(

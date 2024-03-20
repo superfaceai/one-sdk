@@ -1,9 +1,11 @@
-use std::io::{self, Read};
+use std::io;
 
-use super::{IoStream, IoStreamHandle};
-use crate::abi::{
-    err_from_wasi_errno, MessageExchange, Size, StaticMessageExchange, StaticStreamExchange,
-    StreamExchange,
+use super::stream::{IoStream, IoStreamHandle};
+use crate::abi::{err_from_wasi_errno, MessageExchange, Size, StreamExchange};
+#[cfg(feature = "global_exchange")]
+use crate::{
+    abi::{StaticMessageExchange, StaticStreamExchange},
+    global_exchange::{GlobalMessageExchange, GlobalStreamExchange},
 };
 
 // Initial idea was to use the file-open message to obtain a fd from the host
@@ -120,33 +122,36 @@ impl OpenOptions {
     }
 }
 
-pub struct FsConvenience<Me: StaticMessageExchange, Se: StaticStreamExchange>(
-    std::marker::PhantomData<(Me, Se)>,
-);
-impl<Me: StaticMessageExchange, Se: StaticStreamExchange> FsConvenience<Me, Se> {
-    /// Like [std::fs::read].
-    pub fn read(path: &str) -> Result<Vec<u8>, io::Error> {
-        let mut file =
-            OpenOptions::new()
-                .read(true)
-                .open_in(path.as_ref(), Me::instance(), Se::instance())?;
+#[cfg(feature = "global_exchange")]
+/// Like [std::fs::read].
+pub fn read(path: &str) -> Result<Vec<u8>, io::Error> {
+    use std::io::Read;
 
-        let mut data = Vec::new();
-        file.read_to_end(&mut data)?;
+    let mut file = OpenOptions::new().read(true).open_in(
+        path.as_ref(),
+        GlobalMessageExchange::instance(),
+        GlobalStreamExchange::instance(),
+    )?;
 
-        Ok(data)
-    }
+    let mut data = Vec::new();
+    file.read_to_end(&mut data)?;
 
-    /// Like [std::fs::read_to_string].
-    pub fn read_to_string(path: &str) -> Result<String, io::Error> {
-        let mut file =
-            OpenOptions::new()
-                .read(true)
-                .open_in(path.as_ref(), Me::instance(), Se::instance())?;
+    Ok(data)
+}
 
-        let mut data = String::new();
-        file.read_to_string(&mut data)?;
+#[cfg(feature = "global_exchange")]
+/// Like [std::fs::read_to_string].
+pub fn read_to_string(path: &str) -> Result<String, io::Error> {
+    use std::io::Read;
 
-        Ok(data)
-    }
+    let mut file = OpenOptions::new().read(true).open_in(
+        path.as_ref(),
+        GlobalMessageExchange::instance(),
+        GlobalStreamExchange::instance(),
+    )?;
+
+    let mut data = String::new();
+    file.read_to_string(&mut data)?;
+
+    Ok(data)
 }

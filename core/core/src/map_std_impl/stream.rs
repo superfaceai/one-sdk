@@ -1,6 +1,8 @@
 use std::io::{Read, Write};
 
-use crate::sf_core::{HttpResponse, IoStream};
+use sf_std::unstable::{
+    http::GlobalHttpResponse as HttpResponse, stream::GlobalIoStream as IoStream,
+};
 
 pub enum StreamEntry {
     Io(IoStream),

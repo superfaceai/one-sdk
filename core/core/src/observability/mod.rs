@@ -1,35 +1,50 @@
-use std::{borrow::Cow, ops::Deref};
+use std::borrow::Cow;
 
-use sf_std::abi::{Ptr, Size};
-use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
-    filter::FilterFn, fmt::format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
+    filter::{FilterFn, LevelFilter},
+    fmt::format,
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+    EnvFilter, Layer,
 };
 
-use self::buffer::{RingEventBuffer, SharedEventBuffer, TracingEventBuffer, VecEventBuffer};
-use crate::sf_core::CoreConfiguration;
+use self::buffer::{RingEventBuffer, SharedEventBuffer, VecEventBuffer};
+use crate::CoreConfiguration;
+pub(crate) use metrics::log_metric;
 
-mod buffer;
+pub mod buffer;
 pub mod metrics;
 
-static mut METRICS_BUFFER: Option<SharedEventBuffer<VecEventBuffer>> = None;
-static mut DEVELOPER_DUMP_BUFFER: Option<SharedEventBuffer<RingEventBuffer>> = None;
+pub static mut METRICS_BUFFER: Option<SharedEventBuffer<VecEventBuffer>> = None;
+pub static mut DEVELOPER_DUMP_BUFFER: Option<SharedEventBuffer<RingEventBuffer>> = None;
 
+#[cfg_attr(feature = "core_mock", allow(unused_variables))]
 /// SAFETY: must only be called once during initialization of the program
 pub unsafe fn init(config: &CoreConfiguration) {
-    // SAFETY: this is only called once and there is no asynchronous mutation
     unsafe {
+        // metrics buffer is not used through tracing
         METRICS_BUFFER.replace(SharedEventBuffer::new(VecEventBuffer::new()));
-        DEVELOPER_DUMP_BUFFER.replace(SharedEventBuffer::new(RingEventBuffer::new(
-            config.developer_dump_buffer_size,
-        )));
+    }
 
-        init_tracing(
-            // METRICS_BUFFER.as_ref().cloned().unwrap(),
-            DEVELOPER_DUMP_BUFFER.as_ref().cloned().unwrap(),
-            config.user_log,
-            &config.developer_log,
-        );
+    #[cfg(feature = "core_mock")]
+    {
+        crate::mock::init_tracing();
+    }
+    #[cfg(not(feature = "core_mock"))]
+    {
+        // SAFETY: this is only called once and there is no asynchronous mutation
+        unsafe {
+            DEVELOPER_DUMP_BUFFER.replace(SharedEventBuffer::new(RingEventBuffer::new(
+                config.developer_dump_buffer_size,
+            )));
+
+            init_tracing(
+                // METRICS_BUFFER.as_ref().cloned().unwrap(),
+                DEVELOPER_DUMP_BUFFER.as_ref().cloned().unwrap(),
+                config.user_log,
+                &config.developer_log,
+            );
+        }
     }
 
     // add panic hook so we can log panics as metrics
@@ -42,7 +57,7 @@ pub unsafe fn init(config: &CoreConfiguration) {
             format!("{}", info).into()
         };
 
-        metrics::log_metric!(
+        log_metric!(
             Panic
             message = message.as_ref(),
             location = info.location().map(|l| (l.file(), l.line(), l.column()))
@@ -55,6 +70,7 @@ pub unsafe fn init(config: &CoreConfiguration) {
     }));
 }
 
+#[cfg_attr(feature = "core_mock", allow(dead_code))]
 fn init_tracing(
     // TODO: we don't use tracing to store metrics in the metrics buffer because we need more complex fields than tracing currently supports
     // _metrics_buffer: SharedEventBuffer<VecEventBuffer>,
@@ -95,90 +111,4 @@ fn init_tracing(
         .with(developer_layer)
         .with(developer_dump_layer)
         .init();
-}
-
-#[repr(C)]
-pub struct FatPointer {
-    pub ptr: Ptr<u8>,
-    pub size: Size,
-}
-impl FatPointer {
-    pub const fn null() -> Self {
-        Self {
-            ptr: Ptr::null(),
-            size: 0,
-        }
-    }
-}
-static mut BUFFER_RETURN_ARENA: [FatPointer; 2] = [FatPointer::null(), FatPointer::null()];
-unsafe fn clear_return_arena() -> Ptr<[FatPointer; 2]> {
-    unsafe {
-        BUFFER_RETURN_ARENA[0].ptr = Ptr::null();
-        BUFFER_RETURN_ARENA[0].size = 0;
-        BUFFER_RETURN_ARENA[1].ptr = Ptr::null();
-        BUFFER_RETURN_ARENA[1].size = 0;
-
-        Ptr::from((&BUFFER_RETURN_ARENA) as *const [FatPointer; 2])
-    }
-}
-unsafe fn set_return_arena_from(buffer: &impl TracingEventBuffer) -> Ptr<[FatPointer; 2]> {
-    let [(ptr1, size1), (ptr2, size2)] = buffer.as_raw_parts();
-
-    unsafe {
-        BUFFER_RETURN_ARENA[0].ptr = ptr1.into();
-        BUFFER_RETURN_ARENA[0].size = size1;
-        BUFFER_RETURN_ARENA[1].ptr = ptr2.into();
-        BUFFER_RETURN_ARENA[1].size = size2;
-
-        Ptr::from((&BUFFER_RETURN_ARENA) as *const [FatPointer; 2])
-    }
-}
-
-#[no_mangle]
-#[export_name = "oneclient_core_get_metrics"]
-/// Returns two fat pointers to memory where metrics are stored.
-///
-/// The first one will point to the head of the buffer up to its end.
-/// The second one will point from the beginning buffer up to its tail. The second pointer may be null or have zero length.
-/// Each metric is a UTF-8 encoded JSON string and is terminated by a null byte.
-pub extern "C" fn __export_oneclient_core_get_metrics() -> Ptr<[FatPointer; 2]> {
-    tracing::debug!("Getting metrics buffer");
-
-    unsafe {
-        match METRICS_BUFFER {
-            Some(ref b) => set_return_arena_from(b.lock().deref()),
-            None => clear_return_arena(),
-        }
-    }
-}
-
-#[no_mangle]
-#[export_name = "oneclient_core_clear_metrics"]
-/// Clears the metrics buffer.
-///
-/// This should be called after [__export_oneclient_core_get_metrics] is called and the metrics are processed.
-pub extern "C" fn __export_oneclient_core_clear_metrics() {
-    tracing::trace!("Clearing metrics buffer");
-
-    unsafe {
-        if let Some(ref buffer) = METRICS_BUFFER {
-            buffer.lock().clear();
-        }
-    }
-}
-
-#[no_mangle]
-#[export_name = "oneclient_core_get_developer_dump"]
-/// Returns two fat pointer to memory where the developer dump is stored.
-///
-/// The first one will point to the head of the buffer up to its end.
-/// The second one will point from the beginning buffer up to its tail. The second pointer may be null or have zero length.
-/// Each event is a UTF-8 encoded string and is terminated by a null byte.
-pub extern "C" fn __export_oneclient_core_get_developer_dump() -> Ptr<[FatPointer; 2]> {
-    unsafe {
-        match DEVELOPER_DUMP_BUFFER {
-            Some(ref b) => set_return_arena_from(b.lock().deref()),
-            None => clear_return_arena(),
-        }
-    }
 }

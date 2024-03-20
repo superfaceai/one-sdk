@@ -1,17 +1,22 @@
 use std::{
     collections::HashMap,
     io::Read,
+    ops::Deref,
     time::{Duration, Instant},
 };
 
 use url::Url;
 
 use sf_std::{
-    unstable::{http::HttpCallError, provider::ProviderJson},
+    unstable::{
+        fs,
+        http::{GlobalHttpRequest as HttpRequest, HttpCallError},
+        provider::ProviderJson,
+    },
     HeaderName, HeadersMultiMap,
 };
 
-use super::{digest, Fs, HttpRequest};
+use super::digest;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProfileCacheEntryError {
@@ -125,8 +130,10 @@ impl<E> DocumentCache<E> {
         }
     }
 
-    pub fn get(&self, url: &str) -> Option<&E> {
-        self.map.get(url).map(|e| &e.data)
+    pub fn get_key_value(&self, url: &str) -> Option<(&str, &E)> {
+        self.map
+            .get_key_value(url)
+            .map(|(k, e)| (k.deref(), &e.data))
     }
 
     pub fn cache<PostProcessError: std::error::Error>(
@@ -149,12 +156,12 @@ impl<E> DocumentCache<E> {
         }
 
         let data = match url {
-            url if url.starts_with(Self::FILE_URL_PREFIX) => Self::cache_file(url),
+            url if url.starts_with(Self::FILE_URL_PREFIX) => self.cache_file(url),
             url if url.starts_with("data:;base64,") => Self::cache_base64(url),
             url => {
                 if url.starts_with(Self::HTTP_URL_PREFIX) || url.starts_with(Self::HTTPS_URL_PREFIX)
                 {
-                    Self::cache_http(url, self.user_agent.as_deref())
+                    self.cache_http(url, self.user_agent.as_deref())
                 } else {
                     let file = format!("{}.js", url);
                     let full_url = self.registry_url.join(&file).map_err(|_e| {
@@ -164,7 +171,7 @@ impl<E> DocumentCache<E> {
                         )
                     })?;
 
-                    Self::cache_http(full_url.as_str(), self.user_agent.as_deref())
+                    self.cache_http(full_url.as_str(), self.user_agent.as_deref())
                 }
             }
         }?;
@@ -187,6 +194,7 @@ impl<E> DocumentCache<E> {
     }
 
     fn cache_file<PostProcessError: std::error::Error>(
+        &self,
         url: &str,
     ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {
         match url.strip_prefix(Self::FILE_URL_PREFIX) {
@@ -194,12 +202,13 @@ impl<E> DocumentCache<E> {
                 url.to_string(),
                 std::io::ErrorKind::NotFound.into(),
             )),
-            Some(path) => Fs::read(path)
+            Some(path) => fs::read(path)
                 .map_err(|err| DocumentCacheError::FileLoadFailed(path.to_string(), err)),
         }
     }
 
     fn cache_http<PostProcessError: std::error::Error>(
+        &self,
         url: &str,
         user_agent: Option<&str>,
     ) -> Result<Vec<u8>, DocumentCacheError<PostProcessError>> {

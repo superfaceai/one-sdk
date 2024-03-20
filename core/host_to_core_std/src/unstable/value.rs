@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::IoStreamHandle;
+use super::stream::IoStreamHandle;
 
 /// Similar to [serde_json::Value], it is able to represent any value passed in as input or output.
 ///

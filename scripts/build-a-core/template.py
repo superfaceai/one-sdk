@@ -16,9 +16,9 @@ def dockerfile_template(
 	cargo_profile = cargo_profile.replace("\n", "\\n").replace('"', '\\"')
 	
 	if wasm_opt_flags != "":
-		post_process = f"{OPT_BINARYEN}/bin/wasm-opt {wasm_opt_flags} {CARGO_TARGET_DIR}/wasm32-wasi/build-a-core/oneclient_core.wasm --output /opt/build-a-core/core.wasm"
+		post_process = f"{OPT_BINARYEN}/bin/wasm-opt {wasm_opt_flags} {CARGO_TARGET_DIR}/wasm32-wasi/build-a-core/oneclient_core_wasm.wasm --output /opt/build-a-core/core.wasm"
 	else:
-		post_process = f"cp {CARGO_TARGET_DIR}/wasm32-wasi/build-a-core/oneclient_core.wasm /opt/build-a-core/core.wasm"
+		post_process = f"cp {CARGO_TARGET_DIR}/wasm32-wasi/build-a-core/oneclient_core_wasm.wasm /opt/build-a-core/core.wasm"
 
 	return f"""
 FROM debian:bookworm as wasi-sdk-builder
@@ -97,7 +97,7 @@ COPY --from=wasi-sdk-builder /opt/wasi-sdk/build/install/opt/wasi-sdk $QUICKJS_W
 ENV CARGO_HOME=/var/cache/cargo
 ENV CARGO_TARGET_DIR={CARGO_TARGET_DIR}
 RUN echo "{cargo_profile}" >>Cargo.toml
-RUN --mount=type=cache,target=/var/cache/cargo cargo build --target wasm32-wasi --package oneclient_core --profile build-a-core {build_std_flags}
+RUN --mount=type=cache,target=/var/cache/cargo cargo build --target wasm32-wasi --package oneclient_core_wasm --profile build-a-core {build_std_flags}
 
 COPY --from=binaryen-builder /opt/binaryen/bin {OPT_BINARYEN}/bin
 COPY --from=binaryen-builder /opt/binaryen/lib {OPT_BINARYEN}/lib

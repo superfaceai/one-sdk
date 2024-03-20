@@ -33,7 +33,7 @@ impl MapValue {
             Self::Number(_) => "Number",
             Self::String(_) => "String",
             Self::Array(_) => "Array",
-            Self::Object(_) => "Object"
+            Self::Object(_) => "Object",
         }
     }
 

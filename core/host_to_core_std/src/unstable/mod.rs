@@ -5,13 +5,12 @@ pub mod fs;
 pub mod http;
 pub mod perform;
 pub mod provider;
+pub mod stream;
 
 mod value;
 use serde::Deserialize;
 use serde::Serialize;
 pub use value::HostValue;
-mod stream;
-pub use stream::{IoStream, IoStreamHandle};
 
 /// Host JS counterpart: host/javascript/src/common/app.ts
 #[derive(Debug, Serialize, Deserialize)]
@@ -32,7 +31,7 @@ pub enum ErrorCode {
 mod test {
     use serde_json::json;
 
-    use super::{HostValue, IoStreamHandle};
+    use super::{stream::IoStreamHandle, HostValue};
 
     // TODO: if this macro is needed outside of tests we can move it to the above module
     macro_rules! host_value_object {

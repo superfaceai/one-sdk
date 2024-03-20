@@ -1,4 +1,4 @@
-use sf_std::abi::{
+use wasm_abi::{
     AbiResultRepr, Handle, MessageExchange, MessageExchangeFfiFn, Ptr, Size, StaticMessageExchange,
     StaticStreamExchange, StreamExchange, StreamExchangeFfiFn,
 };
@@ -7,6 +7,7 @@ use sf_std::abi::{
 // MESSAGES //
 //////////////
 
+#[derive(Clone)]
 pub struct MessageExchangeFfi;
 impl MessageExchangeFfi {
     // SAFETY: We choose to trust this FFI.
@@ -70,6 +71,7 @@ extern "C" fn __import_message_exchange_retrieve(
 // STREAMS //
 /////////////
 
+#[derive(Clone)]
 pub struct StreamExchangeFfi;
 impl StreamExchangeFfi {
     // SAFETY: We choose to trust this FFI.

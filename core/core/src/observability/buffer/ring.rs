@@ -18,10 +18,10 @@ impl RingEventBuffer {
         self.data.capacity() - self.data.len()
     }
 
-    /// Calculate how many bytes we need to drain until `needed` bytes fit in the buffer. 
-    /// 
+    /// Calculate how many bytes we need to drain until `needed` bytes fit in the buffer.
+    ///
     /// If `needed` is less than `self.free_len()` then `0` is returned.
-    /// 
+    ///
     /// This attempts to align the len to event separators. Once all previous events are exhaused
     /// and there still isn't enough room for the new data we truncate the current in-progress event from the left.
     fn drain_len_for(&self, needed: usize) -> usize {
@@ -53,7 +53,9 @@ impl TracingEventBuffer for RingEventBuffer {
         // pop as many events as needed to make room for this new data
         match self.drain_len_for(data.len()) {
             0 => (),
-            n => { let _ = self.data.drain(0..n); }
+            n => {
+                let _ = self.data.drain(0..n);
+            }
         }
 
         self.data.extend(data.iter().copied());

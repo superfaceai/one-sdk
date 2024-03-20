@@ -13,12 +13,11 @@ use map_std::{
 use sf_std::{
     abi::Handle,
     fmt::{HttpRequestFmt, HttpResponseFmt},
+    unstable::http::GlobalHttpRequest as HttpRequest,
     HeaderName,
 };
 
 use self::stream::PeekableStream;
-
-use super::HttpRequest;
 
 mod stream;
 

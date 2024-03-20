@@ -19,34 +19,33 @@ pub enum JsonMessageError {
 pub trait MessageExchange {
     /// Invoke exchange by sending `message` and retrieving response.
     fn invoke(&self, message: &[u8]) -> Vec<u8>;
-
-    /// Sends a message using [invoke](Self::invoke) by serializing and deserializing JSON.
-    fn invoke_json<M: Serialize, R: DeserializeOwned>(
-        &self,
-        message: &M,
-    ) -> Result<R, JsonMessageError> {
-        let _span = tracing::trace_span!("host/MessageExchange::invoke_json").entered();
-
-        let json_message =
-            serde_json::to_string(message).map_err(JsonMessageError::SerializeFailed)?;
-
-        tracing::trace!(request = %json_message);
-
-        let response = self.invoke(json_message.as_bytes());
-
-        tracing::trace!(response = %std::str::from_utf8(response.as_slice()).unwrap());
-
-        let response = serde_json::from_slice(response.as_slice())
-            .map_err(JsonMessageError::DeserializeFailed)?;
-
-        Ok(response)
-    }
 }
 impl<E: MessageExchange + ?Sized> MessageExchange for &E {
     fn invoke(&self, message: &[u8]) -> Vec<u8> {
         (**self).invoke(message)
     }
 }
+/// Sends a message using [invoke](MessageExchange::invoke) by serializing and deserializing JSON.
+pub fn message_exchange_invoke_json<M: Serialize, R: DeserializeOwned, E: MessageExchange>(
+    exchange: E,
+    message: &M,
+) -> Result<R, JsonMessageError> {
+    let _span = tracing::trace_span!("host/MessageExchange::invoke_json").entered();
+
+    let json_message = serde_json::to_string(message).map_err(JsonMessageError::SerializeFailed)?;
+
+    tracing::trace!(request = %json_message);
+
+    let response = exchange.invoke(json_message.as_bytes());
+
+    tracing::trace!(response = %std::str::from_utf8(response.as_slice()).unwrap());
+
+    let response =
+        serde_json::from_slice(response.as_slice()).map_err(JsonMessageError::DeserializeFailed)?;
+
+    Ok(response)
+}
+
 /// Static message exchange is a trait for `MessageExchange`s which can be accessed in static context.
 pub trait StaticMessageExchange: MessageExchange + Sized {
     /// Returns an instance of this exchange.
@@ -406,9 +405,8 @@ mod test {
             f1: 1,
             f2: "true".to_string(),
         };
-        let response = MESSAGE_FN
-            .invoke_json::<TestMsg, TestMsg>(&message)
-            .unwrap();
+        let response =
+            message_exchange_invoke_json::<TestMsg, TestMsg, _>(MESSAGE_FN, &message).unwrap();
 
         assert_eq!(response.f1, 1);
         assert_eq!(response.f2, "true");
@@ -429,9 +427,8 @@ mod test {
             f1: 12,
             f2: long_string.clone(),
         };
-        let response = MESSAGE_FN
-            .invoke_json::<TestMsg, TestMsg>(&message)
-            .unwrap();
+        let response =
+            message_exchange_invoke_json::<TestMsg, TestMsg, _>(MESSAGE_FN, &message).unwrap();
 
         assert_eq!(response.f1, 12);
         assert_eq!(response.f2, long_string);

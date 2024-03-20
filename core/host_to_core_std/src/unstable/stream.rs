@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::abi::{Handle, StaticStreamExchange, StreamExchange, StreamExchangeFfiFn};
+use crate::abi::{Handle, StaticStreamExchange, StreamExchange};
+#[cfg(feature = "global_exchange")]
+use crate::global_exchange::GlobalStreamExchange;
 
 /// Represents an IoStream handle without an exchange.
 ///
@@ -24,10 +26,13 @@ impl<'de> Deserialize<'de> for IoStreamHandle {
     }
 }
 
+#[cfg(feature = "global_exchange")]
+pub type GlobalIoStream = IoStream<GlobalStreamExchange>;
+
 /// Stream which can be read from or written to.
 ///
 /// Not all streams can be both read from and written to, those will return an error.
-pub struct IoStream<E: StreamExchange = StreamExchangeFfiFn>(Handle, E);
+pub struct IoStream<E: StreamExchange>(Handle, E);
 impl<E: StaticStreamExchange> IoStream<E> {
     pub fn from_handle(handle: IoStreamHandle) -> Self {
         Self::from_handle_in(handle, E::instance())

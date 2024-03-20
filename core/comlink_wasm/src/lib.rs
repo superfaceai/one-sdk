@@ -1,5 +1,5 @@
 use wasm_abi::{
-	AbiResultRepr, Handle, MessageExchange, MessageExchangeFfiFn, Ptr, Size, StaticMessageExchange
+    AbiResultRepr, Handle, MessageExchange, MessageExchangeFfiFn, Ptr, Size, StaticMessageExchange,
 };
 
 pub mod typescript_parser;

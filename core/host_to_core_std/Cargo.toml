@@ -5,7 +5,8 @@ edition = "2021"
 publish = false
 
 [features]
-default = []
+default = ["global_exchange"]
+global_exchange = []
 
 [dependencies]
 thiserror = { workspace = true }

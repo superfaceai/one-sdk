@@ -27,14 +27,14 @@ mod result;
 pub use self::{
     bits::{AbiPair, AbiPairRepr, Handle, Ptr, Size},
     exchange::{
-        JsonMessageError, MessageExchange, MessageExchangeFfiFn, StaticMessageExchange,
-        StaticStreamExchange, StreamExchange, StreamExchangeFfiFn,
+        message_exchange_invoke_json, JsonMessageError, MessageExchange, MessageExchangeFfiFn,
+        StaticMessageExchange, StaticStreamExchange, StreamExchange, StreamExchangeFfiFn,
     },
     result::{err_from_wasi_errno, AbiResult, AbiResultRepr},
 };
 
-pub use serde;
 pub use exchange::testing;
+pub use serde;
 
 /// Defines message exchange initiated from the guest to the host.
 ///
@@ -113,7 +113,7 @@ macro_rules! define_exchange {
             }
 
             pub fn send_json_in<E: $crate::MessageExchange>(&self, message_exchange: E) -> Result<$response_name, $crate::JsonMessageError> {
-                message_exchange.invoke_json(self)
+                $crate::message_exchange_invoke_json(message_exchange, self)
             }
         }
 

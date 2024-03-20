@@ -1,0 +1,20 @@
+[package]
+name = "oneclient_core_wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = ["asyncify"]
+asyncify = []
+core_mock = ["oneclient_core/core_mock"]
+
+[dependencies]
+wasm_abi = { path = "../wasm_abi" }
+sf_std = { path = "../host_to_core_std", package = "host_to_core_std", features = ["global_exchange"] }
+oneclient_core = { path = "../core" }
+
+tracing = { workspace = true }
+
