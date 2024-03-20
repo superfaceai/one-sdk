@@ -9,9 +9,9 @@ class TestApp(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
 		cls.app = WasiApp(
-			filesystem = PythonFilesystem,
-			network = PythonNetwork,
-			persistence = PythonPersistence
+			filesystem = PythonFilesystem(),
+			network = PythonNetwork(),
+			persistence = PythonPersistence(superface_api_url = 'https://superface.dev')
 		)
 
 		with open(os.path.abspath(os.path.join(__file__, "../../src/one_sdk/assets/test-core.wasm")), "rb") as file:
