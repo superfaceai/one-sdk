@@ -403,23 +403,27 @@ pub fn resolve_security(
                         )));
                     }
 
-                    let mut key_idx: usize = 0;
                     let mut nested = &mut body;
-
-                    while key_idx < keys.len() - 1 {
-                        nested = &mut nested[keys[key_idx]];
-
-                        if !nested.is_object() {
+                    for (key_idx, key) in keys.iter().enumerate() {
+                        if nested.is_array() {
+                            let key_number = match key.parse::<usize>() {
+                                Ok(n) => n,
+                                Err(_) => return Err(HttpCallError::InvalidSecurityConfiguration(format!(
+                                    "Field value on path '/{}' is an array but provided key cannot be parsed as a number",
+                                    &keys[0..=key_idx].join("/")
+                                )))
+                            };
+                            nested = &mut nested[key_number];
+                        } else if nested.is_object() {
+                            nested = &mut nested[key];
+                        } else {
                             return Err(HttpCallError::InvalidSecurityConfiguration(format!(
-                                "Field values on path '/{}' isn't object",
-                                &keys[0..key_idx + 1].join("/")
+                                "Field value on path '/{}' must be an object or an array",
+                                &keys[0..=key_idx].join("/")
                             )));
                         }
-
-                        key_idx += 1;
                     }
-
-                    nested[keys[key_idx]] = serde_json::Value::from(apikey.to_string());
+                    *nested = serde_json::Value::from(apikey.to_string());
 
                     params.body = Some(serde_json::to_vec(&body).map_err(|e| {
                         HttpCallError::InvalidSecurityConfiguration(format!(
