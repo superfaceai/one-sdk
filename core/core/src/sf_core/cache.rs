@@ -20,6 +20,7 @@ pub enum ProfileCacheEntryError {
 }
 #[derive(Debug)]
 pub struct ProfileCacheEntry {
+    #[allow(dead_code)]
     pub profile: String, // TODO: parsed so we can extract the version
     pub content_hash: String,
 }
