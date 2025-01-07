@@ -11,7 +11,7 @@ use sf_std::{
     HeaderName,
 };
 
-use super::{HttpCallError, HttpRequest, MapValue, MapValueObject};
+use super::{HttpCallError, HttpRequest, HttpRequestSecurity, MapValue, MapValueObject};
 
 pub enum ApiKeyPlacement {
     Header,
@@ -319,25 +319,65 @@ pub fn prepare_security_map(
 pub fn resolve_security(
     security_map: &SecurityMap,
     params: &mut HttpRequest,
+    security: &HttpRequestSecurity
 ) -> Result<(), HttpCallError> {
-    let security = match params.security {
-        None => return Ok(()),
-        Some(ref security) => security,
-    };
+    match security {
+        HttpRequestSecurity::FirstValid(ref ids) => {
+            let mut first_error = None;
+            for id in ids {
+                match try_resolve_security(security_map, params, id) {
+                    Ok(()) => return Ok(()),
+                    Err(err) => {
+                        if first_error.is_none() {
+                            first_error = Some(err);
+                        }
+                    }
+                }
+            }
+            
+            match first_error {
+                None => Ok(()),
+                Some(err) => return Err(HttpCallError::InvalidSecurityConfiguration(
+                    err
+                ))
+            }
+        }
+        HttpRequestSecurity::All(ref ids) => {
+            let mut all_errors = Vec::new();
+            for id in ids {
+                match try_resolve_security(security_map, params, id) {
+                    Ok(()) => (),
+                    Err(err) => all_errors.push(err.to_string())
+                }
+            }
 
-    let security_config = security_map.get(security.as_str());
+            if all_errors.len() > 0 {
+                return Err(HttpCallError::InvalidSecurityConfiguration(
+                    all_errors.join("\n")
+                ))
+            }
+            Ok(())
+        }
+    }
+}
+fn try_resolve_security(
+    security_map: &SecurityMap,
+    params: &mut HttpRequest,
+    security: &str
+) -> Result<(), String> {
+    let security_config = security_map.get(security);
 
     match security_config {
         None => {
-            return Err(HttpCallError::InvalidSecurityConfiguration(format!(
+            return Err(format!(
                 "Security configuration for {} is missing",
                 security
-            )));
+            ));
         }
         Some(SecurityMapValue::Error(err)) => {
-            return Err(HttpCallError::InvalidSecurityConfiguration(
+            return Err(
                 SecurityMisconfiguredError::format_errors(std::slice::from_ref(err)),
-            ));
+            );
         }
         Some(SecurityMapValue::Security(Security::Http(HttpSecurity::Basic {
             username,
@@ -384,10 +424,10 @@ pub fn resolve_security(
                 if let Some(body) = &params.body {
                     let mut body =
                         serde_json::from_slice::<serde_json::Value>(body).map_err(|e| {
-                            HttpCallError::InvalidSecurityConfiguration(format!(
+                            format!(
                                 "Failed to parse body: {}",
                                 e
-                            ))
+                            )
                         })?;
 
                     let keys = if name.starts_with('/') {
@@ -397,10 +437,10 @@ pub fn resolve_security(
                     };
 
                     if keys.is_empty() {
-                        return Err(HttpCallError::InvalidSecurityConfiguration(format!(
+                        return Err(format!(
                             "Invalid field name '{}'",
                             name
-                        )));
+                        ));
                     }
 
                     let mut nested = &mut body;
@@ -408,39 +448,39 @@ pub fn resolve_security(
                         if nested.is_array() {
                             let key_number = match key.parse::<usize>() {
                                 Ok(n) => n,
-                                Err(_) => return Err(HttpCallError::InvalidSecurityConfiguration(format!(
+                                Err(_) => return Err(format!(
                                     "Field value on path '/{}' is an array but provided key cannot be parsed as a number",
                                     &keys[0..=key_idx].join("/")
-                                )))
+                                ))
                             };
                             nested = &mut nested[key_number];
                         } else if nested.is_object() {
                             nested = &mut nested[key];
                         } else {
-                            return Err(HttpCallError::InvalidSecurityConfiguration(format!(
+                            return Err(format!(
                                 "Field value on path '/{}' must be an object or an array",
                                 &keys[0..=key_idx].join("/")
-                            )));
+                            ));
                         }
                     }
                     *nested = serde_json::Value::from(apikey.to_string());
 
                     params.body = Some(serde_json::to_vec(&body).map_err(|e| {
-                        HttpCallError::InvalidSecurityConfiguration(format!(
+                        format!(
                             "Failed to serialize body: {}",
                             e
-                        ))
+                        )
                     })?);
                 } else {
-                    return Err(HttpCallError::InvalidSecurityConfiguration(
+                    return Err(
                         "Api key placement is set to body but the body is empty".to_string(),
-                    ));
+                    );
                 }
             }
             (ApiKeyPlacement::Body, None) => {
-                return Err(HttpCallError::InvalidSecurityConfiguration(
+                return Err(
                     "Missing body type".to_string(),
-                ));
+                );
             }
         },
     }

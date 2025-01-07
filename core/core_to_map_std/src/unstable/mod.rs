@@ -182,6 +182,11 @@ macro_rules! map_value {
     };
 }
 
+pub enum HttpRequestSecurity {
+    FirstValid(Vec<String>),
+    All(Vec<String>),
+}
+
 pub struct HttpRequest {
     /// HTTP method - will be used as-is.
     pub method: String,
@@ -192,9 +197,7 @@ pub struct HttpRequest {
     /// Multiple values with the same key will be repeated in the query string, no joining will be performed.
     pub query: MultiMap,
     /// Body as bytes.
-    pub body: Option<Vec<u8>>,
-    /// Security configuration
-    pub security: Option<String>,
+    pub body: Option<Vec<u8>>
 }
 pub struct HttpResponse {
     /// Status code of the response.
@@ -302,7 +305,7 @@ pub trait MapStdUnstable {
     fn stream_close(&mut self, handle: Handle) -> std::io::Result<()>;
 
     // http
-    fn http_call(&mut self, params: HttpRequest) -> Result<Handle, HttpCallError>;
+    fn http_call(&mut self, params: HttpRequest, security: HttpRequestSecurity) -> Result<Handle, HttpCallError>;
     fn http_call_head(&mut self, handle: Handle) -> Result<HttpResponse, HttpCallHeadError>;
 
     // input and output
@@ -315,6 +318,16 @@ pub trait MapStdUnstable {
 // MESSAGES //
 //////////////
 
+#[derive(Deserialize)]
+#[serde(tag = "kind", content = "ids")]
+#[serde(rename_all = "kebab-case")]
+enum HttpRequestSecuritySettingMessage {
+    FirstValid(Vec<String>),
+    All(Vec<String>),
+    #[serde(untagged)]
+    Legacy(Option<String>)
+}
+
 define_exchange_map_to_core! {
     let state: MapStdUnstable;
     enum RequestUnstable {
@@ -324,7 +337,7 @@ define_exchange_map_to_core! {
             url: String,
             headers: HeadersMultiMap,
             query: MultiMap,
-            security: Option<String>,
+            security: HttpRequestSecuritySettingMessage,
             body: Option<Vec<u8>>,
         } -> enum Response {
             Ok {
@@ -341,8 +354,12 @@ define_exchange_map_to_core! {
                 url,
                 headers,
                 query,
-                security,
                 body,
+            }, match security {
+                HttpRequestSecuritySettingMessage::FirstValid(v) => HttpRequestSecurity::FirstValid(v),
+                HttpRequestSecuritySettingMessage::All(v) => HttpRequestSecurity::All(v),
+                // Turns Option<String> into Vec<String>, the vec being empty on None
+                HttpRequestSecuritySettingMessage::Legacy(maybe_v) => HttpRequestSecurity::FirstValid(maybe_v.into_iter().collect()),
             });
 
             match handle {
