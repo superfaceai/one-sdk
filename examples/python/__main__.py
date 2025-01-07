@@ -36,7 +36,7 @@ try:
         { "id": 1 },
         provider = "localhost",
         parameters = { "PARAM": "parameter_value" },
-        security = { "basic_auth": { "username": "username", "password": "password" } }
+        security = { "basic_auth": { "username": "username", "password": "password" }, "authic_base": { "apikey": "api_key_value" } }
     )
     print(f"RESULT: {r}")
 except PerformError as e:

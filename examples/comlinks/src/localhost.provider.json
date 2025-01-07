@@ -18,6 +18,12 @@
       "id": "basic_auth",
       "type": "http",
       "scheme": "basic"
+    },
+    {
+      "id": "authic_base",
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-KEY"
     }
   ]
 }

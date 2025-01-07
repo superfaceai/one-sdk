@@ -11,7 +11,8 @@ export type FetchOptions = {
   headers?: MultiMap,
   query?: MultiMap,
   body?: AnyValue,
-  security?: string,
+  /** Security configs to apply to this request. Specifying a string is equal to using `first-valid` */
+  security?: string | { kind: 'first-valid', ids: string[] } | { kind: 'all', ids: string[] },
 };
 
 // Can't use Record<string, AnyValue> but can use { [s in string]: AnyValue }. Typescript go brr.
