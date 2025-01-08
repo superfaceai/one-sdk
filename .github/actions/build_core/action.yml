@@ -5,19 +5,19 @@ inputs:
   CARGO_PROFILE:
     description: "Cargo profile name to use for cargo cache key"
     required: false
-    default: 'release'
+    default: "release"
   CORE_WASM:
     description: "Whether to build core.wasm and core-async.wasm, oneOf `none, build, upload`"
     required: false
-    default: 'none'
+    default: "none"
   TEST_CORE_WASM:
     description: "Whether to build test-core.wasm and test-core-async.wasm, oneOf `none, build, upload`"
     required: false
-    default: 'none'
+    default: "none"
   COMLINK_WASM:
     description: "Whether to build comlink.wasm, oneOf `none, build, upload`"
     required: false
-    default: 'none'
+    default: "none"
 
 runs:
   using: "composite"
@@ -52,7 +52,7 @@ runs:
         sudo apt-get install binaryen
     - name: Install rust target
       shell: bash
-      run: rustup target add wasm32-wasi
+      run: rustup target add wasm32-wasip1
     # build and store core.wasm, core-async.wasm
     - name: Run make to build core.wasm
       if: ${{ inputs.CORE_WASM != 'none' }}

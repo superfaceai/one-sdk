@@ -75,7 +75,7 @@ git_hooks:
 ## CORE ##
 ##########
 deps_core: ${WASI_SDK_FOLDER}
-	rustup target add wasm32-wasi
+	rustup target add wasm32-wasip1
 	curl https://wasmtime.dev/install.sh -sSf | bash
 
 ${CORE_DIST}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_SCHEMA_ASSETS_SECURITY_VALUES} ${CORE_SCHEMA_ASSETS_PARAMETERS_VALUES}
@@ -83,13 +83,13 @@ ${CORE_DIST}: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROF
 	touch ${CORE_DIST}
 
 ${CORE_WASM}: ${CORE_DIST}
-	cd core; cargo build --package oneclient_core --target wasm32-wasi ${CARGO_FLAGS}
+	cd core; cargo build --package oneclient_core --target wasm32-wasip1 ${CARGO_FLAGS}
 	@echo 'Optimizing wasm...'
-	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
+	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasip1/${CARGO_PROFILE}/oneclient_core.wasm --output ${CORE_WASM}
 
 ${TEST_CORE_WASM}: ${CORE_DIST}
-	cd core; cargo build --package oneclient_core --target wasm32-wasi --features "core_mock" ${CARGO_FLAGS}
-	cp core/target/wasm32-wasi/${CARGO_PROFILE}/oneclient_core.wasm ${TEST_CORE_WASM}
+	cd core; cargo build --package oneclient_core --target wasm32-wasip1 --features "core_mock" ${CARGO_FLAGS}
+	cp core/target/wasm32-wasip1/${CARGO_PROFILE}/oneclient_core.wasm ${TEST_CORE_WASM}
 
 ${CORE_ASYNCIFY_WASM}: ${CORE_WASM}
 	@echo 'Running asyncify...'
@@ -100,18 +100,18 @@ ${TEST_CORE_ASYNCIFY_WASM}: ${TEST_CORE_WASM}
 
 ${CORE_COMLINK_WASM}:
 	mkdir -p ${CORE_DIST}
-	cd core; cargo build --package comlink_wasm --target wasm32-wasi ${CARGO_FLAGS}
-	wasm-opt -Os ${WASM_OPT_FLAGS} core/target/wasm32-wasi/${CARGO_PROFILE}/comlink_wasm.wasm --output ${CORE_COMLINK_WASM}
+	cd core; cargo build --package comlink_wasm --target wasm32-wasip1 ${CARGO_FLAGS}
+	wasm-opt -Oz ${WASM_OPT_FLAGS} core/target/wasm32-wasip1/${CARGO_PROFILE}/comlink_wasm.wasm --output ${CORE_COMLINK_WASM}
 
 ${WASI_SDK_FOLDER}:
 	wget -qO - ${WASI_SDK_URL} | tar xzvf - -C core
 
 test_core: ${WASI_SDK_FOLDER} ${CORE_JS_ASSETS_MAP_STD} ${CORE_JS_ASSETS_PROFILE_VALIDATOR} ${CORE_SCHEMA_ASSETS_SECURITY_VALUES} ${CORE_SCHEMA_ASSETS_PARAMETERS_VALUES}
-	cd core && cargo test -- --nocapture
+	cd core && cargo test
 
 build_core: ${CORE_WASM} ${TEST_CORE_WASM} ${CORE_ASYNCIFY_WASM} ${TEST_CORE_ASYNCIFY_WASM}
 build_core_json_schemas:
-	cd core/json_schemas && cargo build && wasmtime run --dir=. ../target/wasm32-wasi/debug/json_schemas.wasm
+	cd core/json_schemas && cargo build && wasmtime run --dir=. ../target/wasm32-wasip1/debug/json_schemas.wasm
 
 ${CORE_JS_ASSETS_MAP_STD}: ${MAP_STD}
 	mkdir -p ${CORE_JS_ASSETS}

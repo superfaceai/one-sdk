@@ -3,7 +3,7 @@ QUICKJS_WASM_SYS_WASI_SDK_PATH = { value = "wasi-sdk-20.0", relative = true }
 WASMTIME_NEW_CLI = "1"
 
 [build]
-target = "wasm32-wasi"
+target = "wasm32-wasip1"
 
-[target.wasm32-wasi]
+[target.wasm32-wasip1]
 runner = "wasmtime"
