@@ -26,6 +26,8 @@ var Example = ({ input, parameters, services }) => {
       'x-custom-header': [parameters.PARAM]
     },
     security: 'basic_auth',
+    // security: { kind: "first-valid", ids: ['authic_base', 'basic_auth'] },
+    // security: { kind: "all", ids: ['authic_base', 'basic_auth'] },
     query: {
       'foo': ['bar', 'baz'],
       'qux': ['2']

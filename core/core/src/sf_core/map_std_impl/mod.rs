@@ -5,7 +5,7 @@ use map_std::{
     unstable::{
         security::{resolve_security, SecurityMap},
         HttpCallError as MapHttpCallError, HttpCallHeadError as MapHttpCallHeadError,
-        HttpRequest as MapHttpRequest, HttpResponse as MapHttpResponse, MapStdUnstable, MapValue,
+        HttpRequest as MapHttpRequest, HttpRequestSecurity as MapHttpRequestSecurity, HttpResponse as MapHttpResponse, MapStdUnstable, MapValue,
         SetOutputError, TakeContextError,
     },
     MapStdFull,
@@ -90,9 +90,9 @@ impl MapStdUnstable for MapStdImpl {
         }
     }
 
-    fn http_call(&mut self, mut params: MapHttpRequest) -> Result<Handle, MapHttpCallError> {
+    fn http_call(&mut self, mut params: MapHttpRequest, security: MapHttpRequestSecurity) -> Result<Handle, MapHttpCallError> {
         let security_map = self.security.as_ref().unwrap();
-        resolve_security(security_map, &mut params)?;
+        resolve_security(security_map, &mut params, &security)?;
 
         // IDEA: add profile, provider info as well?
         params
