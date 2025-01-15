@@ -90,9 +90,11 @@ impl MapStdUnstable for MapStdImpl {
         }
     }
 
-    fn http_call(&mut self, mut params: MapHttpRequest, security: MapHttpRequestSecurity) -> Result<Handle, MapHttpCallError> {
+    fn http_call(&mut self, mut params: MapHttpRequest, security: Option<MapHttpRequestSecurity>) -> Result<Handle, MapHttpCallError> {
         let security_map = self.security.as_ref().unwrap();
-        resolve_security(security_map, &mut params, &security)?;
+        if let Some(ref security) = security {
+            resolve_security(security_map, &mut params, security)?;
+        }
 
         // IDEA: add profile, provider info as well?
         params

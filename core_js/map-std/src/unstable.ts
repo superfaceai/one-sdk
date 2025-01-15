@@ -203,6 +203,11 @@ export function fetch(url: string, options: FetchOptions): HttpRequest {
     finalBody = Array.from(bodyBuffer.inner.data);
   }
 
+  let security = options.security
+  if (typeof security === "string") {
+    security = { kind: "first-valid", ids: [security] }
+  }
+
   const response = messageExchange({
     kind: 'http-call',
     method: options.method ?? 'GET',
@@ -210,7 +215,7 @@ export function fetch(url: string, options: FetchOptions): HttpRequest {
     headers,
     query: ensureMultimap(options.query ?? {}),
     body: finalBody,
-    security: options.security,
+    security,
   });
 
   if (response.kind === 'ok') {

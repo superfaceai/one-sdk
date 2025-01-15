@@ -182,6 +182,9 @@ macro_rules! map_value {
     };
 }
 
+#[derive(Deserialize)]
+#[serde(tag = "kind", content = "ids")]
+#[serde(rename_all = "kebab-case")]
 pub enum HttpRequestSecurity {
     FirstValid(Vec<String>),
     All(Vec<String>),
@@ -305,7 +308,7 @@ pub trait MapStdUnstable {
     fn stream_close(&mut self, handle: Handle) -> std::io::Result<()>;
 
     // http
-    fn http_call(&mut self, params: HttpRequest, security: HttpRequestSecurity) -> Result<Handle, HttpCallError>;
+    fn http_call(&mut self, params: HttpRequest, security: Option<HttpRequestSecurity>) -> Result<Handle, HttpCallError>;
     fn http_call_head(&mut self, handle: Handle) -> Result<HttpResponse, HttpCallHeadError>;
 
     // input and output
@@ -318,16 +321,6 @@ pub trait MapStdUnstable {
 // MESSAGES //
 //////////////
 
-#[derive(Deserialize)]
-#[serde(tag = "kind", content = "ids")]
-#[serde(rename_all = "kebab-case")]
-enum HttpRequestSecuritySettingMessage {
-    FirstValid(Vec<String>),
-    All(Vec<String>),
-    #[serde(untagged)]
-    Legacy(Option<String>)
-}
-
 define_exchange_map_to_core! {
     let state: MapStdUnstable;
     enum RequestUnstable {
@@ -337,7 +330,7 @@ define_exchange_map_to_core! {
             url: String,
             headers: HeadersMultiMap,
             query: MultiMap,
-            security: HttpRequestSecuritySettingMessage,
+            security: Option<HttpRequestSecurity>,
             body: Option<Vec<u8>>,
         } -> enum Response {
             Ok {
@@ -355,12 +348,7 @@ define_exchange_map_to_core! {
                 headers,
                 query,
                 body,
-            }, match security {
-                HttpRequestSecuritySettingMessage::FirstValid(v) => HttpRequestSecurity::FirstValid(v),
-                HttpRequestSecuritySettingMessage::All(v) => HttpRequestSecurity::All(v),
-                // Turns Option<String> into Vec<String>, the vec being empty on None
-                HttpRequestSecuritySettingMessage::Legacy(maybe_v) => HttpRequestSecurity::FirstValid(maybe_v.into_iter().collect()),
-            });
+            }, security);
 
             match handle {
                 Ok(handle) => Response::Ok {
