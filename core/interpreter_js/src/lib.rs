@@ -139,6 +139,7 @@ mod test {
         fn http_call(
             &mut self,
             _params: map_std::unstable::HttpRequest,
+            _security: Option<map_std::unstable::HttpRequestSecurity>
         ) -> Result<sf_std::abi::Handle, map_std::unstable::HttpCallError> {
             Ok(1)
         }

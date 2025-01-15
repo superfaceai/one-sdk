@@ -11,7 +11,8 @@ export type FetchOptions = {
   headers?: MultiMap,
   query?: MultiMap,
   body?: AnyValue,
-  security?: string,
+  /** Security configs to apply to this request. Specifying a string is equal to using `first-valid` */
+  security?: string | { kind: 'first-valid', ids: string[] } | { kind: 'all', ids: string[] },
 };
 
 // Can't use Record<string, AnyValue> but can use { [s in string]: AnyValue }. Typescript go brr.
@@ -202,6 +203,11 @@ export function fetch(url: string, options: FetchOptions): HttpRequest {
     finalBody = Array.from(bodyBuffer.inner.data);
   }
 
+  let security = options.security
+  if (typeof security === "string") {
+    security = { kind: "first-valid", ids: [security] }
+  }
+
   const response = messageExchange({
     kind: 'http-call',
     method: options.method ?? 'GET',
@@ -209,7 +215,7 @@ export function fetch(url: string, options: FetchOptions): HttpRequest {
     headers,
     query: ensureMultimap(options.query ?? {}),
     body: finalBody,
-    security: options.security,
+    security,
   });
 
   if (response.kind === 'ok') {
