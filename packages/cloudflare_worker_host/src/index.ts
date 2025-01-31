@@ -251,7 +251,7 @@ class CfwWasiCompat implements WasiContext {
 }
 class CfwPersistence implements Persistence {
   private readonly token: string | undefined;
-  private readonly insightsUrl: string;
+  private readonly insightsUrl: string | false;
   private readonly userAgent: string | undefined;
 
   constructor(
@@ -264,7 +264,7 @@ class CfwPersistence implements Persistence {
     if (superfaceApiUrl !== undefined) {
       this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
     } else {
-      this.insightsUrl = "https://superface.ai/insights/sdk_event";
+      this.insightsUrl = false;
     }
   }
 
@@ -272,6 +272,10 @@ class CfwPersistence implements Persistence {
   // 1. Tail Workers https://developers.cloudflare.com/workers/platform/tail-workers/
   // 2. Logpush https://developers.cloudflare.com/workers/platform/logpush
   async persistMetrics(events: string[]): Promise<void> {
+    if (this.insightsUrl === false) {
+      return;
+    }
+
     const headers: Record<string, string> = {
       "content-type": "application/json",
     };

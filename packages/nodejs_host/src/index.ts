@@ -180,12 +180,10 @@ class NodePersistence implements Persistence {
   ) {
     this.token = token;
     this.userAgent = userAgent;
-    if (superfaceApiUrl === false) {
-      this.insightsUrl = false;
-    } else if (superfaceApiUrl === undefined) {
+    if (superfaceApiUrl === undefined) {
       this.insightsUrl = "https://superface.ai/insights/sdk_event";
     } else {
-      this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
+      this.insightsUrl = false;
     }
   }
 

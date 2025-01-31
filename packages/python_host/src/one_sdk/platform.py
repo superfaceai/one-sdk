@@ -189,7 +189,7 @@ class PythonPersistence:
 		elif superface_api_url is not None:
 			self._insights_url = f"{superface_api_url}/insights/sdk_event"
 		else:
-			self._insights_url = "https://superface.ai/insights/sdk_event"
+			self._insights_url = None
 		
 		self._network = PythonNetwork()
 
