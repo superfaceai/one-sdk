@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           registry-url: https://registry.npmjs.org/
-          node-version: "18"
+          node-version: "20"
           cache: yarn
           cache-dependency-path: core_js/yarn.lock
       # test and build
@@ -67,7 +67,7 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         registry-url: https://registry.npmjs.org/
-        node-version: "18"
+        node-version: "20"
         cache: yarn
         cache-dependency-path: packages/nodejs_host/yarn.lock
     - uses: actions/download-artifact@v4
@@ -100,7 +100,7 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         registry-url: https://registry.npmjs.org/
-        node-version: "18"
+        node-version: "20"
         cache: yarn
         cache-dependency-path: packages/cloudflare_worker_host/yarn.lock
     - uses: actions/download-artifact@v4
@@ -162,7 +162,7 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         registry-url: https://registry.npmjs.org/
-        node-version: "18"
+        node-version: "20"
         cache: yarn
         cache-dependency-path: packages/nodejs_comlink/yarn.lock
     - uses: actions/download-artifact@v4

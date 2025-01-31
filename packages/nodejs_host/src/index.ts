@@ -1,10 +1,10 @@
-import fs, { FileHandle } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
-import { resolve as resolvePath } from 'node:path';
-import process from 'node:process';
-import { WASI } from 'node:wasi';
+import fs, { FileHandle } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
+import process from "node:process";
+import { WASI } from "node:wasi";
 
-import { AsyncMutex } from './common/lib/index.js';
+import { AsyncMutex } from "./common/lib/index.js";
 import {
   App,
   FileSystem,
@@ -16,41 +16,45 @@ import {
   Timers,
   UnexpectedError,
   WasiErrno,
-  WasiError
-} from './common/index.js';
-import { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
-import { fileURLToPath } from 'node:url';
+  WasiError,
+} from "./common/index.js";
+import { fetchErrorToHostError, systemErrorToWasiError } from "./error.js";
+import { fileURLToPath } from "node:url";
 
 function coreWasmPath(): string {
   // use new URL constructor to get webpack to bundle the asset and non-bundled code to work correctly in all contexts
-  const url = new URL('../assets/core-async.wasm', import.meta.url)
+  const url = new URL("../assets/core-async.wasm", import.meta.url);
 
   let path = url.pathname;
-  if (path.charAt(0) !== '/') {
+  if (path.charAt(0) !== "/") {
     // when bundled with webpack (in nextjs at least), we get an invalid URL here where only the pathname is filled in
     // this pathname is additionally relative, so we must resolve it
-    path = resolvePath(path)
+    path = resolvePath(path);
   }
-  
+
   // reconstruct the URL but only as a string and have node parse it using platform-specific code
   // if we reconstructed it as URL here we would get an mismatch because somehow there are two URL classes when bundled for next
-  return fileURLToPath(`file://${path}`)
+  return fileURLToPath(`file://${path}`);
 }
 
-export { PerformError, UnexpectedError, ValidationError } from './common/index.js';
-export { fetchErrorToHostError, systemErrorToWasiError } from './error.js';
+export {
+  PerformError,
+  UnexpectedError,
+  ValidationError,
+} from "./common/index.js";
+export { fetchErrorToHostError, systemErrorToWasiError } from "./error.js";
 
-const ASSETS_FOLDER = 'superface';
+const ASSETS_FOLDER = "superface";
 
 class NodeTextCoder implements TextCoder {
   private encoder: TextEncoder = new TextEncoder();
   private decoder: TextDecoder = new TextDecoder();
 
-  decodeUtf8(buffer: ArrayBufferLike): string {
+  decodeUtf8(buffer: ArrayBuffer): string {
     return this.decoder.decode(buffer);
   }
 
-  encodeUtf8(string: string): ArrayBuffer {
+  encodeUtf8(string: string): Uint8Array {
     return this.encoder.encode(string);
   }
 }
@@ -67,23 +71,33 @@ class NodeFileSystem implements FileSystem {
     }
   }
 
-  async open(path: string, options: { createNew?: boolean, create?: boolean, truncate?: boolean, append?: boolean, write?: boolean, read?: boolean }): Promise<number> {
-    let flags = '';
+  async open(
+    path: string,
+    options: {
+      createNew?: boolean;
+      create?: boolean;
+      truncate?: boolean;
+      append?: boolean;
+      write?: boolean;
+      read?: boolean;
+    }
+  ): Promise<number> {
+    let flags = "";
 
     if (options.createNew === true) {
-      flags += 'x';
+      flags += "x";
     } else if (options.create === true) {
       // TODO
     }
 
     if (options.truncate === true) {
-      flags += 'w';
+      flags += "w";
     } else if (options.append === true) {
-      flags += 'a';
+      flags += "a";
     } else if (options.write === true) {
-      flags += '+';
+      flags += "+";
     } else if (options.read === true) {
-      flags += 'r';
+      flags += "r";
     }
 
     try {
@@ -147,7 +161,7 @@ class NodeNetwork implements Network {
   // TODO: import from undici explicitly
   async fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
     try {
-      return await fetch(input, init)
+      return await fetch(input, init);
     } catch (err: unknown) {
       throw fetchErrorToHostError(err);
     }
@@ -166,12 +180,10 @@ class NodePersistence implements Persistence {
   ) {
     this.token = token;
     this.userAgent = userAgent;
-    if (superfaceApiUrl === false) {
-      this.insightsUrl = false;
-    } else if (superfaceApiUrl === undefined) {
-      this.insightsUrl = 'https://superface.ai/insights/sdk_event';
+    if (superfaceApiUrl === undefined) {
+      this.insightsUrl = "https://superface.ai/insights/sdk_event";
     } else {
-      this.insightsUrl = `${superfaceApiUrl}/insights/sdk_event`;
+      this.insightsUrl = false;
     }
   }
 
@@ -181,33 +193,31 @@ class NodePersistence implements Persistence {
     }
 
     const headers: Record<string, string> = {
-      'content-type': 'application/json',
+      "content-type": "application/json",
     };
     if (this.token !== undefined) {
-      headers['authorization'] = `SUPERFACE-SDK-TOKEN ${this.token}`;
+      headers["authorization"] = `SUPERFACE-SDK-TOKEN ${this.token}`;
     }
     if (this.userAgent !== undefined) {
-      headers['user-agent'] = this.userAgent;
+      headers["user-agent"] = this.userAgent;
     }
 
-    await fetch(
-      `${this.insightsUrl}/batch`,
-      {
-        method: 'POST',
-        body: '[' + events.join(',') + ']',
-        headers
-      }
-    ).catch(
-      err => console.error("Failed to send metrics", err)
-    );
+    await fetch(`${this.insightsUrl}/batch`, {
+      method: "POST",
+      body: "[" + events.join(",") + "]",
+      headers,
+    }).catch((err) => console.error("Failed to send metrics", err));
   }
 
   async persistDeveloperDump(events: string[]): Promise<void> {
-    const timestamp = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
+    const timestamp = new Date()
+      .toISOString()
+      .replaceAll(":", "-")
+      .replaceAll(".", "-");
     const fileName = `onesdk_devlog_dump_${timestamp}.txt`;
 
     // TOOD: where to create the dump?
-    await fs.writeFile(fileName, events.join(''));
+    await fs.writeFile(fileName, events.join(""));
   }
 }
 
@@ -218,7 +228,7 @@ export type ClientOptions = {
   assetsPath?: string;
   /**
    * Optionally authenticate Client to send metrics about integration to Superface.
-   * 
+   *
    * Manage tokens and see insights here: https://superface.ai/insights
    */
   token?: string;
@@ -228,7 +238,7 @@ export type ClientOptions = {
   superfaceApiUrl?: string | false;
   /**
    * Whether to register `beforeExit` hook to call `OneClient.destroy()`.
-   * 
+   *
    * Default: `true`
    */
   onBeforeExitHook?: boolean;
@@ -241,7 +251,10 @@ export type ClientPerformOptions = {
 };
 
 class InternalClient {
-  public readonly assetsPath: string = resolvePath(process.cwd(), ASSETS_FOLDER);
+  public readonly assetsPath: string = resolvePath(
+    process.cwd(),
+    ASSETS_FOLDER
+  );
 
   private app: App;
   private readyState: AsyncMutex<{ ready: boolean }>;
@@ -253,20 +266,31 @@ class InternalClient {
       this.assetsPath = options.assetsPath;
     }
 
-    this.pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), { encoding: 'utf8' }));
+    this.pkg = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), {
+        encoding: "utf8",
+      })
+    );
     this.readyState = new AsyncMutex({ ready: false });
     this.fileSystem = new NodeFileSystem();
 
-    this.app = new App({
-      network: new NodeNetwork(),
-      fileSystem: this.fileSystem,
-      textCoder: new NodeTextCoder(),
-      timers: new NodeTimers(),
-      persistence: new NodePersistence(options.token, options.superfaceApiUrl, this.userAgent)
-    }, { metricsTimeout: 1000, userAgent: this.userAgent });
+    this.app = new App(
+      {
+        network: new NodeNetwork(),
+        fileSystem: this.fileSystem,
+        textCoder: new NodeTextCoder(),
+        timers: new NodeTimers(),
+        persistence: new NodePersistence(
+          options.token,
+          options.superfaceApiUrl,
+          this.userAgent
+        ),
+      },
+      { metricsTimeout: 1000, userAgent: this.userAgent }
+    );
 
     if (options.onBeforeExitHook !== false) {
-      process.once('beforeExit', async () => {
+      process.once("beforeExit", async () => {
         await this.destroy();
       });
     }
@@ -281,12 +305,15 @@ class InternalClient {
       await this.app.loadCore(
         await fs.readFile(process.env.CORE_PATH ?? coreWasmPath())
       );
-      await this.app.init(new WASI({
-        env: {
-          ONESDK_DEFAULT_USERAGENT: this.userAgent,
-          ...process.env
-        }, version: 'preview1'
-      } as any)); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
+      await this.app.init(
+        new WASI({
+          env: {
+            ONESDK_DEFAULT_USERAGENT: this.userAgent,
+            ...process.env,
+          },
+          version: "preview1",
+        } as any)
+      ); // TODO: node typings do not include version https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/wasi.d.ts#L68-L110
 
       readyState.ready = true;
     });
@@ -318,9 +345,20 @@ class InternalClient {
     const mapUrl = await this.resolveMapUrl(profile, provider);
 
     try {
-      return await this.app.perform(profileUrl, providerUrl, mapUrl, usecase, input, parameters, security);
+      return await this.app.perform(
+        profileUrl,
+        providerUrl,
+        mapUrl,
+        usecase,
+        input,
+        parameters,
+        security
+      );
     } catch (err: unknown) {
-      if (err instanceof UnexpectedError && (err.name === 'WebAssemblyRuntimeError')) {
+      if (
+        err instanceof UnexpectedError &&
+        err.name === "WebAssemblyRuntimeError"
+      ) {
         await this.destroy();
         await this.init();
       }
@@ -330,13 +368,16 @@ class InternalClient {
   }
 
   public async resolveProfileUrl(profile: string): Promise<string> {
-    const resolvedProfile = profile.replace(/\//g, '.');
+    const resolvedProfile = profile.replace(/\//g, ".");
     let path = resolvePath(this.assetsPath, `${resolvedProfile}.profile.ts`);
     // migration from Comlink to TypeScript profiles
-    const pathComlink = resolvePath(this.assetsPath, `${resolvedProfile}.profile`);
+    const pathComlink = resolvePath(
+      this.assetsPath,
+      `${resolvedProfile}.profile`
+    );
     if (
-      !(await this.fileSystem.exists(path))
-      && (await this.fileSystem.exists(pathComlink))
+      !(await this.fileSystem.exists(path)) &&
+      (await this.fileSystem.exists(pathComlink))
     ) {
       path = pathComlink;
     }
@@ -344,9 +385,15 @@ class InternalClient {
     return `file://${path}`;
   }
 
-  public async resolveMapUrl(profile: string, provider?: string): Promise<string> {
-    const resolvedProfile = profile.replace(/\//g, '.');
-    const path = resolvePath(this.assetsPath, `${resolvedProfile}.${provider}.map.js`);
+  public async resolveMapUrl(
+    profile: string,
+    provider?: string
+  ): Promise<string> {
+    const resolvedProfile = profile.replace(/\//g, ".");
+    const path = resolvePath(
+      this.assetsPath,
+      `${resolvedProfile}.${provider}.map.js`
+    );
 
     return `file://${path}`;
   }
@@ -358,7 +405,7 @@ class InternalClient {
   }
 
   public async sendMetrics() {
-    await this.app.sendMetrics()
+    await this.app.sendMetrics();
   }
 
   private get userAgent(): string {
@@ -391,15 +438,21 @@ export class OneClient {
   }
 
   public async sendMetricsToSuperface() {
-    await this.internal.sendMetrics()
+    await this.internal.sendMetrics();
   }
 }
 
 export class Profile {
-  private constructor(private readonly internal: InternalClient, public readonly name: string, public readonly url: string) {
-  }
+  private constructor(
+    private readonly internal: InternalClient,
+    public readonly name: string,
+    public readonly url: string
+  ) {}
 
-  public static async loadLocal(internal: InternalClient, name: string): Promise<Profile> {
+  public static async loadLocal(
+    internal: InternalClient,
+    name: string
+  ): Promise<Profile> {
     const profileUrl = await internal.resolveProfileUrl(name);
     return new Profile(internal, name, profileUrl);
   }
@@ -410,16 +463,29 @@ export class Profile {
 }
 
 export class UseCase {
-  constructor(private readonly internal: InternalClient, private readonly profile: Profile, public readonly name: string) {
-  }
+  constructor(
+    private readonly internal: InternalClient,
+    private readonly profile: Profile,
+    public readonly name: string
+  ) {}
 
   /**
-   * @param {*} input 
-   * @param {ClientPerformOptions} options 
+   * @param {*} input
+   * @param {ClientPerformOptions} options
    * @returns {*}
    * @throws {PerformError | UnexpectedError}
    */
-  public async perform<TInput = unknown, TResult = unknown>(input: TInput | undefined, options: ClientPerformOptions): Promise<TResult> {
-    return await this.internal.perform(this.profile.name, options.provider, this.name, input, options?.parameters, options?.security) as TResult;
+  public async perform<TInput = unknown, TResult = unknown>(
+    input: TInput | undefined,
+    options: ClientPerformOptions
+  ): Promise<TResult> {
+    return (await this.internal.perform(
+      this.profile.name,
+      options.provider,
+      this.name,
+      input,
+      options?.parameters,
+      options?.security
+    )) as TResult;
   }
 }

@@ -21,5 +21,5 @@ export abstract class AppContextSync extends AppBase {
 }
 export interface TextCoder {
   decodeUtf8(buffer: ArrayBufferLike): string;
-  encodeUtf8(string: string): ArrayBuffer;
+  encodeUtf8(string: string): Uint8Array;
 }

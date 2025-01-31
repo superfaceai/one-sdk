@@ -31,10 +31,10 @@ class TextCoderImpl implements TextCoder {
     this.decoder = new TextDecoder()
   }
 
-  decodeUtf8(buffer: ArrayBufferLike): string {
+  decodeUtf8(buffer: ArrayBuffer): string {
     return this.decoder.decode(buffer)
   }
-  encodeUtf8(string: string): ArrayBuffer {
+  encodeUtf8(string: string): Uint8Array {
     return this.encoder.encode(string)
   }
 }
